@@ -1,0 +1,21 @@
+meta {
+  name: List Open Shifts
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{coreBaseUrl}}:8106/
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+docs {
+  functions-core: ListOpenShifts (port 8106). Any authenticated staff can
+  browse open shifts (§3). Should show shift-open-1 and shift-open-2 against
+  freshly seeded data.
+}

@@ -1,0 +1,39 @@
+meta {
+  name: Sign Up - new user
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{authBaseUrl}}/accounts:signUp?key={{apiKey}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "new-staff@example.com",
+    "password": "password123",
+    "returnSecureToken": true
+  }
+}
+
+script:post-response {
+  bru.setEnvVar("idToken", res.body.idToken);
+  bru.setEnvVar("uid", res.body.localId);
+}
+
+docs {
+  Creates a brand-new Auth user directly against the Auth emulator.
+
+  IMPORTANT gap to know about: in a real deployment, this fires the
+  InitProfileOnSignUp Eventarc trigger, which creates profiles/{uid}
+  automatically (ARCHITECTURE.md v2 §1a). Locally there is no live Eventarc
+  dispatch for Go functions (§7) — nothing runs that trigger for you. Calling
+  "Update Profile — Set Role" right after this will fail with
+  PROFILE_NOT_FOUND until you either:
+    - manually create the profiles/{uid} doc (e.g. via the Firestore emulator
+      UI at http://127.0.0.1:4000), or
+    - use one of the pre-seeded users above instead (recommended for
+      exercising the rest of the collection).
+}

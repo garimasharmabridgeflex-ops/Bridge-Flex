@@ -1,0 +1,21 @@
+meta {
+  name: Get Profile (own, private)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{coreBaseUrl}}:8102/
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+docs {
+  functions-core: GetProfile — run services/core/run-local.sh first (port
+  8102). Returns the caller's own private profiles/{uid} doc — no other user
+  can read this (ARCHITECTURE.md v2 §2/§3, the v2 field-exposure fix).
+}

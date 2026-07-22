@@ -1,0 +1,27 @@
+meta {
+  name: Mark Notification Read
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{communicationBaseUrl}}:8126/
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+body:json {
+  {
+    "notificationId": "notif-1"
+  }
+}
+
+docs {
+  functions-communication: MarkNotificationRead (port 8126). Owner-only, and
+  only the read flag changes — mirrors the Security Rule exactly (§3). Sign
+  in as staff-jane first.
+}

@@ -1,0 +1,28 @@
+meta {
+  name: Update Profile - name
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{coreBaseUrl}}:8101/
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+body:json {
+  {
+    "name": "Jane Doe (RN)"
+  }
+}
+
+docs {
+  functions-core: UpdateProfile (port 8101). Owner-only; dbsStatus/rating are
+  never accepted here (§3) — try adding "dbsStatus": "verified" to the body
+  and confirm you get back ROLE_ALREADY_SET/400s depending on what you send;
+  the server ignores/rejects fields it doesn't own.
+}

@@ -1,0 +1,30 @@
+meta {
+  name: Register FCM Token
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{communicationBaseUrl}}:8121/
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+body:json {
+  {
+    "token": "sample-fcm-token-12345",
+    "platform": "ios"
+  }
+}
+
+docs {
+  functions-communication: RegisterFcmToken — run
+  services/communication/run-local.sh first (port 8121). Upserts
+  profiles/{uid}/fcmTokens/{hash(token)} — a subcollection, not an array
+  field, so concurrent multi-device registration never races on the parent
+  profile doc (§2/§6).
+}

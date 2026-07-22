@@ -1,0 +1,28 @@
+meta {
+  name: Sign In - nursery-acorn
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{authBaseUrl}}/accounts:signInWithPassword?key={{apiKey}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "acorn@example.com",
+    "password": "password123",
+    "returnSecureToken": true
+  }
+}
+
+script:post-response {
+  bru.setEnvVar("idToken", res.body.idToken);
+  bru.setEnvVar("uid", res.body.localId);
+}
+
+docs {
+  Seeded nursery user — owns shift-open-1 and shift-booked-1.
+}

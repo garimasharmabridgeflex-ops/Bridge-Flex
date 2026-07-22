@@ -139,6 +139,26 @@ once actually deployed (which requires Blaze, a separate later decision). The se
 around the practical consequence of this (no `profilesPublic` sync, no chat session, no
 notification firing automatically) by writing that derived state directly.
 
+Run them with the Firestore (and, for core, Pub/Sub — `matchNewShift`/`recomputeRating` publish)
+emulators up:
+
+```bash
+export FIRESTORE_EMULATOR_HOST=127.0.0.1:8180
+export FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
+export PUBSUB_EMULATOR_HOST=127.0.0.1:8085
+export GCLOUD_PROJECT=demo-bridgeflex
+
+(cd services/core && go test ./...)           # services/core/function/triggers_test.go — 4 tests
+(cd services/communication && go test ./...)  # services/communication/function/triggers_test.go — 3 tests
+```
+
+7 tests total: `InitProfileOnSignUp`, `SyncProfilePublic`, `RecomputeRating`, `MatchNewShift`
+(core), `OnShiftBooked`, `OnRatingReceived`, `OnShiftMatched` (communication). Each one asserts on
+real Firestore state written by the handler — `TestSyncProfilePublic` in particular is the
+regression test for the v2 privacy fix: it feeds the handler a fake profile write containing an
+exact `GeoPoint` and asserts the resulting `profilesPublic` doc has only the derived
+`locationArea` geohash, never the coordinates.
+
 ## 5. Security Rules unit tests
 
 ```bash

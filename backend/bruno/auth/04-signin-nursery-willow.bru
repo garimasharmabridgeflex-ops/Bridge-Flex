@@ -1,0 +1,28 @@
+meta {
+  name: Sign In - nursery-willow
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{authBaseUrl}}/accounts:signInWithPassword?key={{apiKey}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "willow@example.com",
+    "password": "password123",
+    "returnSecureToken": true
+  }
+}
+
+script:post-response {
+  bru.setEnvVar("idToken", res.body.idToken);
+  bru.setEnvVar("uid", res.body.localId);
+}
+
+docs {
+  Seeded nursery user — owns shift-open-2 and shift-cancelled-1.
+}

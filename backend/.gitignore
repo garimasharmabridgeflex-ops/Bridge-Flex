@@ -1,0 +1,16 @@
+# Node
+node_modules/
+
+# Firebase emulator debug logs / exported data
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+pubsub-debug.log
+storage-debug.log
+seed-data/*
+!seed-data/.gitkeep
+
+# Go
+# `go build ./...` in seed/ (main package lives at the module root, unlike the
+# services/* modules where it's under cmd/) writes a binary here by default.
+seed/seed

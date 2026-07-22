@@ -1,0 +1,27 @@
+meta {
+  name: Unregister FCM Token
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{communicationBaseUrl}}:8122/
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+body:json {
+  {
+    "token": "sample-fcm-token-12345"
+  }
+}
+
+docs {
+  functions-communication: UnregisterFcmToken (port 8122). Called on logout,
+  and internally by sendPushToUser when FCM reports a token as no longer
+  registered (§6).
+}

@@ -1,0 +1,37 @@
+meta {
+  name: Accept Shift
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{coreBaseUrl}}:8108/
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+body:json {
+  {
+    "shiftId": "shift-open-2"
+  }
+}
+
+docs {
+  functions-core: AcceptShift (port 8108) — the atomic booking transaction
+  from ARCHITECTURE.md v2 §4. Sign in as staff-jane or staff-sam first.
+
+  Run this request TWICE in a row: the first call returns 200 {"status":
+  "booked"}; the second returns 409 SHIFT_ALREADY_BOOKED — the exact
+  error-code contract from §4, proven against the real emulator (this isn't
+  simulated: two concurrent accepts on the same shift really do race inside
+  one Firestore transaction).
+
+  Other error cases to try:
+    - shiftId that doesn't exist -> 404 SHIFT_NOT_FOUND
+    - a nursery account calling this -> 403 NOT_STAFF
+    - no Authorization header -> 401 NOT_AUTHENTICATED
+}

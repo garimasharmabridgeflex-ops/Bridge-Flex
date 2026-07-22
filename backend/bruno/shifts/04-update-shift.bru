@@ -1,0 +1,29 @@
+meta {
+  name: Update Shift
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{coreBaseUrl}}:8105/
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+body:json {
+  {
+    "shiftId": "shift-open-1",
+    "title": "Morning cover — baby room (updated)",
+    "payRate": 15.5
+  }
+}
+
+docs {
+  functions-core: UpdateShift (port 8105). Owning nursery only, and only
+  while status is still "open" (§2/§3). Try it against shift-booked-1 —
+  expect 409 SHIFT_NOT_EDITABLE.
+}

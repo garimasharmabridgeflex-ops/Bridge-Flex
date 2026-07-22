@@ -1,0 +1,174 @@
+package function
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"time"
+
+	"cloud.google.com/go/firestore"
+	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+	"github.com/cloudevents/sdk-go/v2/event"
+	"github.com/googleapis/google-cloudevents-go/cloud/firestoredata"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+
+	"bridgeflex/shared/auth"
+	"bridgeflex/shared/httpjson"
+)
+
+func init() {
+	functions.HTTP("CreateRating", authed(createRating))
+	functions.CloudEvent("RecomputeRating", recomputeRating)
+}
+
+var (
+	errRatingSelf     = errors.New("cannot rate yourself")
+	errRatingNotParty = errors.New("not a party to this shift")
+	errRatingBadScore = errors.New("score must be between 1 and 5")
+)
+
+type createRatingRequest struct {
+	ShiftID string `json:"shiftId"`
+	RateeID string `json:"rateeId"`
+	Score   int64  `json:"score"`
+	Comment string `json:"comment,omitempty"`
+}
+
+// createRating — POST /createRating. Mirrors the create-only, immutable
+// Security Rule from §3: the rater/ratee pair must actually be the
+// nursery/booked-staff pair on the referenced shift.
+func createRating(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	uid := auth.UID(ctx)
+
+	var req createRatingRequest
+	if !httpjson.DecodeJSON(w, r, &req) {
+		return
+	}
+	if req.ShiftID == "" || req.RateeID == "" {
+		httpjson.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "shiftId and rateeId are required")
+		return
+	}
+	if req.Score < 1 || req.Score > 5 {
+		httpjson.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", errRatingBadScore.Error())
+		return
+	}
+	if req.RateeID == uid {
+		httpjson.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", errRatingSelf.Error())
+		return
+	}
+
+	db, err := fsDB(ctx)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "firestore client unavailable")
+		return
+	}
+
+	shiftSnap, err := db.Collection("shifts").Doc(req.ShiftID).Get(ctx)
+	if status.Code(err) == codes.NotFound {
+		httpjson.WriteError(w, http.StatusNotFound, "SHIFT_NOT_FOUND", "Shift not found")
+		return
+	}
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+	var shift Shift
+	if err := shiftSnap.DataTo(&shift); err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+
+	isValidPair := (shift.NurseryID == uid && shift.BookedStaffID != nil && *shift.BookedStaffID == req.RateeID) ||
+		(shift.BookedStaffID != nil && *shift.BookedStaffID == uid && shift.NurseryID == req.RateeID)
+	if !isValidPair {
+		httpjson.WriteError(w, http.StatusForbidden, "NOT_SHIFT_PARTY", errRatingNotParty.Error())
+		return
+	}
+
+	rating := RatingDoc{
+		ShiftID:   req.ShiftID,
+		RaterID:   uid,
+		RateeID:   req.RateeID,
+		Score:     req.Score,
+		Comment:   req.Comment,
+		CreatedAt: time.Now(),
+	}
+	ref, _, err := db.Collection("ratings").Add(ctx, rating)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+	httpjson.WriteJSON(w, http.StatusCreated, map[string]string{"ratingId": ref.ID})
+}
+
+type ratingReceivedMessage struct {
+	RatingID string `json:"ratingId"`
+	RateeID  string `json:"rateeId"`
+	RaterID  string `json:"raterId"`
+	ShiftID  string `json:"shiftId"`
+}
+
+// recomputeRating is bound at deploy time to a Firestore-create Eventarc
+// trigger filtered to ratings/{ratingId} (§1a table). Runs inside a
+// transaction on profiles/{rateeId} because two shifts completing
+// near-simultaneously could race on the same ratee's aggregate (§2). Writing
+// to profiles/{rateeId}.rating cascades into profilesPublic automatically via
+// syncProfilePublic — no special-casing needed here for the public mirror.
+func recomputeRating(ctx context.Context, e event.Event) error {
+	var data firestoredata.DocumentEventData
+	if err := proto.Unmarshal(e.Data(), &data); err != nil {
+		return fmt.Errorf("proto.Unmarshal firestore event: %w", err)
+	}
+	doc := data.GetValue()
+	if doc == nil {
+		return nil
+	}
+	ratingID, err := lastPathSegment(doc.GetName())
+	if err != nil {
+		return err
+	}
+	fields := doc.GetFields()
+	rateeID := fieldString(fields, "rateeId")
+	raterID := fieldString(fields, "raterId")
+	shiftID := fieldString(fields, "shiftId")
+	score := fieldInt(fields, "score")
+	if rateeID == "" {
+		return fmt.Errorf("rating %s missing rateeId", ratingID)
+	}
+
+	db, err := fsDB(ctx)
+	if err != nil {
+		return err
+	}
+	profileRef := db.Collection("profiles").Doc(rateeID)
+
+	err = db.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+		snap, err := tx.Get(profileRef)
+		if err != nil {
+			return err
+		}
+		var p Profile
+		if err := snap.DataTo(&p); err != nil {
+			return err
+		}
+		newCount := p.Rating.Count + 1
+		newAverage := (p.Rating.Average*float64(p.Rating.Count) + float64(score)) / float64(newCount)
+		return tx.Update(profileRef, []firestore.Update{
+			{Path: "rating", Value: Rating{Average: newAverage, Count: newCount}},
+		})
+	})
+	if err != nil {
+		return fmt.Errorf("recompute rating for %s: %w", rateeID, err)
+	}
+
+	return publish(ctx, topicRatingReceived, ratingReceivedMessage{
+		RatingID: ratingID,
+		RateeID:  rateeID,
+		RaterID:  raterID,
+		ShiftID:  shiftID,
+	})
+}

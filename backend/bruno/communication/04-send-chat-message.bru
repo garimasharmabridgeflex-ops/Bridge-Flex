@@ -1,0 +1,29 @@
+meta {
+  name: Send Chat Message
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{communicationBaseUrl}}:8123/
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+body:json {
+  {
+    "sessionId": "session-1",
+    "text": "Running 5 minutes late, on my way!"
+  }
+}
+
+docs {
+  functions-communication: SendChatMessage (port 8123). Participant-only —
+  sign in as nursery-acorn or staff-jane (session-1's seeded participants)
+  first; a third party gets 403 NOT_A_PARTICIPANT, mirroring the Security
+  Rule (§3) exactly.
+}

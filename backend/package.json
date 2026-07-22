@@ -1,0 +1,17 @@
+{
+  "name": "bridge-flex-backend",
+  "private": true,
+  "description": "Firebase project scaffold (Firestore/Auth/Storage/Pub-Sub emulators + Security Rules) for Bridge Flex. Cloud Functions logic lives in services/*, written in Go — see README.md.",
+  "scripts": {
+    "emulators:start": "firebase emulators:start",
+    "emulators:persist": "firebase emulators:start --import=./seed-data --export-on-exit=./seed-data",
+    "rules:test": "firebase emulators:exec --only firestore,storage \"npm --prefix rules-tests test\"",
+    "seed": "cd seed && go run .",
+    "functions:core": "services/core/run-local.sh",
+    "functions:payments": "cd services/payments && FUNCTION_TARGET=CreatePayout PORT=8093 go run ./cmd",
+    "functions:communication": "services/communication/run-local.sh"
+  },
+  "devDependencies": {
+    "firebase-tools": "^15.24.0"
+  }
+}

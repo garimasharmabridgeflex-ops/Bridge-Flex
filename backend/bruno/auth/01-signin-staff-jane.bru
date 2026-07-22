@@ -1,0 +1,33 @@
+meta {
+  name: Sign In - staff-jane
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{authBaseUrl}}/accounts:signInWithPassword?key={{apiKey}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "jane@example.com",
+    "password": "password123",
+    "returnSecureToken": true
+  }
+}
+
+script:post-response {
+  bru.setEnvVar("idToken", res.body.idToken);
+  bru.setEnvVar("uid", res.body.localId);
+}
+
+docs {
+  Signs in the seeded staff user (staff-jane, verified DBS) against the Auth
+  emulator's REST API and stashes the returned idToken/uid into the
+  environment for every other request in this collection to reuse.
+
+  Run this first. Re-run it whenever you want to switch back to acting as
+  staff-jane after running one of the "sign in as X" requests below.
+}

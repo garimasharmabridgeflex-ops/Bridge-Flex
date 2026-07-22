@@ -1,0 +1,30 @@
+meta {
+  name: Update Profile - set role (sign-up completion)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{coreBaseUrl}}:8101/
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+body:json {
+  {
+    "role": "staff"
+  }
+}
+
+docs {
+  functions-core: UpdateProfile (port 8101). role can only be set once, from
+  "" to nursery|staff — this is the one-time sign-up-completion step
+  (ARCHITECTURE.md v2 §1a "profiles.go"). Run this against the new user from
+  auth/05-signup-new-user.bru AFTER manually creating its profiles/{uid} doc
+  (see that request's docs) — running it against an already-seeded user
+  (whose role is already set) will correctly fail with 409 ROLE_ALREADY_SET.
+}

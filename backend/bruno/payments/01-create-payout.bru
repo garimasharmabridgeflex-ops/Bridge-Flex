@@ -1,0 +1,26 @@
+meta {
+  name: Create Payout (stub)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{paymentsBaseUrl}}/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "shiftId": "shift-booked-1"
+  }
+}
+
+docs {
+  functions-payments: CreatePayout — run `npm run functions:payments` first
+  (port 8093, the only function in this codebase, so no per-function port
+  table needed). Always responds 501 PAYMENTS_NOT_YET_BUILT — see
+  services/payments/TODO.md and ARCHITECTURE.md v2 §5. Proves the
+  core-to-payments call/deploy contract exists without any real Stripe
+  integration.
+}

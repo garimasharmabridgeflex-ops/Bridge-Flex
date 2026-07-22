@@ -1,0 +1,17 @@
+rules_version = '2';
+
+// Storage rules are enforced independently from firestore.rules (§2 of
+// ARCHITECTURE.md v2) — a client could otherwise write a `documents` Firestore
+// doc without a matching upload, or vice versa, so both layers validate the
+// same `dbs-documents/{uid}/...` path convention.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /dbs-documents/{uid}/{fileName} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|application/pdf');
+    }
+  }
+}

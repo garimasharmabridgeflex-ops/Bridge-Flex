@@ -1,0 +1,147 @@
+rules_version = '2';
+
+// Enforcement layer for every DIRECT client read/write (the Firestore replacement for RLS).
+// Anything not expressible here — cross-document atomicity, computed aggregates, privileged
+// sync — is Cloud-Function-only (Admin SDK, which bypasses these rules entirely).
+// See ARCHITECTURE.md v2 §3 for the plain-English rule-by-rule rationale.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ---------------------------------------------------------------------
+    // profiles/{uid} — PRIVATE. Owner-read-only, full stop. No other user
+    // may read this document at all (see ARCHITECTURE.md v2 §2 — this is
+    // the v2 fix for the field-exposure bug in v1).
+    // ---------------------------------------------------------------------
+    match /profiles/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid)
+        && request.resource.data.dbsStatus == resource.data.dbsStatus
+        && request.resource.data.rating == resource.data.rating;
+      allow delete: if false;
+
+      // Write-only from the client's perspective; only server functions read
+      // tokens back out to send pushes.
+      match /fcmTokens/{tokenId} {
+        allow read: if false;
+        allow create, delete: if isOwner(uid);
+        allow update: if false;
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // profilesPublic/{uid} — PUBLIC. Readable by any authenticated user.
+    // Every field is derived and written only by the syncProfilePublic
+    // trigger (Admin SDK) — no client write, ever.
+    // ---------------------------------------------------------------------
+    match /profilesPublic/{uid} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // shifts/{shiftId}
+    // ---------------------------------------------------------------------
+    match /shifts/{shiftId} {
+      allow create: if isSignedIn()
+        && request.auth.uid == request.resource.data.nurseryId
+        && request.resource.data.status == 'open'
+        && request.resource.data.bookedStaffId == null;
+
+      allow read: if isSignedIn() && (
+        resource.data.status == 'open' ||
+        request.auth.uid == resource.data.nurseryId ||
+        request.auth.uid == resource.data.bookedStaffId
+      );
+
+      // Nursery may edit their own OPEN shift's fields, but status/bookedStaffId
+      // are frozen from the client no matter what — only the acceptShift /
+      // cancelShift server endpoints (Admin SDK) may change those.
+      allow update: if isSignedIn()
+        && request.auth.uid == resource.data.nurseryId
+        && resource.data.status == 'open'
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.bookedStaffId == resource.data.bookedStaffId;
+
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // ratings/{ratingId} — create-only from clients, immutable after that.
+    // ---------------------------------------------------------------------
+    match /ratings/{ratingId} {
+      allow create: if isSignedIn()
+        && request.auth.uid == request.resource.data.raterId
+        && request.resource.data.rateeId != request.resource.data.raterId
+        && isParticipantPair(request.resource.data.shiftId, request.resource.data.raterId, request.resource.data.rateeId);
+
+      allow read: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    function isParticipantPair(shiftId, raterId, rateeId) {
+      let shift = get(/databases/$(database)/documents/shifts/$(shiftId)).data;
+      return (shift.nurseryId == raterId && shift.bookedStaffId == rateeId)
+          || (shift.bookedStaffId == raterId && shift.nurseryId == rateeId);
+    }
+
+    // ---------------------------------------------------------------------
+    // chatSessions/{sessionId}/messages/{messageId} — owned by communication
+    // service. Session doc itself is server-created only (on shift-booked).
+    // ---------------------------------------------------------------------
+    match /chatSessions/{sessionId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      allow create, update, delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.participantIds;
+        allow create: if isSignedIn()
+          && request.resource.data.senderId == request.auth.uid
+          && request.auth.uid in get(/databases/$(database)/documents/chatSessions/$(sessionId)).data.participantIds;
+        allow update, delete: if false;
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // transactions/{transactionId} — payments-owned, function-only forever.
+    // Unused in Phase 1 (no documents, no functions) but rule stays deny-all.
+    // ---------------------------------------------------------------------
+    match /transactions/{transactionId} {
+      allow read, write: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // documents/{docId} — DBS upload metadata. storagePath must point into
+    // the owner's own Storage prefix, kept consistent with storage.rules.
+    // ---------------------------------------------------------------------
+    match /documents/{docId} {
+      allow create: if isSignedIn()
+        && request.auth.uid == request.resource.data.uid
+        && request.resource.data.storagePath.matches('dbs-documents/' + request.auth.uid + '/.*')
+        && request.resource.data.status == 'pending_review';
+      allow read: if isSignedIn() && request.auth.uid == resource.data.uid;
+      allow update, delete: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // notifications/{notificationId} — owned by communication service.
+    // Client may only flip its own `read` flag; creation is server-only.
+    // ---------------------------------------------------------------------
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && request.auth.uid == resource.data.uid;
+      allow update: if isSignedIn()
+        && request.auth.uid == resource.data.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow create, delete: if false;
+    }
+  }
+}

@@ -1,0 +1,47 @@
+meta {
+  name: Review Document
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{coreBaseUrl}}:8112/
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+body:json {
+  {
+    "docId": "REPLACE-WITH-DOC-ID-FROM-CREATE-DOCUMENT",
+    "approve": true
+  }
+}
+
+docs {
+  functions-core: ReviewDocument (port 8112). Admin-only (§8 item 2 — the
+  real DBS verification method is an open product question; this is just the
+  mechanical review-decision endpoint). The "admin" custom claim isn't
+  settable via any endpoint in this codebase by design — set it out of band
+  first, either:
+
+    - via the Emulator UI's Authentication tab (http://127.0.0.1:4000/auth —
+      only present when you run the full `npm run emulators:start`, not the
+      `--only firestore,storage` subset used for rules tests): edit the user
+      and set custom claims to {"admin": true}, or
+    - via the Auth emulator's REST API using its "Bearer owner" admin
+      shortcut (emulator-only — never works against real Firebase):
+
+        curl -X POST \
+          "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/projects/demo-bridgeflex/accounts:update" \
+          -H "Authorization: Bearer owner" \
+          -H "Content-Type: application/json" \
+          -d '{"localId": "staff-sam", "customAttributes": "{\"admin\":true}"}'
+
+  Then sign that user back in (custom claims only appear in a freshly issued
+  ID token — see auth/ requests) before running this request. Without the
+  claim, expect 403 NOT_ADMIN.
+}

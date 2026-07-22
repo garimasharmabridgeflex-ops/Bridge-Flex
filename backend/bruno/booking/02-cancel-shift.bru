@@ -1,0 +1,28 @@
+meta {
+  name: Cancel Shift
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{coreBaseUrl}}:8109/
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+body:json {
+  {
+    "shiftId": "shift-booked-1"
+  }
+}
+
+docs {
+  functions-core: CancelShift (port 8109). Either party to a booked shift (or
+  the owning nursery on an open one) may cancel — sign in as nursery-acorn or
+  staff-jane (the pair on shift-booked-1) first. A third party gets 403
+  NOT_SHIFT_PARTY.
+}

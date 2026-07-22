@@ -1,0 +1,25 @@
+meta {
+  name: Get Public Profile
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{coreBaseUrl}}:8103/?uid=staff-jane
+  body: none
+  auth: none
+}
+
+params:query {
+  uid: staff-jane
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+docs {
+  functions-core: GetPublicProfile (port 8103). Any authenticated user can
+  read anyone's profilesPublic/{uid} doc — name, role, rating, dbsBadge, and
+  a coarse locationArea only, never the exact GeoPoint (§2).
+}

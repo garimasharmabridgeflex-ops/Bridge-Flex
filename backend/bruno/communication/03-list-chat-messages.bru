@@ -1,0 +1,27 @@
+meta {
+  name: List Chat Messages
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{communicationBaseUrl}}:8124/?sessionId=session-1
+  body: none
+  auth: none
+}
+
+params:query {
+  sessionId: session-1
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+docs {
+  functions-communication: ListChatMessages (port 8124). session-1 is
+  pre-seeded (see seed/main.go seedCommunicationData) for shift-booked-1's
+  participants (nursery-acorn, staff-jane), standing in for what
+  onShiftBooked would have created — that Pub/Sub trigger doesn't fire
+  locally (§7). Sign in as one of those two first.
+}

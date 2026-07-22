@@ -1,0 +1,31 @@
+meta {
+  name: Create Shift
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{coreBaseUrl}}:8104/
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+body:json {
+  {
+    "title": "Evening cover — pre-school room",
+    "date": "2026-07-30",
+    "startTime": "2026-07-30T15:00:00Z",
+    "endTime": "2026-07-30T19:00:00Z",
+    "payRate": 16.5
+  }
+}
+
+docs {
+  functions-core: CreateShift (port 8104). Nursery-only — sign in as
+  nursery-acorn or nursery-willow first. status/bookedStaffId/paymentStatus
+  are always server-set, never accepted from this body (§2/§3).
+}

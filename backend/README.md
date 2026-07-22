@@ -219,5 +219,23 @@ Deploying any of this to a real Firebase project requires upgrading to the Blaze
 plan — a required step for any non-emulated Cloud Functions/Cloud Run deployment, not a policy
 this project can route around. Usage can stay entirely within the free quota; the card-linking
 requirement exists regardless. That's a separate, later decision — everything above is designed
-to be fully developed and tested without it. When that day comes, real Stripe Connect work
-(`services/payments/TODO.md`) is the other piece that still needs building.
+to be fully developed and tested without it.
+
+When you're ready:
+
+1. Create a real Firebase project (not `demo-bridgeflex` — that ID only resolves against the
+   emulators) and upgrade it to Blaze.
+2. `gcloud auth login` and `gcloud config set project YOUR_PROJECT_ID`.
+3. `PROJECT_ID=your-real-project-id ./deploy.sh` — deploys Firestore/Storage rules via the normal
+   Firebase CLI, then all 26 Cloud Functions (2nd gen) via `gcloud` directly. **`firebase deploy
+   --only functions` does not work here** — that path only supports Node/Python codebases; Go
+   requires `gcloud functions deploy` per function, which is what `deploy.sh` (and the
+   per-service `services/*/deploy.sh` it calls) automates. Read those scripts for the exact
+   trigger config (event filters, Pub/Sub topics) per function.
+4. Fill in `bruno/environments/Production.bru` with the deployed URLs (`gcloud functions describe
+   NAME --gen2 --region=... --format='value(serviceConfig.uri)'` per function — each one gets its
+   own URL, unlike the emulator's one-host-many-ports scheme).
+
+Real Stripe Connect work (`services/payments/TODO.md`) is the other piece that still needs
+building before payments does anything beyond the 501 stub — deploying it as-is just makes the
+stub reachable over HTTPS, nothing more.

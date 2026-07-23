@@ -20,6 +20,7 @@ import '../../../shared/widgets/phone_field.dart';
 import '../../../shared/widgets/photo_source_sheet.dart';
 import '../../../shared/widgets/primary_button.dart';
 import '../../../shared/widgets/uk_postcode_field.dart';
+import '../../../shared/services/uk_geocoding.dart';
 import '../domain/profile.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -75,6 +76,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   DateTime? _dbsExpiryDate;
   String _visaStatus = '';
   String _rightToWorkStatus = '';
+  double? _lat;
+  double? _lng;
 
   void _hydrate(Profile profile) {
     if (_initialized) return;
@@ -116,6 +119,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _availabilityDays = List<String>.from(profile.availabilityDays);
     _availabilityShifts = List<String>.from(profile.availabilityShifts);
     _dbsExpiryDate = profile.dbsExpiryDate;
+    _lat = profile.lat;
+    _lng = profile.lng;
 
     _initialized = true;
   }
@@ -243,10 +248,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       if (user != null) {
         ref.invalidate(publicProfileProvider(user.uid));
       }
+      setState(() {
+        _lat = pos.latitude;
+        _lng = pos.longitude;
+      });
+      final placeName = await reverseGeocodeUK(pos.latitude, pos.longitude);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              'Location logged: ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}'),
+          content: Text(placeName != null ? 'Location set: $placeName' : 'Location set.'),
         ));
       }
     } catch (e) {
@@ -387,6 +396,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   icon: const Icon(Icons.my_location_rounded),
                   label: const Text('Detect & update location (GPS)'),
                 ),
+                if (_lat != null && _lng != null) ...[
+                  const SizedBox(height: 8),
+                  _LocationStatus(lat: _lat!, lng: _lng!),
+                ],
                 const SizedBox(height: AppSpacing.md),
                 if (isNursery) ...[
                   AppTextField(
@@ -698,6 +711,34 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+class _LocationStatus extends ConsumerWidget {
+  const _LocationStatus({required this.lat, required this.lng});
+  final double lat;
+  final double lng;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final placeAsync = ref.watch(reverseGeocodeProvider((lat, lng)));
+    return Row(
+      children: [
+        Icon(Icons.place_rounded, size: 16, color: AppColors.mint),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            placeAsync.when(
+              data: (place) => place != null ? 'Location set — $place' : 'Location set',
+              loading: () => 'Location set — resolving area…',
+              error: (_, __) => 'Location set',
+            ),
+            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+          ),
+        ),
+      ],
     );
   }
 }

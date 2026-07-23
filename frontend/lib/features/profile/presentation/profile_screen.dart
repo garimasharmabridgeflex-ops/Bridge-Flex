@@ -117,11 +117,6 @@ class ProfileScreen extends ConsumerWidget {
                   label: 'Upload DBS certificate',
                   onTap: () => context.push('/profile/dbs'),
                 ),
-              _ActionTile(
-                icon: Icons.chat_bubble_outline_rounded,
-                label: 'Messages',
-                onTap: () => context.push('/chats'),
-              ),
               const SizedBox(height: AppSpacing.lg),
               OutlinedButton.icon(
                 onPressed: () => ref.read(authRepositoryProvider).signOut(),

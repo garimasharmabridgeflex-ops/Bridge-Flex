@@ -200,3 +200,73 @@ func TestOnShiftMatched(t *testing.T) {
 		}
 	})
 }
+
+// TestOnShiftCancelled covers both branches of the cancellation state
+// machine (full app spec §3): staff dropping their acceptance notifies the
+// nursery; the nursery pulling a booked shift notifies the staff member.
+func TestOnShiftCancelled(t *testing.T) {
+	ctx := context.Background()
+	db, err := fsDB(ctx)
+	if err != nil {
+		t.Fatalf("fsDB: %v", err)
+	}
+	cleanupNotifs := func(uid string) {
+		t.Cleanup(func() {
+			iter := db.Collection("notifications").Where("uid", "==", uid).Documents(ctx)
+			defer iter.Stop()
+			for {
+				d, err := iter.Next()
+				if err == iterator.Done {
+					break
+				}
+				if err == nil {
+					_, _ = d.Ref.Delete(ctx)
+				}
+			}
+		})
+	}
+
+	t.Run("staff cancelling notifies the nursery", func(t *testing.T) {
+		nurseryUID := testUID("trigger-test-cancel-nursery")
+		staffUID := testUID("trigger-test-cancel-staff")
+		cleanupNotifs(nurseryUID)
+
+		e := pubsubEvent(t, "shift-cancelled", shiftCancelledPayload{
+			ShiftID: testUID("shift"), NurseryID: nurseryUID, StaffIDs: []string{staffUID},
+			CancelledBy: "staff", NewStatus: "open",
+		})
+		if err := onShiftCancelled(ctx, e); err != nil {
+			t.Fatalf("onShiftCancelled: %v", err)
+		}
+
+		notifs := notificationsForUID(t, nurseryUID)
+		if len(notifs) != 1 {
+			t.Fatalf("notifications for nursery %s: got %d, want 1", nurseryUID, len(notifs))
+		}
+		if notifs[0]["type"] != "shift_cancelled" {
+			t.Errorf("notification type = %v, want shift_cancelled", notifs[0]["type"])
+		}
+	})
+
+	t.Run("nursery cancelling a booked shift notifies the staff member", func(t *testing.T) {
+		nurseryUID := testUID("trigger-test-cancel-nursery2")
+		staffUID := testUID("trigger-test-cancel-staff2")
+		cleanupNotifs(staffUID)
+
+		e := pubsubEvent(t, "shift-cancelled", shiftCancelledPayload{
+			ShiftID: testUID("shift"), NurseryID: nurseryUID, StaffIDs: []string{staffUID},
+			CancelledBy: "nursery", NewStatus: "cancelled",
+		})
+		if err := onShiftCancelled(ctx, e); err != nil {
+			t.Fatalf("onShiftCancelled: %v", err)
+		}
+
+		notifs := notificationsForUID(t, staffUID)
+		if len(notifs) != 1 {
+			t.Fatalf("notifications for staff %s: got %d, want 1", staffUID, len(notifs))
+		}
+		if notifs[0]["type"] != "shift_cancelled" {
+			t.Errorf("notification type = %v, want shift_cancelled", notifs[0]["type"])
+		}
+	})
+}

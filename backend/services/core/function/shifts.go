@@ -23,16 +23,25 @@ func init() {
 	functions.HTTP("CreateShift", authed(createShift))
 	functions.HTTP("UpdateShift", authed(updateShift))
 	functions.HTTP("ListOpenShifts", authed(listOpenShifts))
+	functions.HTTP("ListMyShifts", authed(listMyShifts))
 	functions.HTTP("GetShift", authed(getShift))
 	functions.CloudEvent("MatchNewShift", matchNewShift)
 }
 
 type createShiftRequest struct {
-	Title     string  `json:"title"`
-	Date      string  `json:"date"`
-	StartTime string  `json:"startTime"` // RFC3339
-	EndTime   string  `json:"endTime"`   // RFC3339
-	PayRate   float64 `json:"payRate"`
+	Title       string  `json:"title"`
+	Description string  `json:"description,omitempty"`
+	Capacity    int64   `json:"capacity,omitempty"`
+	Date        string  `json:"date"`
+	StartTime   string  `json:"startTime"` // RFC3339
+	EndTime     string  `json:"endTime"`   // RFC3339
+	PayRate     float64 `json:"payRate"`
+
+	AgeGroup         string   `json:"ageGroup,omitempty"`
+	Room             string   `json:"room,omitempty"`
+	NumberOfChildren int64    `json:"numberOfChildren,omitempty"`
+	ExpectedDuties   []string `json:"expectedDuties,omitempty"`
+	Requirements     []string `json:"requirements,omitempty"`
 }
 
 // createShift — POST /createShift. Nursery-only; status/bookedStaffId/
@@ -71,9 +80,16 @@ func createShift(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	capacity := req.Capacity
+	if capacity <= 0 {
+		capacity = 1
+	}
+
 	shift := Shift{
 		NurseryID:     uid,
 		Title:         req.Title,
+		Description:   req.Description,
+		Capacity:      capacity,
 		Date:          req.Date,
 		StartTime:     startTime,
 		EndTime:       endTime,
@@ -82,6 +98,12 @@ func createShift(w http.ResponseWriter, r *http.Request) {
 		BookedStaffID: nil,
 		PaymentStatus: PaymentNotRequired,
 		CreatedAt:     time.Now(),
+
+		AgeGroup:         req.AgeGroup,
+		Room:             req.Room,
+		NumberOfChildren: req.NumberOfChildren,
+		ExpectedDuties:   req.ExpectedDuties,
+		Requirements:     req.Requirements,
 	}
 	ref, _, err := db.Collection("shifts").Add(ctx, shift)
 	if err != nil {
@@ -98,6 +120,12 @@ type updateShiftRequest struct {
 	StartTime *string  `json:"startTime,omitempty"`
 	EndTime   *string  `json:"endTime,omitempty"`
 	PayRate   *float64 `json:"payRate,omitempty"`
+
+	AgeGroup         *string   `json:"ageGroup,omitempty"`
+	Room             *string   `json:"room,omitempty"`
+	NumberOfChildren *int64    `json:"numberOfChildren,omitempty"`
+	ExpectedDuties   *[]string `json:"expectedDuties,omitempty"`
+	Requirements     *[]string `json:"requirements,omitempty"`
 }
 
 // updateShift — POST /updateShift. Nursery may only edit their own shift's
@@ -163,6 +191,21 @@ func updateShift(w http.ResponseWriter, r *http.Request) {
 			}
 			updates = append(updates, firestore.Update{Path: "endTime", Value: t})
 		}
+		if req.AgeGroup != nil {
+			updates = append(updates, firestore.Update{Path: "ageGroup", Value: *req.AgeGroup})
+		}
+		if req.Room != nil {
+			updates = append(updates, firestore.Update{Path: "room", Value: *req.Room})
+		}
+		if req.NumberOfChildren != nil {
+			updates = append(updates, firestore.Update{Path: "numberOfChildren", Value: *req.NumberOfChildren})
+		}
+		if req.ExpectedDuties != nil {
+			updates = append(updates, firestore.Update{Path: "expectedDuties", Value: *req.ExpectedDuties})
+		}
+		if req.Requirements != nil {
+			updates = append(updates, firestore.Update{Path: "requirements", Value: *req.Requirements})
+		}
 		if len(updates) == 0 {
 			return nil
 		}
@@ -217,6 +260,98 @@ func listOpenShifts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		shifts = append(shifts, map[string]any{"shiftId": doc.Ref.ID, "shift": s})
+	}
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"shifts": shifts})
+}
+
+// listMyShifts — GET /listMyShifts. A nursery gets shifts it posted (any
+// status); staff get shifts booked to them. Both queries are already
+// client-legal per Security Rules (§3) — this endpoint exists as a plain-HTTP
+// mirror for clients that can't hold a live Firestore connection open (e.g.
+// gRPC-hostile networks), same rationale as listOpenShifts above.
+func listMyShifts(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	uid := auth.UID(ctx)
+
+	db, err := fsDB(ctx)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "firestore client unavailable")
+		return
+	}
+
+	profileSnap, err := db.Collection("profiles").Doc(uid).Get(ctx)
+	if status.Code(err) == codes.NotFound {
+		httpjson.WriteError(w, http.StatusNotFound, "PROFILE_NOT_FOUND", "Profile not found")
+		return
+	}
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+	var profile Profile
+	if err := profileSnap.DataTo(&profile); err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+
+	shiftsMap := make(map[string]map[string]any)
+	switch profile.Role {
+	case RoleNursery:
+		iter := db.Collection("shifts").Where("nurseryId", "==", uid).Documents(ctx)
+		defer iter.Stop()
+		for {
+			doc, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+				return
+			}
+			var s Shift
+			if err := doc.DataTo(&s); err == nil {
+				shiftsMap[doc.Ref.ID] = map[string]any{"shiftId": doc.Ref.ID, "shift": s}
+			}
+		}
+	case RoleStaff:
+		iter1 := db.Collection("shifts").Where("bookedStaffId", "==", uid).Documents(ctx)
+		defer iter1.Stop()
+		for {
+			doc, err := iter1.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				break
+			}
+			var s Shift
+			if err := doc.DataTo(&s); err == nil {
+				shiftsMap[doc.Ref.ID] = map[string]any{"shiftId": doc.Ref.ID, "shift": s}
+			}
+		}
+		iter2 := db.Collection("shifts").Where("bookedStaffIds", "array-contains", uid).Documents(ctx)
+		defer iter2.Stop()
+		for {
+			doc, err := iter2.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				break
+			}
+			var s Shift
+			if err := doc.DataTo(&s); err == nil {
+				shiftsMap[doc.Ref.ID] = map[string]any{"shiftId": doc.Ref.ID, "shift": s}
+			}
+		}
+	default:
+		httpjson.WriteJSON(w, http.StatusOK, map[string]any{"shifts": []map[string]any{}})
+		return
+	}
+
+	shifts := make([]map[string]any, 0, len(shiftsMap))
+	for _, item := range shiftsMap {
+		shifts = append(shifts, item)
 	}
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"shifts": shifts})
 }

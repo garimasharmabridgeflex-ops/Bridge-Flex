@@ -179,6 +179,114 @@ func TestSyncProfilePublic(t *testing.T) {
 	// nothing further to assert here beyond "it compiles without one."
 }
 
+// TestSyncProfilePublicWizardFields covers the full app spec §1.2/§1.3
+// additions: staff experience fields and nursery setting fields mirror
+// into profilesPublic, and — critically — a role never carries the other
+// role's fields (e.g. a nursery's profilesPublic doc has no bio/experience).
+func TestSyncProfilePublicWizardFields(t *testing.T) {
+	ctx := context.Background()
+	db := testFirestore(t)
+
+	t.Run("staff experience fields mirror, nursery fields stay empty", func(t *testing.T) {
+		uid := testUID(t, "trigger-test-sync-staff-wizard")
+		t.Cleanup(func() { _, _ = db.Collection("profilesPublic").Doc(uid).Delete(ctx) })
+
+		fields := map[string]*firestoredata.Value{
+			"role":               strVal("staff"),
+			"name":               strVal("Wizard Test Staff"),
+			"yearsExperience":    intVal(3),
+			"qualificationLevel": strVal("level_3"),
+			"bio":                strVal("Loves messy play."),
+			"previousRoles": {ValueType: &firestoredata.Value_ArrayValue{ArrayValue: &firestoredata.ArrayValue{
+				Values: []*firestoredata.Value{
+					mapVal(map[string]*firestoredata.Value{
+						"settingName": strVal("Sunny Days Nursery"),
+						"roleTitle":   strVal("Room Leader"),
+						"duration":    strVal("2 years"),
+					}),
+				},
+			}}},
+			// Nursery-only fields present in the write shouldn't leak through
+			// for a staff profile.
+			"description": strVal("should not appear"),
+		}
+		e := firestoreWriteEvent(t, docName("profiles", uid), fields)
+		if err := syncProfilePublic(ctx, e); err != nil {
+			t.Fatalf("syncProfilePublic: %v", err)
+		}
+
+		snap, err := db.Collection("profilesPublic").Doc(uid).Get(ctx)
+		if err != nil {
+			t.Fatalf("read profilesPublic/%s: %v", uid, err)
+		}
+		var pub ProfilePublic
+		if err := snap.DataTo(&pub); err != nil {
+			t.Fatalf("DataTo: %v", err)
+		}
+		if pub.YearsExperience != 3 {
+			t.Errorf("YearsExperience = %d, want 3", pub.YearsExperience)
+		}
+		if pub.QualificationLevel != QualLevel3 {
+			t.Errorf("QualificationLevel = %q, want %q", pub.QualificationLevel, QualLevel3)
+		}
+		if pub.Bio != "Loves messy play." {
+			t.Errorf("Bio = %q, want %q", pub.Bio, "Loves messy play.")
+		}
+		if len(pub.PreviousRoles) != 1 || pub.PreviousRoles[0].SettingName != "Sunny Days Nursery" {
+			t.Errorf("PreviousRoles = %+v, want one entry for Sunny Days Nursery", pub.PreviousRoles)
+		}
+		if pub.Description != "" {
+			t.Errorf("Description = %q, want empty for a staff profile", pub.Description)
+		}
+	})
+
+	t.Run("nursery setting fields mirror, staff fields stay empty", func(t *testing.T) {
+		uid := testUID(t, "trigger-test-sync-nursery-wizard")
+		t.Cleanup(func() { _, _ = db.Collection("profilesPublic").Doc(uid).Delete(ctx) })
+
+		fields := map[string]*firestoredata.Value{
+			"role":         strVal("nursery"),
+			"name":         strVal("Wizard Test Nursery"),
+			"description":  strVal("A friendly Ofsted-rated setting."),
+			"openingHours": strVal("Mon-Fri 7:30am-6pm"),
+			"ofstedRating": strVal("outstanding"),
+			"photos": {ValueType: &firestoredata.Value_ArrayValue{ArrayValue: &firestoredata.ArrayValue{
+				Values: []*firestoredata.Value{strVal("https://example.com/photo1.jpg")},
+			}}},
+			// Staff-only field present in the write shouldn't leak through.
+			"bio": strVal("should not appear"),
+		}
+		e := firestoreWriteEvent(t, docName("profiles", uid), fields)
+		if err := syncProfilePublic(ctx, e); err != nil {
+			t.Fatalf("syncProfilePublic: %v", err)
+		}
+
+		snap, err := db.Collection("profilesPublic").Doc(uid).Get(ctx)
+		if err != nil {
+			t.Fatalf("read profilesPublic/%s: %v", uid, err)
+		}
+		var pub ProfilePublic
+		if err := snap.DataTo(&pub); err != nil {
+			t.Fatalf("DataTo: %v", err)
+		}
+		if pub.Description != "A friendly Ofsted-rated setting." {
+			t.Errorf("Description = %q, want the seeded description", pub.Description)
+		}
+		if pub.OpeningHours != "Mon-Fri 7:30am-6pm" {
+			t.Errorf("OpeningHours = %q, want %q", pub.OpeningHours, "Mon-Fri 7:30am-6pm")
+		}
+		if pub.OfstedRating != OfstedOutstanding {
+			t.Errorf("OfstedRating = %q, want %q", pub.OfstedRating, OfstedOutstanding)
+		}
+		if len(pub.Photos) != 1 || pub.Photos[0] != "https://example.com/photo1.jpg" {
+			t.Errorf("Photos = %+v, want one seeded photo URL", pub.Photos)
+		}
+		if pub.Bio != "" {
+			t.Errorf("Bio = %q, want empty for a nursery profile", pub.Bio)
+		}
+	})
+}
+
 func TestRecomputeRating(t *testing.T) {
 	ctx := context.Background()
 	db := testFirestore(t)

@@ -23,6 +23,8 @@ func notifyUser(ctx context.Context, uid, notificationType, title, body string, 
 	if _, _, err := db.Collection("notifications").Add(ctx, map[string]any{
 		"uid":       uid,
 		"type":      notificationType,
+		"title":     title,
+		"body":      body,
 		"payload":   payload,
 		"read":      false,
 		"createdAt": time.Now(),

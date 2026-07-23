@@ -1,0 +1,25 @@
+meta {
+  name: List Chat Sessions
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{communicationBaseUrl}}:8127/
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+docs {
+  functions-communication: ListChatSessions (port 8127). Sessions the
+  caller participates in — plain-HTTP mirror of a query that's already
+  client-legal per Security Rules (§3), added because the frontend moved
+  off the Firestore client SDK — see root README.md. Sign in as
+  nursery-acorn or staff-jane to see session-1 (seeded for shift-booked-1),
+  or run this after accepting a shift with WITH_TRIGGERS=1 / devharness
+  running so onShiftBooked actually creates a session.
+}

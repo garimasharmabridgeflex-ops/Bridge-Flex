@@ -53,6 +53,12 @@ var users = []sampleUser{
 		DisplayName: "Sam Patel", Role: "staff", DBSStatus: "pending",
 		Lat: 53.7997, Lng: -1.5492,
 	},
+	{
+		UID: "admin-super", Email: "admin@example.com", Password: "password123",
+		DisplayName: "Super Admin", Role: "admin", DBSStatus: "verified",
+		Description: "BridgeFlex Platform Super Administrator.",
+		Lat: 53.4808, Lng: -2.2426,
+	},
 }
 
 func main() {
@@ -131,6 +137,17 @@ func seedUser(ctx context.Context, authClient *firebaseauth.Client, db *firestor
 		DisplayName(u.DisplayName)
 	if _, err := authClient.CreateUser(ctx, params); err != nil {
 		return fmt.Errorf("create auth user: %w", err)
+	}
+
+	// The "admin" role isn't a marketplace role at all (Role only ever
+	// means nursery|staff — see models.go) — it's authorized purely via
+	// the Firebase "admin" custom claim isAdmin() (documents.go) checks.
+	// Without this, the seeded admin-super account would 403 on every
+	// admin-gated endpoint despite its Firestore profile saying role=admin.
+	if u.Role == "admin" {
+		if err := authClient.SetCustomUserClaims(ctx, u.UID, map[string]interface{}{"admin": true}); err != nil {
+			return fmt.Errorf("set admin custom claim: %w", err)
+		}
 	}
 
 	dbsStatus := u.DBSStatus

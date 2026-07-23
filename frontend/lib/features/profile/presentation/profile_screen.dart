@@ -7,6 +7,7 @@ import '../../../app/providers.dart';
 import '../../../app/theme.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../domain/profile.dart';
+import 'public_profile_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -15,6 +16,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(ownProfileProvider);
     final scheme = Theme.of(context).colorScheme;
+    final uid = ref.watch(authStateProvider).valueOrNull?.uid ?? '';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
@@ -94,18 +96,16 @@ class ProfileScreen extends ConsumerWidget {
                   ],
                 ).animate().fadeIn(delay: 80.ms, duration: 300.ms),
               const SizedBox(height: AppSpacing.xl),
-              if (profile.role == UserRole.nursery && profile.description.isNotEmpty) ...[
-                Text('About', style: Theme.of(context).textTheme.labelLarge),
-                const SizedBox(height: 6),
-                Text(profile.description),
-                const SizedBox(height: AppSpacing.lg),
-              ],
-              if (profile.role == UserRole.staff && profile.bio.isNotEmpty) ...[
-                Text('About', style: Theme.of(context).textTheme.labelLarge),
-                const SizedBox(height: 6),
-                Text(profile.bio),
-                const SizedBox(height: AppSpacing.lg),
-              ],
+              // Full app spec: "my profile" was showing far less than what
+              // a nursery/staff member sees when viewing someone else's
+              // profile — reuse the same rich detail sections here instead
+              // of a bare About paragraph, via the Profile->PublicProfile
+              // view converter (see profile.dart).
+              if (profile.role == UserRole.nursery)
+                NurseryDetails(profile: profile.toPublicView(uid))
+              else
+                StaffDetails(profile: profile.toPublicView(uid)),
+              const SizedBox(height: AppSpacing.xl),
               _ActionTile(
                 icon: Icons.edit_outlined,
                 label: 'Edit profile',

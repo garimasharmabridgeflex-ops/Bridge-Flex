@@ -32,6 +32,7 @@ class _NurseryOnboardingScreenState
   final _addressController = TextEditingController();
   final _phoneController = TextEditingController();
   String _fullPhone = '+44 ';
+  bool _phoneValid = true;
 
   final _descriptionController = TextEditingController();
   final _hoursController = TextEditingController();
@@ -77,7 +78,8 @@ class _NurseryOnboardingScreenState
   bool get _basicsValid =>
       _nameController.text.trim().isNotEmpty &&
       _addressController.text.trim().isNotEmpty &&
-      _phoneController.text.trim().isNotEmpty;
+      _phoneController.text.trim().isNotEmpty &&
+      _phoneValid;
 
   void _goTo(int step) {
     _pageController.animateToPage(
@@ -196,6 +198,8 @@ class _NurseryOnboardingScreenState
                   initialDialCode: '+44',
                   textInputAction: TextInputAction.done,
                   onChanged: (full) => setState(() => _fullPhone = full),
+                  onValidityChanged: (valid) =>
+                      setState(() => _phoneValid = valid),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 OutlinedButton.icon(

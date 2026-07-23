@@ -6,7 +6,7 @@
 // fine against the emulator even though Eventarc doesn't run locally — and
 // on each relevant change, constructs the same DocumentEventData payload a
 // real Eventarc delivery would carry and calls the *actual* exported
-// handler function (bridgeflex/core/function.SyncProfilePublic etc, see
+// handler function (kvision.internal/core/function.SyncProfilePublic etc, see
 // devharness_exports.go in that package), not a reimplementation of it.
 //
 // Optional: only needed if you want profile edits, new ratings, and new
@@ -30,7 +30,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	corefunc "bridgeflex/core/function"
+	corefunc "kvision.internal/core/function"
 )
 
 func main() {

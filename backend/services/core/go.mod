@@ -1,11 +1,11 @@
-module bridgeflex/core
+module kvision.internal/core
 
-go 1.26.3
+go 1.25
 
-replace bridgeflex/shared => ../../shared
+replace kvision.internal/shared => ./shared
 
 require (
-	bridgeflex/shared v0.0.0-00010101000000-000000000000
+	kvision.internal/shared v0.0.0-00010101000000-000000000000
 	cloud.google.com/go/firestore v1.24.0
 	cloud.google.com/go/pubsub/v2 v2.6.1
 	firebase.google.com/go/v4 v4.21.0

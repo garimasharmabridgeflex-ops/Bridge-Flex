@@ -27,10 +27,7 @@ class AuthRepository {
       password: password,
     );
     await credential.user?.updateDisplayName(name);
-    await _ensureProfileDocument(credential.user!.uid, name);
-    // Best-effort — Firebase Auth sends this itself, no SMTP/backend config
-    // needed. See sendEmailVerification doc comment below for why this is
-    // never awaited-and-surfaced as a hard failure.
+    unawaited(_ensureProfileDocument(credential.user!.uid, name));
     unawaited(_sendVerificationEmailBestEffort(credential.user));
   }
 
@@ -96,6 +93,50 @@ class AuthRepository {
     } catch (_) {
       // Best-effort — see doc comment above.
     }
+  }
+
+  /// Firebase Auth's built-in password-reset email — same "no SMTP setup
+  /// needed" story as [_sendVerificationEmailBestEffort]. Unlike that one,
+  /// failures here must surface to the caller (wrong/unknown email, rate
+  /// limiting) so the UI can tell the user what happened.
+  Future<void> sendPasswordResetEmail(String email) =>
+      _auth.sendPasswordResetEmail(email: email);
+
+  /// True for an email/password account. A Google-only sign-in has no
+  /// password provider attached, so "change password" doesn't apply to it —
+  /// callers use this to hide that option instead of surfacing a confusing
+  /// "wrong current password" error for every attempt.
+  bool get hasPasswordProvider =>
+      _auth.currentUser?.providerData.any((p) => p.providerId == 'password') ?? false;
+
+  /// Firebase requires a "recent login" before a sensitive update like this
+  /// succeeds, so this re-proves identity with the current password first
+  /// rather than relying on however old the existing session happens to be.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    final email = user?.email;
+    if (user == null || email == null) {
+      throw StateError('No signed-in email/password user.');
+    }
+    final credential = EmailAuthProvider.credential(email: email, password: currentPassword);
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPassword);
+  }
+
+  /// Re-fetches the user record from Auth so a just-clicked verification
+  /// link is reflected in `currentUser.emailVerified` without a full
+  /// sign-out/sign-in — call before reading [User.emailVerified] for display.
+  Future<void> reloadUser() async {
+    await _auth.currentUser?.reload();
+  }
+
+  Future<void> resendVerificationEmail() async {
+    final user = _auth.currentUser;
+    if (user == null || user.emailVerified) return;
+    await user.sendEmailVerification();
   }
 
   Future<void> signOut() => _auth.signOut();

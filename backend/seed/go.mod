@@ -1,11 +1,11 @@
-module bridgeflex/seed
+module kvision.internal/seed
 
-go 1.26.3
+go 1.25
 
-replace bridgeflex/shared => ../shared
+replace kvision.internal/shared => ../shared
 
 require (
-	bridgeflex/shared v0.0.0-00010101000000-000000000000
+	kvision.internal/shared v0.0.0-00010101000000-000000000000
 	cloud.google.com/go/firestore v1.24.0
 	firebase.google.com/go/v4 v4.21.0
 	google.golang.org/genproto v0.0.0-20260511170946-3700d4141b60

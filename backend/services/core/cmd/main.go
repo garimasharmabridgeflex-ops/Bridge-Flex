@@ -1,5 +1,5 @@
 // Command core runs one HTTP- or CloudEvent-triggered function from the
-// bridgeflex/core/function package locally via functions-framework-go.
+// kvision.internal/core/function package locally via functions-framework-go.
 // FUNCTION_TARGET picks which registered function to serve (e.g.
 // "AcceptShift", "SyncProfilePublic") — see ARCHITECTURE.md v2 §1a/§7 for why
 // this is N separate local processes rather than one unified emulator.
@@ -11,7 +11,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
 
-	_ "bridgeflex/core/function"
+	_ "kvision.internal/core/function"
 )
 
 func main() {

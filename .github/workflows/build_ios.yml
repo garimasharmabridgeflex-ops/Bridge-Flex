@@ -1,0 +1,49 @@
+name: Build iOS App
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: Build iOS IPA
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: |
+          cd frontend
+          flutter pub get
+
+      - name: Build iOS IPA
+        run: |
+          cd frontend
+          flutter build ios --release --no-codesign --dart-define=USE_LOCAL_BACKEND=false --dart-define=PROJECT_ID=kvision-503115
+
+      - name: Compress Runner Build
+        run: |
+          cd frontend/build/ios/iphoneos
+          zip -r ../../../K_Vision_iOS_App.zip Runner.app
+
+      - name: Upload iOS App Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: K_Vision_iOS_App
+          path: frontend/K_Vision_iOS_App.zip

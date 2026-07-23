@@ -1,5 +1,5 @@
 // Command communication runs one HTTP- or CloudEvent-triggered function from
-// the bridgeflex/communication/function package locally via
+// the kvision.internal/communication/function package locally via
 // functions-framework-go. See ARCHITECTURE.md v2 §1a/§7.
 package main
 
@@ -9,7 +9,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
 
-	_ "bridgeflex/communication/function"
+	_ "kvision.internal/communication/function"
 )
 
 func main() {

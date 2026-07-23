@@ -29,6 +29,7 @@ declare -A FUNCS=(
   [GetDocumentStatus]=8114
   [ListMyDocuments]=8115
   [ListPendingDocuments]=8117
+  [DeleteAccount]=8118
   # functions-communication's run-local.sh independently owns 8121-8128 —
   # jumping to 8140+ here avoids any port collision between the two
   # services' independently-numbered local process maps.
@@ -37,6 +38,7 @@ declare -A FUNCS=(
   [GetUserDetail]=8142
   [SetUserSuspended]=8143
   [SetVerificationBadge]=8144
+  [ListRatings]=8145
 )
 
 pids=()

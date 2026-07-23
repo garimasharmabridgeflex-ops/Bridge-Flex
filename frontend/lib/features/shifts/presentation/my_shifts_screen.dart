@@ -37,107 +37,109 @@ class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
     final isNursery = profile?.role == UserRole.nursery;
     final shiftsAsync = ref.watch(myShiftsProvider);
     final now = DateTime.now();
-    final scheme = Theme.of(context).colorScheme;
     final firstName = profile?.name.trim().split(' ').firstOrNull ?? '';
 
     return Scaffold(
-      floatingActionButton: isNursery
-          ? FloatingActionButton.extended(
-              onPressed: () => context.push('/shifts/new'),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Post shift'),
-            ).animate().scale(
-              delay: 200.ms,
-              duration: 300.ms,
-              curve: Curves.easeOutBack,
-            )
-          : null,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── Hero header: avatar + greeting + bell ────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.sm,
-                AppSpacing.md,
-                0,
+      body: Column(
+        children: [
+          // ── Gradient hero: avatar + greeting + bell ──────────────────
+          Container(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+            ),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.indigo, AppColors.indigoDeep],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.vertical(
+                bottom: Radius.circular(AppRadius.lg),
+              ),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.white.withValues(alpha: 0.18),
+                  backgroundImage: (profile?.photoUrl.isNotEmpty ?? false)
+                      ? NetworkImage(profile!.photoUrl)
+                      : null,
+                  child: (profile == null || profile.photoUrl.isEmpty)
+                      ? Icon(
+                          isNursery
+                              ? Icons.home_work_outlined
+                              : Icons.person_outline_rounded,
+                          color: Colors.white,
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Welcome back 👋',
+                        style: TextStyle(fontSize: 12, color: Colors.white70),
+                      ),
+                      Text(
+                        firstName.isNotEmpty
+                            ? firstName
+                            : (isNursery
+                                  ? 'Your posted shifts'
+                                  : 'Your booked shifts'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const NotificationIconButton(color: Colors.white70),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
+          // Sleek compact tab selector
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: Container(
+              height: 40,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
               ),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: scheme.primary.withValues(alpha: 0.12),
-                    backgroundImage: (profile?.photoUrl.isNotEmpty ?? false)
-                        ? NetworkImage(profile!.photoUrl)
-                        : null,
-                    child: (profile == null || profile.photoUrl.isEmpty)
-                        ? Icon(
-                            isNursery
-                                ? Icons.home_work_outlined
-                                : Icons.person_outline_rounded,
-                            color: scheme.primary,
-                          )
-                        : null,
+                  _ShiftTabTile(
+                    label: 'Active',
+                    selected: _selectedTab == _ShiftTab.active,
+                    onTap: () => setState(() => _selectedTab = _ShiftTab.active),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Welcome back 👋',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                        Text(
-                          firstName.isNotEmpty
-                              ? firstName
-                              : (isNursery
-                                    ? 'Your posted shifts'
-                                    : 'Your booked shifts'),
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
+                  _ShiftTabTile(
+                    label: 'Completed',
+                    selected: _selectedTab == _ShiftTab.completed,
+                    onTap: () => setState(() => _selectedTab = _ShiftTab.completed),
                   ),
-                  const NotificationIconButton(),
+                  _ShiftTabTile(
+                    label: 'Cancelled',
+                    selected: _selectedTab == _ShiftTab.cancelled,
+                    onTap: () => setState(() => _selectedTab = _ShiftTab.cancelled),
+                  ),
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.xs,
-              ),
-              child: SegmentedButton<_ShiftTab>(
-                segments: const [
-                  ButtonSegment(
-                    value: _ShiftTab.active,
-                    label: Text('Active'),
-                    icon: Icon(Icons.flash_on_rounded, size: 16),
-                  ),
-                  ButtonSegment(
-                    value: _ShiftTab.completed,
-                    label: Text('Completed'),
-                    icon: Icon(Icons.check_circle_outline_rounded, size: 16),
-                  ),
-                  ButtonSegment(
-                    value: _ShiftTab.cancelled,
-                    label: Text('Cancelled'),
-                    icon: Icon(Icons.cancel_outlined, size: 16),
-                  ),
-                ],
-                selected: {_selectedTab},
-                onSelectionChanged: (set) =>
-                    setState(() => _selectedTab = set.first),
-              ),
-            ),
+          ),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async => ref.invalidate(myShiftsProvider),
@@ -212,6 +214,53 @@ class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
               ),
             ),
           ],
+        ),
+      );
+  }
+}
+
+class _ShiftTabTile extends StatelessWidget {
+  const _ShiftTabTile({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? scheme.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              color: selected ? AppColors.indigo : scheme.onSurfaceVariant,
+            ),
+          ),
         ),
       ),
     );

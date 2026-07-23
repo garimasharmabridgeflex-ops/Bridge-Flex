@@ -16,7 +16,7 @@ import (
 	firebaseauth "firebase.google.com/go/v4/auth"
 	"google.golang.org/genproto/googleapis/type/latlng"
 
-	"bridgeflex/shared/fbapp"
+	"kvision.internal/shared/fbapp"
 )
 
 type sampleUser struct {
@@ -56,7 +56,7 @@ var users = []sampleUser{
 	{
 		UID: "admin-super", Email: "admin@example.com", Password: "password123",
 		DisplayName: "Super Admin", Role: "admin", DBSStatus: "verified",
-		Description: "BridgeFlex Platform Super Administrator.",
+		Description: "K Vision Platform Super Administrator.",
 		Lat: 53.4808, Lng: -2.2426,
 	},
 }

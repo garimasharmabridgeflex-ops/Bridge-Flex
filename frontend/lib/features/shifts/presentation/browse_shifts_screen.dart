@@ -90,6 +90,21 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
   double _minPayRate = 0;
   _SortOrder _sortOrder = _SortOrder.soonest;
   bool _showFilters = false;
+  String? _categoryFilter;
+
+  static const _categoryOptions = [
+    ('Babies (0-2)', Icons.child_care_rounded),
+    ('Toddlers (2-3)', Icons.emoji_people_rounded),
+    ('Preschool (3-5)', Icons.school_rounded),
+    ('Mixed ages', Icons.groups_rounded),
+  ];
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning 👋';
+    if (hour < 17) return 'Good afternoon 👋';
+    return 'Good evening 👋';
+  }
 
   @override
   void dispose() {
@@ -101,7 +116,8 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
       _nearMeOnly ||
       _dateFilter != _DateFilter.any ||
       _minPayRate > 0 ||
-      _sortOrder != _SortOrder.soonest;
+      _sortOrder != _SortOrder.soonest ||
+      _categoryFilter != null;
 
   void _clearFilters() => setState(() {
     _nearMeOnly = false;
@@ -109,6 +125,7 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
     _pickedDate = null;
     _minPayRate = 0;
     _sortOrder = _SortOrder.soonest;
+    _categoryFilter = null;
   });
 
   List<Shift> _applyFilters(List<Shift> shifts, String? ownArea) {
@@ -119,6 +136,10 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
     var filtered = shifts.where((s) {
       // Text search
       if (_query.isNotEmpty && !s.title.toLowerCase().contains(_query))
+        return false;
+
+      // Category (age group)
+      if (_categoryFilter != null && s.ageGroup != _categoryFilter)
         return false;
 
       // Date filter
@@ -185,114 +206,166 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
   Widget build(BuildContext context) {
     final shiftsAsync = ref.watch(openShiftsProvider);
     final ownAreaAsync = ref.watch(_ownLocationAreaProvider);
-    final scheme = Theme.of(context).colorScheme;
     final profile = ref.watch(ownProfileProvider).valueOrNull;
     final firstName = profile?.name.trim().split(' ').firstOrNull ?? '';
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── Hero header: avatar + greeting + bell ────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.sm,
-                AppSpacing.md,
-                0,
+      body: Column(
+        children: [
+          // ── Gradient hero: greeting + bell + search ──────────────────
+          Container(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+            ),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.indigo, AppColors.indigoDeep],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: scheme.primary.withValues(alpha: 0.12),
-                    backgroundImage: (profile?.photoUrl.isNotEmpty ?? false)
-                        ? NetworkImage(profile!.photoUrl)
-                        : null,
-                    child: (profile == null || profile.photoUrl.isEmpty)
-                        ? Icon(
-                            Icons.person_outline_rounded,
-                            color: scheme.primary,
-                          )
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Welcome back 👋',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                        Text(
-                          firstName.isNotEmpty ? firstName : 'Open shifts',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Stack(
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          Icons.tune_rounded,
-                          color: _hasActiveFilters ? scheme.primary : null,
-                        ),
-                        tooltip: 'Filters & Sort',
-                        onPressed: () =>
-                            setState(() => _showFilters = !_showFilters),
-                      ),
-                      if (_hasActiveFilters)
-                        Positioned(
-                          right: 8,
-                          top: 8,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: AppColors.coral,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const NotificationIconButton(),
-                ],
+              borderRadius: BorderRadius.vertical(
+                bottom: Radius.circular(AppRadius.lg),
               ),
             ),
-            // ── Search bar ──────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.sm,
-                AppSpacing.md,
-                0,
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (v) =>
-                    setState(() => _query = v.trim().toLowerCase()),
-                decoration: InputDecoration(
-                  hintText: 'Search shifts by title…',
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                  suffixIcon: _query.isEmpty
-                      ? null
-                      : IconButton(
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                          onPressed: () => setState(() {
-                            _searchController.clear();
-                            _query = '';
-                          }),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.white.withValues(alpha: 0.18),
+                      backgroundImage: (profile?.photoUrl.isNotEmpty ?? false)
+                          ? NetworkImage(profile!.photoUrl)
+                          : null,
+                      child: (profile == null || profile.photoUrl.isEmpty)
+                          ? const Icon(
+                              Icons.person_outline_rounded,
+                              color: Colors.white,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _greeting(),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                          ),
+                          Text(
+                            firstName.isNotEmpty ? firstName : 'Open shifts',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18,
+                              color: Colors.white,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Stack(
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.tune_rounded,
+                            color: _hasActiveFilters
+                                ? Colors.white
+                                : Colors.white70,
+                          ),
+                          tooltip: 'Filters & Sort',
+                          onPressed: () =>
+                              setState(() => _showFilters = !_showFilters),
                         ),
+                        if (_hasActiveFilters)
+                          Positioned(
+                            right: 8,
+                            top: 8,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: AppColors.coral,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const NotificationIconButton(color: Colors.white70),
+                  ],
                 ),
+                const SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: _searchController,
+                  onChanged: (v) =>
+                      setState(() => _query = v.trim().toLowerCase()),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white,
+                    hintText: 'Search shifts by title…',
+                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: () => setState(() {
+                              _searchController.clear();
+                              _query = '';
+                            }),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── Category quick filters ────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.md,
+              AppSpacing.xs,
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Category',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+            SizedBox(
+              height: 84,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                scrollDirection: Axis.horizontal,
+                itemCount: _categoryOptions.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, i) {
+                  final (label, icon) = _categoryOptions[i];
+                  final selected = _categoryFilter == label;
+                  return _CategoryTile(
+                    label: label,
+                    icon: icon,
+                    selected: selected,
+                    onTap: () => setState(
+                      () => _categoryFilter = selected ? null : label,
+                    ),
+                  );
+                },
               ),
             ),
 
@@ -417,7 +490,6 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 }
@@ -460,16 +532,15 @@ class _FilterPanel extends StatelessWidget {
     final noLocation = ownAreaAsync.valueOrNull == null;
 
     return Container(
+      margin: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        border: Border(
-          bottom: BorderSide(
-            color: scheme.outlineVariant.withValues(alpha: 0.5),
-            width: 1,
-          ),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.5),
+          width: 1,
         ),
       ),
-      constraints: const BoxConstraints(maxHeight: 380),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.md,
@@ -483,14 +554,17 @@ class _FilterPanel extends StatelessWidget {
             // Section label row
             Row(
               children: [
-                Text(
-                  'FILTERS & SORT',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    letterSpacing: 1.1,
+                Expanded(
+                  child: Text(
+                    'FILTERS & SORT',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      letterSpacing: 1.1,
+                    ),
                   ),
                 ),
-                const Spacer(),
                 if (hasActiveFilters)
                   TextButton.icon(
                     onPressed: onClear,
@@ -499,6 +573,8 @@ class _FilterPanel extends StatelessWidget {
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       visualDensity: VisualDensity.compact,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                   ),
               ],
@@ -513,7 +589,7 @@ class _FilterPanel extends StatelessWidget {
               children: [
                 FilterChip(
                   label: Text(
-                    noLocation ? 'Near me (set location first)' : 'Near me',
+                    noLocation ? 'Near me (set location)' : 'Near me',
                   ),
                   avatar: noLocation
                       ? Icon(
@@ -626,6 +702,81 @@ class _FilterPanel extends StatelessWidget {
                   onSelected: (_) => onSortChange(s),
                 );
               }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Category tile ────────────────────────────────────────────────────────────
+
+class _CategoryTile extends StatelessWidget {
+  const _CategoryTile({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final shortLabel = label.split(' ').first;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: SizedBox(
+        width: 72,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              height: 56,
+              width: 56,
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.indigo
+                    : AppColors.indigo.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                boxShadow: selected
+                    ? [
+                        BoxShadow(
+                          color: AppColors.indigo.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
+                border: Border.all(
+                  color: selected
+                      ? AppColors.indigo
+                      : AppColors.indigo.withValues(alpha: 0.15),
+                ),
+              ),
+              child: Icon(
+                icon,
+                color: selected ? Colors.white : AppColors.indigo,
+                size: 26,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              shortLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? AppColors.indigo : scheme.onSurface,
+              ),
             ),
           ],
         ),

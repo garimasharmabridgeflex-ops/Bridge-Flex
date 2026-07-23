@@ -17,12 +17,23 @@ class ProfileRepository {
   /// note on shift_repository.dart's fetchOpenShifts for why. Callers that
   /// need fresh data after a mutation (setRole, updateProfile) re-fetch by
   /// invalidating the provider, since there's no push update anymore.
-  Future<Profile?> fetchOwnProfile() async {
+  Future<Profile?> fetchOwnProfile({String? fallbackUid, String? fallbackName}) async {
     try {
       final res = await _api.post(ApiFunction.getProfile);
       return Profile.fromJson(res);
     } on ApiException catch (e) {
-      if (e.statusCode == 404) return null;
+      if (e.statusCode == 404) {
+        if (fallbackUid != null) {
+          return Profile(
+            role: UserRole.none,
+            name: fallbackName ?? '',
+            description: '',
+            dbsStatus: DbsStatus.unverified,
+            rating: const RatingSummary(average: 0, count: 0),
+          );
+        }
+        return null;
+      }
       rethrow;
     }
   }
@@ -114,6 +125,11 @@ class ProfileRepository {
       if (facilities != null) 'facilities': facilities,
     });
   }
+
+  /// Deletes the caller's own profile/documents server-side, then their
+  /// Firebase Auth user — see backend/services/core/function/profiles.go's
+  /// deleteAccount for exactly what does and doesn't get cleaned up.
+  Future<void> deleteAccount() => _api.post(ApiFunction.deleteAccount);
 
   Future<PublicProfile?> fetchPublicProfile(String uid) async {
     try {

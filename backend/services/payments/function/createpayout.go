@@ -8,7 +8,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 
-	"bridgeflex/shared/httpjson"
+	"kvision.internal/shared/httpjson"
 )
 
 func init() {

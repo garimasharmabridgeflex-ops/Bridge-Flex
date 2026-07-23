@@ -8,7 +8,7 @@
 // functions-core's acceptShift/cancelShift/recomputeRating/matchNewShift —
 // this just creates emulator subscriptions on the four topics, pulls each
 // message, and calls the *actual* exported handler function
-// (bridgeflex/communication/function.OnShiftBooked etc, see
+// (kvision.internal/communication/function.OnShiftBooked etc, see
 // devharness_exports.go in that package), not a reimplementation of it.
 //
 // Optional — see the identical note in services/core/devharness/main.go.
@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	commfunc "bridgeflex/communication/function"
+	commfunc "kvision.internal/communication/function"
 )
 
 type topicHandler struct {

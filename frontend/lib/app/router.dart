@@ -4,9 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../features/admin/presentation/admin_review_screen.dart';
 import '../features/admin/presentation/admin_user_detail_screen.dart';
+import '../features/auth/presentation/change_password_screen.dart';
+import '../features/auth/presentation/forgot_password_screen.dart';
 import '../features/auth/presentation/role_select_screen.dart';
 import '../features/auth/presentation/sign_in_screen.dart';
 import '../features/auth/presentation/sign_up_screen.dart';
+import '../features/settings/presentation/settings_screen.dart';
 import '../features/onboarding/presentation/onboarding_router_screen.dart';
 import '../features/chat/presentation/chat_list_screen.dart';
 import '../features/chat/presentation/chat_screen.dart';
@@ -47,9 +50,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final user = authState.value;
       final loggingIn = state.matchedLocation == '/sign-in';
       final signingUp = state.matchedLocation == '/sign-up';
+      final resettingPassword = state.matchedLocation == '/forgot-password';
 
       if (user == null) {
-        return (loggingIn || signingUp) ? null : '/sign-in';
+        return (loggingIn || signingUp || resettingPassword) ? null : '/sign-in';
       }
 
       // Admin accounts (Firebase "admin" custom claim, set out-of-band —
@@ -68,9 +72,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final onRoleSelect = state.matchedLocation == '/role-select';
       final onOnboarding = state.matchedLocation == '/onboarding';
 
-      // Profile doc not loaded yet (first frame after sign-in) — park on
-      // splash rather than flashing role-select or the home shell.
-      if (profile == null) return onSplash ? null : '/splash';
+      if (profile == null) {
+        if (profileState.isLoading) return onSplash ? null : '/splash';
+        return onRoleSelect ? null : '/role-select';
+      }
 
       if (profile.role == UserRole.none) {
         return onRoleSelect ? null : '/role-select';
@@ -94,6 +99,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/sign-in', builder: (_, __) => const SignInScreen()),
       GoRoute(path: '/sign-up', builder: (_, __) => const SignUpScreen()),
+      GoRoute(path: '/forgot-password', builder: (_, __) => const ForgotPasswordScreen()),
       GoRoute(path: '/role-select', builder: (_, __) => const RoleSelectScreen()),
       GoRoute(path: '/admin', builder: (_, __) => const AdminReviewScreen()),
       GoRoute(
@@ -104,6 +110,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/home', builder: (_, __) => const HomeShell()),
       GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
       GoRoute(path: '/profile/edit', builder: (_, __) => const EditProfileScreen()),
+      GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
+      GoRoute(
+        path: '/settings/change-password',
+        builder: (_, __) => const ChangePasswordScreen(),
+      ),
       GoRoute(path: '/profile/dbs', builder: (_, __) => const DbsUploadScreen()),
       GoRoute(
         path: '/profile/:uid',

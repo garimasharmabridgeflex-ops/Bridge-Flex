@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 
 : "${PROJECT_ID:?Set PROJECT_ID to your real Firebase project id, e.g. PROJECT_ID=my-prod-project ./deploy.sh}"
 : "${REGION:=europe-west2}"
-: "${GO_RUNTIME:=go123}"
+: "${GO_RUNTIME:=go125}"
 
 deploy_http() {
   local name="$1"

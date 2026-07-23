@@ -20,7 +20,7 @@ cd "$(dirname "$0")"
 # Verify the current valid identifier with `gcloud functions runtimes list
 # --project="$PROJECT_ID"` before your first deploy — Cloud Functions'
 # supported Go runtime versions change over time.
-: "${GO_RUNTIME:=go123}"
+: "${GO_RUNTIME:=go125}"
 
 deploy_http() {
   local name="$1"
@@ -57,6 +57,7 @@ deploy_auth_trigger() {
 deploy_http UpdateProfile
 deploy_http GetProfile
 deploy_http GetPublicProfile
+deploy_http DeleteAccount
 deploy_http CreateShift
 deploy_http UpdateShift
 deploy_http ListOpenShifts
@@ -76,6 +77,7 @@ deploy_http ListAllUsers
 deploy_http GetUserDetail
 deploy_http SetUserSuspended
 deploy_http SetVerificationBadge
+deploy_http ListRatings
 
 # Eventarc triggers — same 4 functions covered by triggers_test.go.
 deploy_auth_trigger InitProfileOnSignUp
@@ -83,4 +85,4 @@ deploy_firestore_trigger SyncProfilePublic google.cloud.firestore.document.v1.wr
 deploy_firestore_trigger RecomputeRating google.cloud.firestore.document.v1.created "ratings/{ratingId}"
 deploy_firestore_trigger MatchNewShift google.cloud.firestore.document.v1.created "shifts/{shiftId}"
 
-echo "functions-core: all 25 functions deployed."
+echo "functions-core: all 27 functions deployed."

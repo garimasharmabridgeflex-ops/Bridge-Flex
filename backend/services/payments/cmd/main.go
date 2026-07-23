@@ -8,7 +8,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
 
-	_ "bridgeflex/payments/function"
+	_ "kvision.internal/payments/function"
 )
 
 func main() {

@@ -142,9 +142,9 @@ class PublicProfileScreen extends ConsumerWidget {
               ).animate().fadeIn(duration: 300.ms),
               const SizedBox(height: AppSpacing.xl),
               if (isNursery)
-                _NurseryDetails(profile: profile)
+                NurseryDetails(profile: profile)
               else
-                _StaffDetails(profile: profile),
+                StaffDetails(profile: profile),
             ],
           );
         },
@@ -157,8 +157,8 @@ class PublicProfileScreen extends ConsumerWidget {
 String nurseryTypeLabelOrDefault(NurseryType type) =>
     type == NurseryType.unspecified ? 'Nursery' : nurseryTypeLabel(type);
 
-class _NurseryDetails extends StatelessWidget {
-  const _NurseryDetails({required this.profile});
+class NurseryDetails extends StatelessWidget {
+  const NurseryDetails({super.key, required this.profile});
 
   final PublicProfile profile;
 
@@ -219,27 +219,27 @@ class _NurseryDetails extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
         ],
         if (profile.registeredCompanyName.isNotEmpty)
-          _InfoRow(icon: Icons.business_outlined, label: 'Registered company', value: profile.registeredCompanyName),
+          ProfileInfoRow(icon: Icons.business_outlined, label: 'Registered company', value: profile.registeredCompanyName),
         if (profile.ofstedRegNumber.isNotEmpty)
-          _InfoRow(icon: Icons.badge_outlined, label: 'Ofsted registration number', value: profile.ofstedRegNumber),
+          ProfileInfoRow(icon: Icons.badge_outlined, label: 'Ofsted registration number', value: profile.ofstedRegNumber),
         if (profile.yearEstablished > 0)
-          _InfoRow(icon: Icons.calendar_today_outlined, label: 'Established', value: '${profile.yearEstablished}'),
+          ProfileInfoRow(icon: Icons.calendar_today_outlined, label: 'Established', value: '${profile.yearEstablished}'),
         if (profile.openingHours.isNotEmpty)
-          _InfoRow(icon: Icons.schedule_outlined, label: 'Opening hours', value: profile.openingHours),
+          ProfileInfoRow(icon: Icons.schedule_outlined, label: 'Opening hours', value: profile.openingHours),
         if (profile.ofstedRating != OfstedRating.notRated)
-          _InfoRow(
+          ProfileInfoRow(
             icon: Icons.school_outlined,
             label: 'Ofsted rating',
             value: ofstedRatingLabel(profile.ofstedRating),
           ),
         if (profile.postcode.isNotEmpty)
-          _InfoRow(icon: Icons.markunread_mailbox_outlined, label: 'Postcode', value: profile.postcode),
+          ProfileInfoRow(icon: Icons.markunread_mailbox_outlined, label: 'Postcode', value: profile.postcode),
         if (profile.phone.isNotEmpty)
-          _InfoRow(icon: Icons.call_outlined, label: 'Phone', value: profile.phone),
+          ProfileInfoRow(icon: Icons.call_outlined, label: 'Phone', value: profile.phone),
         if (profile.email.isNotEmpty)
-          _InfoRow(icon: Icons.email_outlined, label: 'Email', value: profile.email),
+          ProfileInfoRow(icon: Icons.email_outlined, label: 'Email', value: profile.email),
         if (profile.website.isNotEmpty)
-          _InfoRow(icon: Icons.language_outlined, label: 'Website', value: profile.website),
+          ProfileInfoRow(icon: Icons.language_outlined, label: 'Website', value: profile.website),
         if (profile.facilities.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
           Text('Facilities', style: Theme.of(context).textTheme.labelLarge),
@@ -250,7 +250,7 @@ class _NurseryDetails extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
           Text('Statistics', style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 8),
-          _StatsGrid(stats: profile.stats!),
+          NurseryStatsGrid(stats: profile.stats!),
         ],
         if (profile.description.isEmpty &&
             profile.openingHours.isEmpty &&
@@ -265,8 +265,8 @@ class _NurseryDetails extends StatelessWidget {
   }
 }
 
-class _StatsGrid extends StatelessWidget {
-  const _StatsGrid({required this.stats});
+class NurseryStatsGrid extends StatelessWidget {
+  const NurseryStatsGrid({super.key, required this.stats});
   final NurseryStats stats;
 
   @override
@@ -312,8 +312,8 @@ class _StatsGrid extends StatelessWidget {
   }
 }
 
-class _StaffDetails extends StatelessWidget {
-  const _StaffDetails({required this.profile});
+class StaffDetails extends StatelessWidget {
+  const StaffDetails({super.key, required this.profile});
 
   final PublicProfile profile;
 
@@ -341,30 +341,30 @@ class _StaffDetails extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
         ],
         if (profile.age != null)
-          _InfoRow(icon: Icons.cake_outlined, label: 'Age', value: '${profile.age}'),
+          ProfileInfoRow(icon: Icons.cake_outlined, label: 'Age', value: '${profile.age}'),
         if (profile.yearsExperience > 0)
-          _InfoRow(
+          ProfileInfoRow(
             icon: Icons.work_history_outlined,
             label: 'Experience',
             value:
                 '${profile.yearsExperience} ${profile.yearsExperience == 1 ? 'year' : 'years'}',
           ),
         if (profile.qualificationLevel != QualificationLevel.none)
-          _InfoRow(
+          ProfileInfoRow(
             icon: Icons.school_outlined,
             label: 'Qualification',
             value: qualificationLevelLabel(profile.qualificationLevel),
           ),
         if (profile.nationality.isNotEmpty)
-          _InfoRow(icon: Icons.flag_outlined, label: 'Nationality', value: profile.nationality),
+          ProfileInfoRow(icon: Icons.flag_outlined, label: 'Nationality', value: profile.nationality),
         if (profile.visaStatus.isNotEmpty)
-          _InfoRow(
+          ProfileInfoRow(
             icon: Icons.assignment_ind_outlined,
             label: 'Visa status',
             value: visaStatusLabel(profile.visaStatus),
           ),
         if (profile.rightToWorkStatus.isNotEmpty)
-          _InfoRow(
+          ProfileInfoRow(
             icon: Icons.how_to_reg_outlined,
             label: 'Right to work',
             value: rightToWorkStatusLabel(profile.rightToWorkStatus),
@@ -436,7 +436,7 @@ class _StaffDetails extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
           Text('Ratings breakdown', style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 8),
-          _RatingBreakdownRows(breakdown: profile.ratingBreakdown!),
+          RatingBreakdownRows(breakdown: profile.ratingBreakdown!),
         ],
         if (profile.previousRoles.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
@@ -468,8 +468,8 @@ class _StaffDetails extends StatelessWidget {
   }
 }
 
-class _RatingBreakdownRows extends StatelessWidget {
-  const _RatingBreakdownRows({required this.breakdown});
+class RatingBreakdownRows extends StatelessWidget {
+  const RatingBreakdownRows({super.key, required this.breakdown});
   final RatingBreakdown breakdown;
 
   @override
@@ -511,8 +511,8 @@ class _RatingBreakdownRows extends StatelessWidget {
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icon, required this.label, required this.value});
+class ProfileInfoRow extends StatelessWidget {
+  const ProfileInfoRow({super.key, required this.icon, required this.label, required this.value});
 
   final IconData icon;
   final String label;

@@ -6,82 +6,88 @@ import '../../app/theme.dart';
 // ─── Country data ─────────────────────────────────────────────────────────────
 
 class _Country {
-  const _Country(this.name, this.flag, this.dialCode);
+  const _Country(this.name, this.flag, this.dialCode, this.minDigits, this.maxDigits);
   final String name;
   final String flag;
   final String dialCode;
+
+  /// National significant number length (digits after the dial code, not
+  /// counting formatting) — enforced by [PhoneField]'s validator so a UK
+  /// number can't be 6 digits short or a US number 3 digits long.
+  final int minDigits;
+  final int maxDigits;
 }
 
 /// A curated list covering the most common markets. Sorted by name.
 const List<_Country> _countries = [
-  _Country('Afghanistan', '🇦🇫', '+93'),
-  _Country('Albania', '🇦🇱', '+355'),
-  _Country('Algeria', '🇩🇿', '+213'),
-  _Country('Argentina', '🇦🇷', '+54'),
-  _Country('Australia', '🇦🇺', '+61'),
-  _Country('Austria', '🇦🇹', '+43'),
-  _Country('Bangladesh', '🇧🇩', '+880'),
-  _Country('Belgium', '🇧🇪', '+32'),
-  _Country('Brazil', '🇧🇷', '+55'),
-  _Country('Canada', '🇨🇦', '+1'),
-  _Country('Chile', '🇨🇱', '+56'),
-  _Country('China', '🇨🇳', '+86'),
-  _Country('Colombia', '🇨🇴', '+57'),
-  _Country('Croatia', '🇭🇷', '+385'),
-  _Country('Czech Republic', '🇨🇿', '+420'),
-  _Country('Denmark', '🇩🇰', '+45'),
-  _Country('Egypt', '🇪🇬', '+20'),
-  _Country('Ethiopia', '🇪🇹', '+251'),
-  _Country('Finland', '🇫🇮', '+358'),
-  _Country('France', '🇫🇷', '+33'),
-  _Country('Germany', '🇩🇪', '+49'),
-  _Country('Ghana', '🇬🇭', '+233'),
-  _Country('Greece', '🇬🇷', '+30'),
-  _Country('Hungary', '🇭🇺', '+36'),
-  _Country('India', '🇮🇳', '+91'),
-  _Country('Indonesia', '🇮🇩', '+62'),
-  _Country('Iran', '🇮🇷', '+98'),
-  _Country('Iraq', '🇮🇶', '+964'),
-  _Country('Ireland', '🇮🇪', '+353'),
-  _Country('Israel', '🇮🇱', '+972'),
-  _Country('Italy', '🇮🇹', '+39'),
-  _Country('Japan', '🇯🇵', '+81'),
-  _Country('Jordan', '🇯🇴', '+962'),
-  _Country('Kenya', '🇰🇪', '+254'),
-  _Country('Kuwait', '🇰🇼', '+965'),
-  _Country('Lebanon', '🇱🇧', '+961'),
-  _Country('Malaysia', '🇲🇾', '+60'),
-  _Country('Mexico', '🇲🇽', '+52'),
-  _Country('Morocco', '🇲🇦', '+212'),
-  _Country('Netherlands', '🇳🇱', '+31'),
-  _Country('New Zealand', '🇳🇿', '+64'),
-  _Country('Nigeria', '🇳🇬', '+234'),
-  _Country('Norway', '🇳🇴', '+47'),
-  _Country('Pakistan', '🇵🇰', '+92'),
-  _Country('Philippines', '🇵🇭', '+63'),
-  _Country('Poland', '🇵🇱', '+48'),
-  _Country('Portugal', '🇵🇹', '+351'),
-  _Country('Qatar', '🇶🇦', '+974'),
-  _Country('Romania', '🇷🇴', '+40'),
-  _Country('Russia', '🇷🇺', '+7'),
-  _Country('Saudi Arabia', '🇸🇦', '+966'),
-  _Country('Singapore', '🇸🇬', '+65'),
-  _Country('South Africa', '🇿🇦', '+27'),
-  _Country('South Korea', '🇰🇷', '+82'),
-  _Country('Spain', '🇪🇸', '+34'),
-  _Country('Sri Lanka', '🇱🇰', '+94'),
-  _Country('Sweden', '🇸🇪', '+46'),
-  _Country('Switzerland', '🇨🇭', '+41'),
-  _Country('Tanzania', '🇹🇿', '+255'),
-  _Country('Thailand', '🇹🇭', '+66'),
-  _Country('Turkey', '🇹🇷', '+90'),
-  _Country('UAE', '🇦🇪', '+971'),
-  _Country('Uganda', '🇺🇬', '+256'),
-  _Country('Ukraine', '🇺🇦', '+380'),
-  _Country('United Kingdom', '🇬🇧', '+44'),
-  _Country('United States', '🇺🇸', '+1'),
-  _Country('Vietnam', '🇻🇳', '+84'),
-  _Country('Zimbabwe', '🇿🇼', '+263'),
+  _Country('Afghanistan', '🇦🇫', '+93', 9, 9),
+  _Country('Albania', '🇦🇱', '+355', 9, 9),
+  _Country('Algeria', '🇩🇿', '+213', 9, 9),
+  _Country('Argentina', '🇦🇷', '+54', 10, 10),
+  _Country('Australia', '🇦🇺', '+61', 9, 9),
+  _Country('Austria', '🇦🇹', '+43', 10, 11),
+  _Country('Bangladesh', '🇧🇩', '+880', 10, 10),
+  _Country('Belgium', '🇧🇪', '+32', 9, 9),
+  _Country('Brazil', '🇧🇷', '+55', 10, 11),
+  _Country('Canada', '🇨🇦', '+1', 10, 10),
+  _Country('Chile', '🇨🇱', '+56', 9, 9),
+  _Country('China', '🇨🇳', '+86', 11, 11),
+  _Country('Colombia', '🇨🇴', '+57', 10, 10),
+  _Country('Croatia', '🇭🇷', '+385', 8, 9),
+  _Country('Czech Republic', '🇨🇿', '+420', 9, 9),
+  _Country('Denmark', '🇩🇰', '+45', 8, 8),
+  _Country('Egypt', '🇪🇬', '+20', 9, 10),
+  _Country('Ethiopia', '🇪🇹', '+251', 9, 9),
+  _Country('Finland', '🇫🇮', '+358', 9, 10),
+  _Country('France', '🇫🇷', '+33', 9, 9),
+  _Country('Germany', '🇩🇪', '+49', 10, 11),
+  _Country('Ghana', '🇬🇭', '+233', 9, 9),
+  _Country('Greece', '🇬🇷', '+30', 10, 10),
+  _Country('Hungary', '🇭🇺', '+36', 8, 9),
+  _Country('India', '🇮🇳', '+91', 10, 10),
+  _Country('Indonesia', '🇮🇩', '+62', 9, 11),
+  _Country('Iran', '🇮🇷', '+98', 10, 10),
+  _Country('Iraq', '🇮🇶', '+964', 10, 10),
+  _Country('Ireland', '🇮🇪', '+353', 9, 9),
+  _Country('Israel', '🇮🇱', '+972', 9, 9),
+  _Country('Italy', '🇮🇹', '+39', 9, 10),
+  _Country('Japan', '🇯🇵', '+81', 10, 10),
+  _Country('Jordan', '🇯🇴', '+962', 9, 9),
+  _Country('Kenya', '🇰🇪', '+254', 9, 9),
+  _Country('Kuwait', '🇰🇼', '+965', 8, 8),
+  _Country('Lebanon', '🇱🇧', '+961', 7, 8),
+  _Country('Malaysia', '🇲🇾', '+60', 9, 10),
+  _Country('Mexico', '🇲🇽', '+52', 10, 10),
+  _Country('Morocco', '🇲🇦', '+212', 9, 9),
+  _Country('Netherlands', '🇳🇱', '+31', 9, 9),
+  _Country('New Zealand', '🇳🇿', '+64', 8, 9),
+  _Country('Nigeria', '🇳🇬', '+234', 10, 10),
+  _Country('Norway', '🇳🇴', '+47', 8, 8),
+  _Country('Pakistan', '🇵🇰', '+92', 10, 10),
+  _Country('Philippines', '🇵🇭', '+63', 10, 10),
+  _Country('Poland', '🇵🇱', '+48', 9, 9),
+  _Country('Portugal', '🇵🇹', '+351', 9, 9),
+  _Country('Qatar', '🇶🇦', '+974', 8, 8),
+  _Country('Romania', '🇷🇴', '+40', 9, 9),
+  _Country('Russia', '🇷🇺', '+7', 10, 10),
+  _Country('Saudi Arabia', '🇸🇦', '+966', 9, 9),
+  _Country('Singapore', '🇸🇬', '+65', 8, 8),
+  _Country('South Africa', '🇿🇦', '+27', 9, 9),
+  _Country('South Korea', '🇰🇷', '+82', 9, 10),
+  _Country('Spain', '🇪🇸', '+34', 9, 9),
+  _Country('Sri Lanka', '🇱🇰', '+94', 9, 9),
+  _Country('Sweden', '🇸🇪', '+46', 7, 9),
+  _Country('Switzerland', '🇨🇭', '+41', 9, 9),
+  _Country('Tanzania', '🇹🇿', '+255', 9, 9),
+  _Country('Thailand', '🇹🇭', '+66', 9, 9),
+  _Country('Turkey', '🇹🇷', '+90', 10, 10),
+  _Country('UAE', '🇦🇪', '+971', 9, 9),
+  _Country('Uganda', '🇺🇬', '+256', 9, 9),
+  _Country('Ukraine', '🇺🇦', '+380', 9, 9),
+  _Country('United Kingdom', '🇬🇧', '+44', 10, 10),
+  _Country('United States', '🇺🇸', '+1', 10, 10),
+  _Country('Vietnam', '🇻🇳', '+84', 9, 10),
+  _Country('Zimbabwe', '🇿🇼', '+263', 9, 9),
 ];
 
 // ─── Widget ───────────────────────────────────────────────────────────────────
@@ -115,6 +121,7 @@ class PhoneField extends StatefulWidget {
 
 class _PhoneFieldState extends State<PhoneField> {
   late _Country _selected;
+  String? _error;
 
   @override
   void initState() {
@@ -124,6 +131,7 @@ class _PhoneFieldState extends State<PhoneField> {
       orElse: () => _countries.firstWhere((c) => c.dialCode == '+44'),
     );
     widget.controller.addListener(_notify);
+    _revalidate();
   }
 
   @override
@@ -134,6 +142,24 @@ class _PhoneFieldState extends State<PhoneField> {
 
   void _notify() {
     widget.onChanged?.call('${_selected.dialCode} ${widget.controller.text.trim()}');
+    _revalidate();
+  }
+
+  // Enforces per-country national-number length (full app spec: "enforce
+  // number size and formatting per country") — most other fields in this
+  // app self-validate inline (search, filters) rather than depend on a
+  // wrapping Form, so PhoneField follows the same pattern here.
+  void _revalidate() {
+    final digits = widget.controller.text.replaceAll(RegExp(r'\D'), '');
+    String? next;
+    if (digits.isNotEmpty) {
+      if (digits.length < _selected.minDigits) {
+        next = '${_selected.name} numbers need at least ${_selected.minDigits} digits';
+      } else if (digits.length > _selected.maxDigits) {
+        next = '${_selected.name} numbers are at most ${_selected.maxDigits} digits';
+      }
+    }
+    if (next != _error) setState(() => _error = next);
   }
 
   Future<void> _pickCountry() async {
@@ -194,7 +220,12 @@ class _PhoneFieldState extends State<PhoneField> {
           ),
         ),
         prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+        errorText: _error,
+        helperText: _error == null
+            ? '${_selected.minDigits == _selected.maxDigits ? '${_selected.minDigits}' : '${_selected.minDigits}-${_selected.maxDigits}'} digits'
+            : null,
       ),
+      validator: (_) => _error,
     );
   }
 }

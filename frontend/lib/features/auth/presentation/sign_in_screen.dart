@@ -123,6 +123,18 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       validator: (v) =>
                           (v == null || v.length < 6) ? 'At least 6 characters' : null,
                     ).animate().fadeIn(delay: 250.ms, duration: 350.ms).slideX(begin: 0.05, end: 0),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => context.push('/forgot-password'),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text('Forgot password?'),
+                      ),
+                    ).animate().fadeIn(delay: 270.ms, duration: 350.ms),
                     AnimatedSize(
                       duration: const Duration(milliseconds: 200),
                       child: _error == null

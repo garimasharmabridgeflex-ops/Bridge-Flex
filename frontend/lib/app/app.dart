@@ -33,7 +33,7 @@ class _BridgeFlexAppState extends ConsumerState<BridgeFlexApp> {
     });
 
     return MaterialApp.router(
-      title: 'Bridge Flex',
+      title: 'K Vision',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

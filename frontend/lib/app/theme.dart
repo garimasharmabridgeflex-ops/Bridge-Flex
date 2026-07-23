@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Bridge Flex brand palette. Deep indigo for trust/professionalism, warm
+/// K Vision brand palette. Deep indigo for trust/professionalism, warm
 /// rose for the "act now" moments (accept shift, post shift) — deliberately
 /// pink/red rather than orange/amber-toned so it stays distinct from the
 /// warm-orange accent used elsewhere in the sector's app UI conventions.
 abstract final class AppColors {
   static const Color indigo = Color(0xFF3F4CE0);
   static const Color indigoDeep = Color(0xFF2A2F8F);
+  static const Color primary = Color(0xFF3F4CE0);
+  static const Color primaryDark = Color(0xFF2A2F8F);
+  static const Color primaryLight = Color(0xFF6B76F7);
+  static const Color secondary = Color(0xFFE0447A);
   static const Color coral = Color(0xFFE0447A);
   static const Color mint = Color(0xFF1FB894);
   static const Color amber = Color(0xFFF4C430);

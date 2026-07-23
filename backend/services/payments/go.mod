@@ -1,11 +1,11 @@
-module bridgeflex/payments
+module kvision.internal/payments
 
-go 1.26.3
+go 1.25
 
-replace bridgeflex/shared => ../../shared
+replace kvision.internal/shared => ../../shared
 
 require (
-	bridgeflex/shared v0.0.0-00010101000000-000000000000
+	kvision.internal/shared v0.0.0-00010101000000-000000000000
 	github.com/GoogleCloudPlatform/functions-framework-go v1.9.2
 )
 

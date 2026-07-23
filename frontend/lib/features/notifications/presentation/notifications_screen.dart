@@ -19,7 +19,9 @@ final unreadNotificationCountProvider = FutureProvider.autoDispose<int>((ref) as
 });
 
 class NotificationIconButton extends ConsumerWidget {
-  const NotificationIconButton({super.key});
+  const NotificationIconButton({super.key, this.color});
+
+  final Color? color;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -32,9 +34,9 @@ class NotificationIconButton extends ConsumerWidget {
       icon: count > 0
           ? Badge(
               label: Text('$count'),
-              child: const Icon(Icons.notifications_outlined),
+              child: Icon(Icons.notifications_outlined, color: color),
             )
-          : const Icon(Icons.notifications_outlined),
+          : Icon(Icons.notifications_outlined, color: color),
     );
   }
 }

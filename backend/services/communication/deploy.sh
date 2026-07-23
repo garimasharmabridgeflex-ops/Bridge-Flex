@@ -26,11 +26,12 @@ deploy_pubsub_trigger() {
     --trigger-topic="$topic" --quiet
 }
 
-# HTTP endpoints — ports in run-local.sh, same 6 functions.
+# HTTP endpoints — ports in run-local.sh, same 7 functions.
 deploy_http RegisterFcmToken
 deploy_http UnregisterFcmToken
 deploy_http SendChatMessage
 deploy_http ListChatMessages
+deploy_http ListChatSessions
 deploy_http ListNotifications
 deploy_http MarkNotificationRead
 
@@ -42,4 +43,4 @@ deploy_pubsub_trigger OnShiftBooked shift-booked
 deploy_pubsub_trigger OnRatingReceived rating-received
 deploy_pubsub_trigger OnShiftMatched shift-matched
 
-echo "functions-communication: all 9 functions deployed."
+echo "functions-communication: all 10 functions deployed."

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
+import '../../chat/presentation/chat_list_screen.dart';
 import '../../profile/domain/profile.dart';
 import '../../shifts/presentation/browse_shifts_screen.dart';
 import '../../shifts/presentation/my_shifts_screen.dart';
@@ -28,6 +29,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final tabs = [
       if (isStaff) const BrowseShiftsScreen(),
       const MyShiftsScreen(),
+      const ChatListScreen(),
       const ProfileScreen(),
     ];
     final items = [
@@ -37,6 +39,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         icon: Icons.event_note_outlined,
         selectedIcon: Icons.event_note_rounded,
         label: isStaff ? 'My shifts' : 'Shifts',
+      ),
+      const NavItem(
+        icon: Icons.chat_bubble_outline_rounded,
+        selectedIcon: Icons.chat_bubble_rounded,
+        label: 'Messages',
       ),
       const NavItem(icon: Icons.person_outline_rounded, selectedIcon: Icons.person_rounded, label: 'Profile'),
     ];

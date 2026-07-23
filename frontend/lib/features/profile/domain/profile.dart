@@ -555,3 +555,58 @@ class PublicProfile {
             : null,
       );
 }
+
+/// Lets the "my profile" screen reuse [NurseryDetails]/[StaffDetails] (built
+/// for viewing someone *else's* profile) to render your own — rather than
+/// duplicating that entire detail layout, since the two field sets are
+/// otherwise identical. `locationArea` has no equivalent on the private
+/// [Profile] (it's a server-derived geohash prefix only present on
+/// profilesPublic), so it's left blank; every other field maps directly.
+extension ProfileToPublicView on Profile {
+  PublicProfile toPublicView(String uid) => PublicProfile(
+        uid: uid,
+        role: role,
+        name: name,
+        locationArea: '',
+        rating: rating,
+        dbsBadge: dbsStatus,
+        photoUrl: photoUrl,
+        yearsExperience: yearsExperience,
+        qualificationLevel: qualificationLevel,
+        bio: bio,
+        previousRoles: previousRoles,
+        description: description,
+        openingHours: openingHours,
+        ofstedRating: ofstedRating,
+        photos: photos,
+        age: age,
+        city: city,
+        travelDistanceMiles: travelDistanceMiles,
+        languages: languages,
+        professionalSummary: professionalSummary,
+        qualifications: qualifications,
+        skills: skills,
+        availabilityDays: availabilityDays,
+        availabilityShifts: availabilityShifts,
+        dbsExpiryDate: dbsExpiryDate,
+        nationality: nationality,
+        visaStatus: visaStatus,
+        rightToWorkStatus: rightToWorkStatus,
+        rightToWorkVerified: rightToWorkVerified,
+        logoUrl: logoUrl,
+        registeredCompanyName: registeredCompanyName,
+        ofstedRegNumber: ofstedRegNumber,
+        yearEstablished: yearEstablished,
+        nurseryType: nurseryType,
+        website: website,
+        postcode: postcode,
+        phone: phone,
+        email: email,
+        shortDescription: shortDescription,
+        facilities: facilities,
+        identityVerified: identityVerified,
+        ofstedVerified: ofstedVerified,
+        stats: stats,
+        ratingBreakdown: ratingBreakdown,
+      );
+}

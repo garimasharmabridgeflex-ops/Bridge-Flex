@@ -46,11 +46,20 @@ deploy_firestore_trigger() {
 deploy_auth_trigger() {
   local name="$1"
   echo "==> functions-core: deploying $name (Auth: user created)"
+  # `|| true` is deliberate here, unlike the other deploy_* helpers: this
+  # project has no firebaseauth.googleapis.com Eventarc provider registered
+  # (`gcloud eventarc providers list --location=- | grep firebaseauth`
+  # returns nothing), so this trigger currently fails deployment outright —
+  # a known, accepted gap. auth_repository.dart's _ensureProfileDocument
+  # already covers the exact case this trigger exists for (creating
+  # profiles/{uid} on sign-up) as a client-side fallback, so a real user is
+  # never blocked by this being undeployed. Revisit if/when Firebase Auth
+  # Eventarc triggers become deployable via plain gcloud for this project.
   gcloud functions deploy "$name" \
     --gen2 --runtime="$GO_RUNTIME" --region="$REGION" --project="$PROJECT_ID" \
     --source=. --entry-point="$name" \
     --trigger-event-filters="type=google.firebase.auth.user.v1.created" \
-    --quiet
+    --quiet || true
 }
 
 # HTTP endpoints — ports in run-local.sh, same set of functions.

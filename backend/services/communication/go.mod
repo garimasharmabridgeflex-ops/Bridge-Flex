@@ -1,11 +1,10 @@
 module kvision.internal/communication
 
-go 1.25
+go 1.25.8
 
 replace kvision.internal/shared => ./shared
 
 require (
-	kvision.internal/shared v0.0.0-00010101000000-000000000000
 	cloud.google.com/go/firestore v1.24.0
 	cloud.google.com/go/pubsub/v2 v2.6.1
 	firebase.google.com/go/v4 v4.21.0
@@ -13,6 +12,7 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.16.2
 	google.golang.org/api v0.289.0
 	google.golang.org/grpc v1.82.1
+	kvision.internal/shared v0.0.0-00010101000000-000000000000
 )
 
 require (

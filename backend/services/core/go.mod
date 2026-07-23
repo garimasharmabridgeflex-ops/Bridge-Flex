@@ -1,11 +1,10 @@
 module kvision.internal/core
 
-go 1.25
+go 1.25.8
 
 replace kvision.internal/shared => ./shared
 
 require (
-	kvision.internal/shared v0.0.0-00010101000000-000000000000
 	cloud.google.com/go/firestore v1.24.0
 	cloud.google.com/go/pubsub/v2 v2.6.1
 	firebase.google.com/go/v4 v4.21.0
@@ -16,6 +15,7 @@ require (
 	google.golang.org/genproto v0.0.0-20260511170946-3700d4141b60
 	google.golang.org/grpc v1.82.0
 	google.golang.org/protobuf v1.36.11
+	kvision.internal/shared v0.0.0-00010101000000-000000000000
 )
 
 require (

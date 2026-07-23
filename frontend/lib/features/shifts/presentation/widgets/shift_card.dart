@@ -2,8 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../shared/constants/profile_options.dart';
+import '../../../../shared/widgets/chip_multi_select.dart';
 import '../../../../shared/widgets/status_badge.dart';
 import '../../domain/shift.dart';
+
+String _postedAgo(DateTime createdAt) {
+  final diff = DateTime.now().difference(createdAt);
+  if (diff.inMinutes < 1) return 'Just now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+  if (diff.inHours < 24) return '${diff.inHours}h ago';
+  return '${diff.inDays}d ago';
+}
 
 class ShiftCard extends StatelessWidget {
   const ShiftCard({
@@ -32,16 +42,36 @@ class ShiftCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Container(
+                    height: 40,
+                    width: 40,
+                    decoration: BoxDecoration(
+                      color: scheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: Icon(Icons.home_work_outlined, color: scheme.primary, size: 20),
+                  ),
+                  const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      shift.title,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          shift.title,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          _postedAgo(shift.createdAt),
+                          style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+                        ),
+                      ],
                     ),
                   ),
                   ShiftStatusBadge(status: shift.status),
@@ -89,6 +119,13 @@ class ShiftCard extends StatelessWidget {
                           ?.copyWith(color: scheme.onSurfaceVariant),
                     ),
                   ],
+                ),
+              ],
+              if (shift.expectedDuties.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                ChipDisplayRow(
+                  values: shift.expectedDuties.take(3).toList(),
+                  options: shiftDutyOptions,
                 ),
               ],
               const SizedBox(height: 12),

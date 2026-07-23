@@ -418,21 +418,26 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     prefixIcon: Icons.short_text_rounded,
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: openingHoursPresets.map((preset) {
-                      return ActionChip(
-                        label: Text(preset, style: const TextStyle(fontSize: 12)),
-                        onPressed: () => setState(() => _openingHours.text = preset),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 8),
-                  AppTextField(
-                    label: 'Opening hours',
-                    controller: _openingHours,
-                    prefixIcon: Icons.schedule_outlined,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: AppTextField(
+                          label: 'Opening hours',
+                          controller: _openingHours,
+                          prefixIcon: Icons.schedule_outlined,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      PopupMenuButton<String>(
+                        tooltip: 'Quick fill',
+                        icon: const Icon(Icons.arrow_drop_down_circle_outlined),
+                        onSelected: (preset) => setState(() => _openingHours.text = preset),
+                        itemBuilder: (context) => openingHoursPresets
+                            .map((p) => PopupMenuItem(value: p, child: Text(p, style: const TextStyle(fontSize: 13))))
+                            .toList(),
+                      ),
+                    ],
                   ),
 
                   _sectionHeader(context, 'Company details'),

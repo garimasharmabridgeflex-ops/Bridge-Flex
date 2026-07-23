@@ -78,13 +78,17 @@ class _NavTile extends StatelessWidget {
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
         margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-        padding: EdgeInsets.symmetric(horizontal: selected ? 14 : 0, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: selected ? 10 : 0, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? scheme.primary.withValues(alpha: 0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.pill),
         ),
+        // A Row here (rather than mainAxisSize.min) would let the label
+        // demand more width than this tile's slice of the bar has — with a
+        // fixed-width parent (Expanded, inside the pill's own padding) that
+        // reads as a RenderFlex overflow, not a graceful clip. Flexible +
+        // ellipsis guarantees the label shrinks instead.
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
@@ -92,19 +96,18 @@ class _NavTile extends StatelessWidget {
               size: 22,
               color: selected ? scheme.primary : scheme.onSurfaceVariant,
             ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              child: selected
-                  ? Padding(
-                      padding: const EdgeInsets.only(left: 6),
-                      child: Text(
-                        item.label,
-                        style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w700, fontSize: 13),
-                      ),
-                    )
-                  : const SizedBox(width: 0, height: 0),
-            ),
+            if (selected)
+              Flexible(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w700, fontSize: 12),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

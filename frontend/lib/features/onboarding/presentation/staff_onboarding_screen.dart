@@ -163,6 +163,7 @@ class _StaffOnboardingScreenState
 
   @override
   Widget build(BuildContext context) {
+    final dbsStatus = ref.watch(ownProfileProvider).valueOrNull?.dbsStatus ?? DbsStatus.unverified;
     return Scaffold(
       body: PageView(
         controller: _pageController,
@@ -274,24 +275,57 @@ class _StaffOnboardingScreenState
               satellites: [Icons.shield_rounded, Icons.upload_file_rounded],
             ),
             canContinue: true,
-            nextLabel: "I'll do this later",
+            nextLabel: dbsStatus == DbsStatus.unverified ? "I'll do this later" : 'Continue',
             onNext: _finish,
             body: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Upload a photo of your DBS certificate now, or skip and do it later from your profile.',
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                PrimaryButton(
-                  label: 'Upload DBS certificate',
-                  icon: Icons.upload_file_outlined,
-                  expand: true,
-                  onPressed: () async {
-                    await context.push('/profile/dbs');
-                    _finish();
-                  },
-                ),
+                if (dbsStatus == DbsStatus.unverified) ...[
+                  const Text(
+                    'Upload a photo of your DBS certificate now, or skip and do it later from your profile.',
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  PrimaryButton(
+                    label: 'Upload DBS certificate',
+                    icon: Icons.upload_file_outlined,
+                    expand: true,
+                    onPressed: () async {
+                      await context.push('/profile/dbs');
+                      ref.invalidate(ownProfileProvider);
+                    },
+                  ),
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: AppColors.mint.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle_rounded, color: AppColors.mint),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            dbsStatus == DbsStatus.verified
+                                ? 'Your DBS certificate is verified.'
+                                : 'Submitted — pending review.',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TextButton.icon(
+                    onPressed: () async {
+                      await context.push('/profile/dbs');
+                      ref.invalidate(ownProfileProvider);
+                    },
+                    icon: const Icon(Icons.upload_file_outlined, size: 18),
+                    label: const Text('Upload a different certificate'),
+                  ),
+                ],
               ],
             ),
           ),

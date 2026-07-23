@@ -21,6 +21,7 @@ class WizardStepScaffold extends StatelessWidget {
     this.onSkip,
     this.loading = false,
     this.illustration,
+    this.onBack,
   });
 
   final int stepIndex;
@@ -34,6 +35,10 @@ class WizardStepScaffold extends StatelessWidget {
   final VoidCallback? onSkip;
   final bool loading;
 
+  /// Steps past the first can go back — full app spec: users should be able
+  /// to move back through a multi-step wizard, not just forward or bail out.
+  final VoidCallback? onBack;
+
   /// Optional step illustration shown above the title — full app spec ask
   /// for onboarding to feel less like a bare form.
   final Widget? illustration;
@@ -41,26 +46,47 @@ class WizardStepScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return SafeArea(
+    return PopScope(
+      canPop: onBack == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && onBack != null) onBack!();
+      },
+      child: SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
             child: Row(
-              children: List.generate(stepCount, (i) {
-                final active = i <= stepIndex;
-                return Expanded(
-                  child: Container(
-                    height: 4,
-                    margin: EdgeInsets.only(right: i == stepCount - 1 ? 0 : 6),
-                    decoration: BoxDecoration(
-                      color: active ? scheme.primary : scheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
-                    ),
+              children: [
+                if (onBack != null) ...[
+                  IconButton(
+                    onPressed: onBack,
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                   ),
-                );
-              }),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: Row(
+                    children: List.generate(stepCount, (i) {
+                      final active = i <= stepIndex;
+                      return Expanded(
+                        child: Container(
+                          height: 4,
+                          margin: EdgeInsets.only(right: i == stepCount - 1 ? 0 : 6),
+                          decoration: BoxDecoration(
+                            color: active ? scheme.primary : scheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(AppRadius.pill),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -108,6 +134,7 @@ class WizardStepScaffold extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

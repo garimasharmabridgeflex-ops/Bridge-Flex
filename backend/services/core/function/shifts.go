@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -387,7 +388,16 @@ func getShift(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 		return
 	}
-	isParty := uid == s.NurseryID || (s.BookedStaffID != nil && uid == *s.BookedStaffID)
+	// Same bug class already fixed in booking.go/ratings.go: checking only
+	// the legacy singular BookedStaffID means every staff member on a
+	// multi-capacity shift except the "most recent acceptor" gets 403'd
+	// viewing their own shift — including from their own "shift booked"
+	// notification, once the shift is no longer open.
+	bookedIDs := s.BookedStaffIDs
+	if len(bookedIDs) == 0 && s.BookedStaffID != nil {
+		bookedIDs = []string{*s.BookedStaffID}
+	}
+	isParty := uid == s.NurseryID || slices.Contains(bookedIDs, uid)
 	if s.Status != ShiftOpen && !isParty {
 		httpjson.WriteError(w, http.StatusForbidden, "NOT_VISIBLE", "You cannot view this shift")
 		return

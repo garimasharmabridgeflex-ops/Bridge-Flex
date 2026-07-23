@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme.dart';
+import '../../../shared/services/uk_geocoding.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../domain/profile.dart';
 import 'public_profile_screen.dart';
@@ -60,6 +61,10 @@ class ProfileScreen extends ConsumerWidget {
                       profile.role == UserRole.nursery ? 'Nursery' : 'Staff',
                       style: TextStyle(color: scheme.onSurfaceVariant),
                     ),
+                    if (profile.lat != null && profile.lng != null) ...[
+                      const SizedBox(height: 2),
+                      _OwnLocationRow(lat: profile.lat!, lng: profile.lng!),
+                    ],
                     const SizedBox(height: 10),
                     Row(
                       mainAxisSize: MainAxisSize.min,
@@ -236,6 +241,31 @@ class _ActionTile extends StatelessWidget {
         trailing: const Icon(Icons.chevron_right_rounded),
         onTap: onTap,
       ),
+    );
+  }
+}
+
+/// GPS-detected coordinates otherwise had no visible representation
+/// anywhere in the app — reverse-geocodes them (via postcodes.io) into a
+/// readable place name for the profile header.
+class _OwnLocationRow extends ConsumerWidget {
+  const _OwnLocationRow({required this.lat, required this.lng});
+  final double lat;
+  final double lng;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final placeAsync = ref.watch(reverseGeocodeProvider((lat, lng)));
+    final place = placeAsync.valueOrNull;
+    if (place == null) return const SizedBox.shrink();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.place_outlined, size: 14, color: scheme.onSurfaceVariant),
+        const SizedBox(width: 4),
+        Text(place, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
+      ],
     );
   }
 }

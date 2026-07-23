@@ -18,12 +18,25 @@ declare -A FUNCS=(
   [CreateShift]=8104
   [UpdateShift]=8105
   [ListOpenShifts]=8106
+  [ListMyShifts]=8113
   [GetShift]=8107
   [AcceptShift]=8108
   [CancelShift]=8109
+  [MarkNoShow]=8116
   [CreateRating]=8110
   [CreateDocument]=8111
   [ReviewDocument]=8112
+  [GetDocumentStatus]=8114
+  [ListMyDocuments]=8115
+  [ListPendingDocuments]=8117
+  # functions-communication's run-local.sh independently owns 8121-8128 —
+  # jumping to 8140+ here avoids any port collision between the two
+  # services' independently-numbered local process maps.
+  [GetPlatformStats]=8140
+  [ListAllUsers]=8141
+  [GetUserDetail]=8142
+  [SetUserSuspended]=8143
+  [SetVerificationBadge]=8144
 )
 
 pids=()

@@ -30,6 +30,7 @@ const (
 	topicShiftBooked    = "shift-booked"
 	topicShiftMatched   = "shift-matched"
 	topicRatingReceived = "rating-received"
+	topicShiftCancelled = "shift-cancelled"
 )
 
 var (

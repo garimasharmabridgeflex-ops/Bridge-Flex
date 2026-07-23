@@ -53,19 +53,29 @@ deploy_auth_trigger() {
     --quiet
 }
 
-# HTTP endpoints — ports in run-local.sh, same 12 functions.
+# HTTP endpoints — ports in run-local.sh, same set of functions.
 deploy_http UpdateProfile
 deploy_http GetProfile
 deploy_http GetPublicProfile
 deploy_http CreateShift
 deploy_http UpdateShift
 deploy_http ListOpenShifts
+deploy_http ListMyShifts
 deploy_http GetShift
 deploy_http AcceptShift
 deploy_http CancelShift
+deploy_http MarkNoShow
 deploy_http CreateRating
 deploy_http CreateDocument
 deploy_http ReviewDocument
+deploy_http GetDocumentStatus
+deploy_http ListMyDocuments
+deploy_http ListPendingDocuments
+deploy_http GetPlatformStats
+deploy_http ListAllUsers
+deploy_http GetUserDetail
+deploy_http SetUserSuspended
+deploy_http SetVerificationBadge
 
 # Eventarc triggers — same 4 functions covered by triggers_test.go.
 deploy_auth_trigger InitProfileOnSignUp
@@ -73,4 +83,4 @@ deploy_firestore_trigger SyncProfilePublic google.cloud.firestore.document.v1.wr
 deploy_firestore_trigger RecomputeRating google.cloud.firestore.document.v1.created "ratings/{ratingId}"
 deploy_firestore_trigger MatchNewShift google.cloud.firestore.document.v1.created "shifts/{shiftId}"
 
-echo "functions-core: all 16 functions deployed."
+echo "functions-core: all 25 functions deployed."

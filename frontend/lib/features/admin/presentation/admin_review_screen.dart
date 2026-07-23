@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme.dart';
@@ -134,7 +133,11 @@ class _StatGrid extends StatelessWidget {
         crossAxisCount: 2,
         mainAxisSpacing: AppSpacing.sm,
         crossAxisSpacing: AppSpacing.sm,
-        childAspectRatio: 2.4,
+        // A fixed extent (rather than aspect ratio) guarantees enough
+        // height for icon + two text lines + card padding regardless of
+        // device width — aspect ratio 2.4 measured ~11px short on narrower
+        // phones.
+        mainAxisExtent: 80,
       ),
       itemCount: items.length,
       itemBuilder: (context, i) {
@@ -178,8 +181,12 @@ class _QueueTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pendingAsync = ref.watch(pendingDocumentsProvider);
+    final usersAsync = ref.watch(allUsersProvider);
     return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(pendingDocumentsProvider),
+      onRefresh: () async {
+        ref.invalidate(pendingDocumentsProvider);
+        ref.invalidate(allUsersProvider);
+      },
       child: pendingAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ListView(
@@ -203,14 +210,30 @@ class _QueueTab extends ConsumerWidget {
               ],
             );
           }
+          // Group pending documents by uploader — the queue is a list of
+          // people to review, not a flat list of files; approve/reject
+          // happens per-document on their detail page (full app spec: "when
+          // i click the user i should see all documents ... and verify, one
+          // by one").
+          final byUid = <String, List<PendingDocument>>{};
+          for (final d in docs) {
+            byUid.putIfAbsent(d.uid, () => []).add(d);
+          }
+          final users = usersAsync.valueOrNull ?? const [];
+          final entries = byUid.entries.toList();
+
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.lg),
-            itemCount: docs.length,
+            itemCount: entries.length,
             separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-            itemBuilder: (context, i) => _PendingDocumentCard(doc: docs[i]).animate().fadeIn(
-                  delay: (i * 30).ms,
-                  duration: 200.ms,
-                ),
+            itemBuilder: (context, i) {
+              final uid = entries[i].key;
+              final pending = entries[i].value;
+              final user = users.where((u) => u.uid == uid).firstOrNull;
+              return _QueueUserCard(uid: uid, user: user, pendingCount: pending.length)
+                  .animate()
+                  .fadeIn(delay: (i * 30).ms, duration: 200.ms);
+            },
           );
         },
       ),
@@ -218,116 +241,37 @@ class _QueueTab extends ConsumerWidget {
   }
 }
 
-class _PendingDocumentCard extends ConsumerStatefulWidget {
-  const _PendingDocumentCard({required this.doc});
-  final PendingDocument doc;
+class _QueueUserCard extends StatelessWidget {
+  const _QueueUserCard({required this.uid, required this.user, required this.pendingCount});
 
-  @override
-  ConsumerState<_PendingDocumentCard> createState() => _PendingDocumentCardState();
-}
-
-class _PendingDocumentCardState extends ConsumerState<_PendingDocumentCard> {
-  bool _busy = false;
-
-  Future<void> _review(bool approve) async {
-    String? note;
-    if (!approve) {
-      note = await showDialog<String>(
-        context: context,
-        builder: (ctx) {
-          final controller = TextEditingController();
-          return AlertDialog(
-            title: const Text('Rejection reason'),
-            content: TextField(
-              controller: controller,
-              decoration: const InputDecoration(hintText: 'Shown to the uploader'),
-              autofocus: true,
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-                child: const Text('Reject'),
-              ),
-            ],
-          );
-        },
-      );
-      if (note == null) return; // cancelled
-    }
-    setState(() => _busy = true);
-    try {
-      await ref.read(documentsRepositoryProvider).reviewDocument(
-            docId: widget.doc.docId,
-            approve: approve,
-            note: note,
-          );
-      ref.invalidate(pendingDocumentsProvider);
-      ref.invalidate(platformStatsProvider);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(approve ? 'Approved.' : 'Rejected.')),
-        );
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
+  final String uid;
+  final AdminUserSummary? user;
+  final int pendingCount;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final doc = widget.doc;
+    final isNursery = user?.role == UserRole.nursery;
     return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        onTap: () => context.push('/admin/users/${doc.uid}'),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.description_outlined, size: 20, color: scheme.onSurfaceVariant),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(documentTypeLabel(doc.type), style: const TextStyle(fontWeight: FontWeight.w700)),
-                  ),
-                  if (doc.uploadedAt != null)
-                    Text(
-                      DateFormat('d MMM, HH:mm').format(doc.uploadedAt!),
-                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text('Uploaded by ${doc.uid} · tap to view profile', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _busy ? null : () => _review(false),
-                      icon: const Icon(Icons.close_rounded, size: 18),
-                      label: const Text('Reject'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _busy ? null : () => _review(true),
-                      icon: const Icon(Icons.check_rounded, size: 18),
-                      label: const Text('Approve'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        onTap: () => context.push('/admin/users/$uid'),
+        leading: CircleAvatar(
+          backgroundColor: scheme.primary.withValues(alpha: 0.12),
+          child: Icon(
+            isNursery ? Icons.home_work_outlined : Icons.badge_outlined,
+            color: scheme.primary,
+            size: 20,
           ),
         ),
+        title: Text(
+          (user?.name.isNotEmpty ?? false) ? user!.name : uid,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          '${user == null ? 'Unknown role' : (isNursery ? 'Nursery' : 'Staff')} · $pendingCount document${pendingCount == 1 ? '' : 's'} pending',
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded),
       ),
     );
   }

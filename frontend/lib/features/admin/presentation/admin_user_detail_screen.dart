@@ -174,12 +174,13 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             _InfoRow('Role', isNursery ? 'Nursery' : 'Staff'),
             if (profile.phone.isNotEmpty) _InfoRow('Phone', profile.phone),
             if (profile.email.isNotEmpty) _InfoRow('Email', profile.email),
-            _InfoRow('DBS status', profile.dbsStatus.name),
+            if (!isNursery) _InfoRow('DBS status', profile.dbsStatus.name),
             if (isNursery && profile.address.isNotEmpty) _InfoRow('Address', profile.address),
             if (isNursery && profile.postcode.isNotEmpty) _InfoRow('Postcode', profile.postcode),
             if (isNursery && profile.registeredCompanyName.isNotEmpty)
               _InfoRow('Company name', profile.registeredCompanyName),
             if (isNursery && profile.ofstedRegNumber.isNotEmpty) _InfoRow('Ofsted reg. number', profile.ofstedRegNumber),
+            if (isNursery) _InfoRow('Ofsted rating', ofstedRatingLabel(profile.ofstedRating)),
             if (!isNursery && profile.city.isNotEmpty) _InfoRow('City', profile.city),
             if (!isNursery && profile.nationality.isNotEmpty) _InfoRow('Nationality', profile.nationality),
             if (!isNursery && profile.dbsCertificateNumber.isNotEmpty)
@@ -191,7 +192,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             if (widget.detail.documents.isEmpty)
               Text('No documents uploaded yet.', style: TextStyle(color: scheme.onSurfaceVariant))
             else
-              ...widget.detail.documents.map((d) => _DocumentTile(doc: d)),
+              ...widget.detail.documents.map((d) => _DocumentTile(uid: widget.uid, doc: d)),
           ],
         ),
       ),
@@ -228,7 +229,8 @@ class _InfoRow extends StatelessWidget {
 }
 
 class _DocumentTile extends ConsumerStatefulWidget {
-  const _DocumentTile({required this.doc});
+  const _DocumentTile({required this.uid, required this.doc});
+  final String uid;
   final AdminDocumentEntry doc;
 
   @override
@@ -238,7 +240,19 @@ class _DocumentTile extends ConsumerStatefulWidget {
 class _DocumentTileState extends ConsumerState<_DocumentTile> {
   String? _url;
   bool _loading = false;
+  bool _reviewing = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    // Full app spec: reviewing a queued user "should see all documents and
+    // their details" without an extra tap per file — only PDFs (which have
+    // no inline renderer here) stay behind a manual reveal.
+    if (!widget.doc.storagePath.toLowerCase().endsWith('.pdf')) {
+      _loadPreview();
+    }
+  }
 
   Future<void> _loadPreview() async {
     setState(() {
@@ -253,6 +267,55 @@ class _DocumentTileState extends ConsumerState<_DocumentTile> {
       if (mounted) setState(() => _error = '$e');
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _review(bool approve) async {
+    String? note;
+    if (!approve) {
+      note = await showDialog<String>(
+        context: context,
+        builder: (ctx) {
+          final controller = TextEditingController();
+          return AlertDialog(
+            title: const Text('Rejection reason'),
+            content: TextField(
+              controller: controller,
+              decoration: const InputDecoration(hintText: 'Shown to the uploader'),
+              autofocus: true,
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+                child: const Text('Reject'),
+              ),
+            ],
+          );
+        },
+      );
+      if (note == null) return; // cancelled
+    }
+    setState(() => _reviewing = true);
+    try {
+      await ref.read(documentsRepositoryProvider).reviewDocument(
+            docId: widget.doc.docId,
+            approve: approve,
+            note: note,
+          );
+      ref.invalidate(adminUserDetailProvider(widget.uid));
+      ref.invalidate(pendingDocumentsProvider);
+      ref.invalidate(platformStatsProvider);
+      ref.invalidate(allUsersProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(approve ? 'Approved.' : 'Rejected.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _reviewing = false);
     }
   }
 
@@ -321,6 +384,28 @@ class _DocumentTileState extends ConsumerState<_DocumentTile> {
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(_error!, style: TextStyle(fontSize: 11, color: scheme.error)),
               ),
+            if (doc.status == DocReviewStatus.pendingReview) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _reviewing ? null : () => _review(false),
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      label: const Text('Reject'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _reviewing ? null : () => _review(true),
+                      icon: const Icon(Icons.check_rounded, size: 18),
+                      label: const Text('Approve'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

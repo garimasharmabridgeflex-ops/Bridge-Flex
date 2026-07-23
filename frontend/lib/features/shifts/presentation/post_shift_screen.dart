@@ -40,8 +40,22 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
   List<String> _requirements = [];
 
   @override
+  void initState() {
+    super.initState();
+    // _detailsValid/_payValid read straight from these controllers, so
+    // without a rebuild on every keystroke, canContinue/Publish never
+    // re-evaluates and the button just looks permanently disabled.
+    _title.addListener(_rebuild);
+    _payRate.addListener(_rebuild);
+  }
+
+  void _rebuild() => setState(() {});
+
+  @override
   void dispose() {
     _pageController.dispose();
+    _title.removeListener(_rebuild);
+    _payRate.removeListener(_rebuild);
     _title.dispose();
     _description.dispose();
     _payRate.dispose();
@@ -174,7 +188,10 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('$_capacity', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                      child: Text(
+                        '$_capacity ${_capacity == 1 ? 'staff member' : 'staff members'}',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                      ),
                     ),
                     IconButton.filledTonal(
                       onPressed: () => setState(() => _capacity++),
@@ -230,7 +247,7 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
             canContinue: true,
             nextLabel: 'Next',
             onNext: () => _goTo(2),
-            onSkip: () => _goTo(0),
+            onBack: () => _goTo(0),
             body: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -252,18 +269,16 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
                   children: [
                     Expanded(
                       child: AppTextField(
-                        label: 'Room (optional)',
+                        label: 'Room',
                         controller: _room,
-                        prefixIcon: Icons.door_front_door_outlined,
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: AppTextField(
-                        label: 'Number of children',
+                        label: 'Children',
                         controller: _numberOfChildren,
                         keyboardType: TextInputType.number,
-                        prefixIcon: Icons.groups_outlined,
                       ),
                     ),
                   ],
@@ -306,6 +321,7 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
             loading: _loading,
             nextLabel: 'Publish shift',
             onNext: _publish,
+            onBack: () => _goTo(1),
             body: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

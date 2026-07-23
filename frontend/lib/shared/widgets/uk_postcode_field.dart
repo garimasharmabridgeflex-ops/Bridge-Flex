@@ -39,6 +39,12 @@ class _UkPostcodeFieldState extends State<UkPostcodeField> {
   OverlayEntry? _overlayEntry;
   final _focusNode = FocusNode();
 
+  // Setting widget.controller.text programmatically (in _select) fires the
+  // controller's own listeners synchronously — without this guard, picking a
+  // suggestion re-triggers _onChanged, which re-fetches and reopens the
+  // overlay for the postcode that was just selected.
+  bool _suppressNextChange = false;
+
   @override
   void initState() {
     super.initState();
@@ -58,6 +64,10 @@ class _UkPostcodeFieldState extends State<UkPostcodeField> {
   }
 
   void _onChanged() {
+    if (_suppressNextChange) {
+      _suppressNextChange = false;
+      return;
+    }
     _debounce?.cancel();
     final query = widget.controller.text.trim();
     if (query.length < 2) {
@@ -89,6 +99,8 @@ class _UkPostcodeFieldState extends State<UkPostcodeField> {
   }
 
   Future<void> _select(String postcode) async {
+    _debounce?.cancel();
+    _suppressNextChange = true;
     widget.controller.text = postcode;
     widget.controller.selection = TextSelection.collapsed(offset: postcode.length);
     _hideOverlay();

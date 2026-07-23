@@ -561,13 +561,15 @@ class PublicProfile {
 /// duplicating that entire detail layout, since the two field sets are
 /// otherwise identical. `locationArea` has no equivalent on the private
 /// [Profile] (it's a server-derived geohash prefix only present on
-/// profilesPublic), so it's left blank; every other field maps directly.
+/// profilesPublic) — callers with a resolved place name (reverse-geocoded
+/// from `lat`/`lng`, see uk_geocoding.dart) can pass it in; otherwise it's
+/// left blank.
 extension ProfileToPublicView on Profile {
-  PublicProfile toPublicView(String uid) => PublicProfile(
+  PublicProfile toPublicView(String uid, {String locationArea = ''}) => PublicProfile(
         uid: uid,
         role: role,
         name: name,
-        locationArea: '',
+        locationArea: locationArea,
         rating: rating,
         dbsBadge: dbsStatus,
         photoUrl: photoUrl,

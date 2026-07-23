@@ -13,6 +13,7 @@ func init() {
 	functions.CloudEvent("OnShiftBooked", onShiftBooked)
 	functions.CloudEvent("OnRatingReceived", onRatingReceived)
 	functions.CloudEvent("OnShiftMatched", onShiftMatched)
+	functions.CloudEvent("OnShiftCancelled", onShiftCancelled)
 }
 
 // pubSubMessage / messagePublishedData mirror the Pub/Sub CloudEvent JSON
@@ -112,4 +113,48 @@ func onShiftMatched(ctx context.Context, e event.Event) error {
 	return notifyUser(ctx, payload.StaffID, "new_matching_shift",
 		"New shift available", "A new shift matching your profile is available.",
 		map[string]any{"shiftId": payload.ShiftID, "nurseryId": payload.NurseryID})
+}
+
+type shiftCancelledPayload struct {
+	ShiftID     string   `json:"shiftId"`
+	NurseryID   string   `json:"nurseryId"`
+	StaffIDs    []string `json:"staffIds,omitempty"`
+	CancelledBy string   `json:"cancelledBy"`
+	NewStatus   string   `json:"newStatus"`
+}
+
+// onShiftCancelled subscribes to shift-cancelled (functions-core's
+// cancelShift, full app spec §3). Only published when there's someone to
+// notify — a nursery cancelling an open shift nobody had booked publishes
+// nothing (see cancelShift). Who gets notified depends on who cancelled:
+// staff dropping their own slot notifies the nursery their cover just fell
+// through; the nursery pulling the whole shift notifies every staff member
+// who had a slot on it (plural — a multi-capacity shift can have more than
+// one).
+func onShiftCancelled(ctx context.Context, e event.Event) error {
+	var msg messagePublishedData
+	if err := e.DataAs(&msg); err != nil {
+		return fmt.Errorf("event.DataAs: %w", err)
+	}
+	var payload shiftCancelledPayload
+	if err := json.Unmarshal(msg.Message.Data, &payload); err != nil {
+		return fmt.Errorf("unmarshal shift-cancelled payload: %w", err)
+	}
+
+	if payload.CancelledBy == "staff" {
+		return notifyUser(ctx, payload.NurseryID, "shift_cancelled",
+			"Shift cover dropped",
+			"A staff member cancelled — your shift is open again for someone else to accept.",
+			map[string]any{"shiftId": payload.ShiftID})
+	}
+
+	for _, staffID := range payload.StaffIDs {
+		if err := notifyUser(ctx, staffID, "shift_cancelled",
+			"Shift cancelled",
+			"The nursery cancelled a shift you had booked.",
+			map[string]any{"shiftId": payload.ShiftID}); err != nil {
+			return err
+		}
+	}
+	return nil
 }

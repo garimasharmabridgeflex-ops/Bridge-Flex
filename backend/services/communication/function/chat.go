@@ -18,6 +18,43 @@ import (
 func init() {
 	functions.HTTP("SendChatMessage", authed(sendChatMessage))
 	functions.HTTP("ListChatMessages", authed(listChatMessages))
+	functions.HTTP("ListChatSessions", authed(listChatSessions))
+}
+
+// listChatSessions — GET /listChatSessions. Sessions the caller is a
+// participant in — already a client-legal query per Security Rules (§3), a
+// plain-HTTP mirror for the same reason listOpenShifts/listMyShifts are in
+// functions-core. No orderBy here (array-contains + orderBy on a different
+// field needs a composite index that isn't deployed) — callers sort
+// client-side by lastMessageAt instead.
+func listChatSessions(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	uid := auth.UID(ctx)
+
+	db, err := fsDB(ctx)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "firestore client unavailable")
+		return
+	}
+
+	iter := db.Collection("chatSessions").Where("participantIds", "array-contains", uid).Documents(ctx)
+	defer iter.Stop()
+
+	sessions := make([]map[string]any, 0)
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+			return
+		}
+		data := doc.Data()
+		data["sessionId"] = doc.Ref.ID
+		sessions = append(sessions, data)
+	}
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"sessions": sessions})
 }
 
 // ensureChatSession finds or creates the chatSessions/{sessionId} doc for a

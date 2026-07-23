@@ -35,6 +35,13 @@ type createRatingRequest struct {
 	RateeID string `json:"rateeId"`
 	Score   int64  `json:"score"`
 	Comment string `json:"comment,omitempty"`
+	// CategoryScores is the optional per-category breakdown (communication,
+	// punctuality, professionalism, reliability, childEngagement — full
+	// app spec profile ratings breakdown), each 1-5. Averaged on-demand by
+	// computeStaffRatingBreakdown (stats.go) rather than aggregated
+	// incrementally like the overall Score, to keep recomputeRating's
+	// transaction from having to know every category key up front.
+	CategoryScores map[string]int64 `json:"categoryScores,omitempty"`
 }
 
 // createRating — POST /createRating. Mirrors the create-only, immutable
@@ -82,20 +89,37 @@ func createRating(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isValidPair := (shift.NurseryID == uid && shift.BookedStaffID != nil && *shift.BookedStaffID == req.RateeID) ||
-		(shift.BookedStaffID != nil && *shift.BookedStaffID == uid && shift.NurseryID == req.RateeID)
+	// Membership must check the full bookedStaffIds list — on a
+	// multi-capacity shift, whoever the nursery hired includes everyone in
+	// that array, not just BookedStaffID ("most recent acceptor"); same bug
+	// class as the one fixed in cancelShift/acceptShift.
+	bookedIDs := shift.BookedStaffIDs
+	if len(bookedIDs) == 0 && shift.BookedStaffID != nil {
+		bookedIDs = []string{*shift.BookedStaffID}
+	}
+	isBookedStaffID := func(id string) bool {
+		for _, b := range bookedIDs {
+			if b == id {
+				return true
+			}
+		}
+		return false
+	}
+	isValidPair := (shift.NurseryID == uid && isBookedStaffID(req.RateeID)) ||
+		(isBookedStaffID(uid) && shift.NurseryID == req.RateeID)
 	if !isValidPair {
 		httpjson.WriteError(w, http.StatusForbidden, "NOT_SHIFT_PARTY", errRatingNotParty.Error())
 		return
 	}
 
 	rating := RatingDoc{
-		ShiftID:   req.ShiftID,
-		RaterID:   uid,
-		RateeID:   req.RateeID,
-		Score:     req.Score,
-		Comment:   req.Comment,
-		CreatedAt: time.Now(),
+		ShiftID:        req.ShiftID,
+		RaterID:        uid,
+		RateeID:        req.RateeID,
+		Score:          req.Score,
+		Comment:        req.Comment,
+		CategoryScores: req.CategoryScores,
+		CreatedAt:      time.Now(),
 	}
 	ref, _, err := db.Collection("ratings").Add(ctx, rating)
 	if err != nil {

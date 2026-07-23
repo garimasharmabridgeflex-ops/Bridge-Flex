@@ -16,6 +16,7 @@ import (
 func init() {
 	functions.HTTP("ListNotifications", authed(listNotifications))
 	functions.HTTP("MarkNotificationRead", authed(markNotificationRead))
+	functions.HTTP("MarkAllNotificationsRead", authed(markAllNotificationsRead))
 }
 
 // listNotifications — GET /listNotifications. Own notifications only — the
@@ -97,4 +98,38 @@ func markNotificationRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpjson.WriteJSON(w, http.StatusOK, map[string]string{"status": "marked_read"})
+}
+
+func markAllNotificationsRead(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	uid := auth.UID(ctx)
+
+	db, err := fsDB(ctx)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "firestore client unavailable")
+		return
+	}
+	iter := db.Collection("notifications").Where("uid", "==", uid).Documents(ctx)
+	defer iter.Stop()
+
+	bw := db.Batch()
+	count := 0
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			break
+		}
+		read, _ := doc.Data()["read"].(bool)
+		if !read {
+			bw.Update(doc.Ref, []firestore.Update{{Path: "read", Value: true}})
+			count++
+		}
+	}
+	if count > 0 {
+		_, _ = bw.Commit(ctx)
+	}
+	httpjson.WriteJSON(w, http.StatusOK, map[string]string{"status": "marked_all_read"})
 }

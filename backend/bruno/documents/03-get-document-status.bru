@@ -1,0 +1,23 @@
+meta {
+  name: Get Document Status
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{coreBaseUrl}}:8114/
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+docs {
+  functions-core: GetDocumentStatus (port 8114). Returns the caller's own
+  most recent DBS document (status, reviewNote if rejected, uploadedAt), or
+  {"status": "none"} if they've never uploaded one. Full app spec §4.1 —
+  the DBS upload screen needs this for a status badge instead of a bare
+  upload button.
+}

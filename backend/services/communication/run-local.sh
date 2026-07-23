@@ -12,6 +12,7 @@ declare -A FUNCS=(
   [UnregisterFcmToken]=8122
   [SendChatMessage]=8123
   [ListChatMessages]=8124
+  [ListChatSessions]=8127
   [ListNotifications]=8125
   [MarkNotificationRead]=8126
 )

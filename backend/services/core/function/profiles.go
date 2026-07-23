@@ -89,11 +89,13 @@ func syncProfilePublic(ctx context.Context, e event.Event) error {
 	}
 
 	fields := doc.GetFields()
+	role := Role(fieldString(fields, "role"))
 	pub := ProfilePublic{
-		Role:      Role(fieldString(fields, "role")),
+		Role:      role,
 		Name:      fieldString(fields, "name"),
 		DBSBadge:  DBSStatus(fieldString(fields, "dbsStatus")),
 		UpdatedAt: time.Now(),
+		PhotoURL:  fieldString(fields, "photoUrl"),
 	}
 	if ratingFields := fieldMap(fields, "rating"); ratingFields != nil {
 		pub.Rating = Rating{
@@ -105,6 +107,50 @@ func syncProfilePublic(ctx context.Context, e event.Event) error {
 		pub.LocationArea = geohashPrefix(gp.GetLatitude(), gp.GetLongitude(), geohashPrecision)
 	}
 
+	// Only mirror each role's own wizard fields — full app spec §1.2/§1.3;
+	// there's no reason for a staff member's public doc to carry
+	// nursery-only fields or vice versa, even though Profile stores both
+	// (whichever the role doesn't use just stays empty).
+	switch role {
+	case RoleStaff:
+		pub.YearsExperience = fieldInt(fields, "yearsExperience")
+		pub.QualificationLevel = QualificationLevel(fieldString(fields, "qualificationLevel"))
+		pub.Bio = fieldString(fields, "bio")
+		pub.PreviousRoles = fieldPreviousRoles(fields, "previousRoles")
+		pub.Age = fieldIntPtr(fields, "age")
+		pub.City = fieldString(fields, "city")
+		pub.TravelDistanceMiles = fieldInt(fields, "travelDistanceMiles")
+		pub.Languages = fieldStringArray(fields, "languages")
+		pub.ProfessionalSummary = fieldString(fields, "professionalSummary")
+		pub.Qualifications = fieldStringArray(fields, "qualifications")
+		pub.Skills = fieldStringArray(fields, "skills")
+		pub.AvailabilityDays = fieldStringArray(fields, "availabilityDays")
+		pub.AvailabilityShifts = fieldStringArray(fields, "availabilityShifts")
+		pub.DBSExpiryDate = fieldTimestamp(fields, "dbsExpiryDate")
+		pub.Nationality = fieldString(fields, "nationality")
+		pub.VisaStatus = fieldString(fields, "visaStatus")
+		pub.RightToWorkStatus = fieldString(fields, "rightToWorkStatus")
+		pub.RightToWorkVerified = fieldBool(fields, "rightToWorkVerified")
+	case RoleNursery:
+		pub.Description = fieldString(fields, "description")
+		pub.OpeningHours = fieldString(fields, "openingHours")
+		pub.OfstedRating = OfstedRating(fieldString(fields, "ofstedRating"))
+		pub.Photos = fieldStringArray(fields, "photos")
+		pub.LogoURL = fieldString(fields, "logoUrl")
+		pub.RegisteredCompanyName = fieldString(fields, "registeredCompanyName")
+		pub.OfstedRegNumber = fieldString(fields, "ofstedRegNumber")
+		pub.YearEstablished = fieldInt(fields, "yearEstablished")
+		pub.NurseryType = NurseryType(fieldString(fields, "nurseryType"))
+		pub.Website = fieldString(fields, "website")
+		pub.Postcode = fieldString(fields, "postcode")
+		pub.Phone = fieldString(fields, "phone")
+		pub.Email = fieldString(fields, "email")
+		pub.ShortDescription = fieldString(fields, "shortDescription")
+		pub.Facilities = fieldStringArray(fields, "facilities")
+		pub.IdentityVerified = fieldBool(fields, "identityVerified")
+		pub.OfstedVerified = fieldBool(fields, "ofstedVerified")
+	}
+
 	db, err := fsDB(ctx)
 	if err != nil {
 		return err
@@ -114,8 +160,9 @@ func syncProfilePublic(ctx context.Context, e event.Event) error {
 }
 
 var (
-	errRoleAlreadySet = errors.New("role already set")
-	errInvalidRole    = errors.New("invalid role")
+	errRoleAlreadySet   = errors.New("role already set")
+	errInvalidRole      = errors.New("invalid role")
+	errInvalidDBSExpiry = errors.New("invalid dbsExpiryDate")
 )
 
 type updateProfileRequest struct {
@@ -126,6 +173,51 @@ type updateProfileRequest struct {
 		Lat float64 `json:"lat"`
 		Lng float64 `json:"lng"`
 	} `json:"location,omitempty"`
+
+	Phone    *string `json:"phone,omitempty"`
+	PhotoURL *string `json:"photoUrl,omitempty"`
+
+	// Staff-only wizard fields (full app spec §1.2).
+	YearsExperience    *int64          `json:"yearsExperience,omitempty"`
+	QualificationLevel *string         `json:"qualificationLevel,omitempty"`
+	Bio                *string         `json:"bio,omitempty"`
+	PreviousRoles      *[]PreviousRole `json:"previousRoles,omitempty"`
+
+	Age                  *int64    `json:"age,omitempty"`
+	City                 *string   `json:"city,omitempty"`
+	TravelDistanceMiles  *int64    `json:"travelDistanceMiles,omitempty"`
+	Languages            *[]string `json:"languages,omitempty"`
+	ProfessionalSummary  *string   `json:"professionalSummary,omitempty"`
+	Qualifications       *[]string `json:"qualifications,omitempty"`
+	Skills               *[]string `json:"skills,omitempty"`
+	AvailabilityDays     *[]string `json:"availabilityDays,omitempty"`
+	AvailabilityShifts   *[]string `json:"availabilityShifts,omitempty"`
+	DBSCertificateNumber *string   `json:"dbsCertificateNumber,omitempty"`
+	// DBSExpiryDate is accepted as an RFC3339 string over the wire and
+	// parsed below — updateProfileRequest otherwise mirrors Profile's JSON
+	// shape directly, but time.Time doesn't round-trip through
+	// encoding/json the same way without an explicit parse step.
+	DBSExpiryDate     *string `json:"dbsExpiryDate,omitempty"`
+	Nationality       *string `json:"nationality,omitempty"`
+	VisaStatus        *string `json:"visaStatus,omitempty"`
+	RightToWorkStatus *string `json:"rightToWorkStatus,omitempty"`
+
+	// Nursery-only wizard fields (full app spec §1.3).
+	Address      *string   `json:"address,omitempty"`
+	OpeningHours *string   `json:"openingHours,omitempty"`
+	OfstedRating *string   `json:"ofstedRating,omitempty"`
+	Photos       *[]string `json:"photos,omitempty"`
+
+	LogoURL               *string   `json:"logoUrl,omitempty"`
+	RegisteredCompanyName *string   `json:"registeredCompanyName,omitempty"`
+	OfstedRegNumber       *string   `json:"ofstedRegNumber,omitempty"`
+	YearEstablished       *int64    `json:"yearEstablished,omitempty"`
+	NurseryType           *string   `json:"nurseryType,omitempty"`
+	Website               *string   `json:"website,omitempty"`
+	Postcode              *string   `json:"postcode,omitempty"`
+	Email                 *string   `json:"email,omitempty"`
+	ShortDescription      *string   `json:"shortDescription,omitempty"`
+	Facilities            *[]string `json:"facilities,omitempty"`
 }
 
 // updateProfile — POST /updateProfile. Owner-only (enforced by authed()
@@ -171,6 +263,112 @@ func updateProfile(w http.ResponseWriter, r *http.Request) {
 				Value: &latlng.LatLng{Latitude: req.Location.Lat, Longitude: req.Location.Lng},
 			})
 		}
+		if req.Phone != nil {
+			updates = append(updates, firestore.Update{Path: "phone", Value: *req.Phone})
+		}
+		if req.PhotoURL != nil {
+			updates = append(updates, firestore.Update{Path: "photoUrl", Value: *req.PhotoURL})
+		}
+		if req.YearsExperience != nil {
+			updates = append(updates, firestore.Update{Path: "yearsExperience", Value: *req.YearsExperience})
+		}
+		if req.QualificationLevel != nil {
+			updates = append(updates, firestore.Update{Path: "qualificationLevel", Value: *req.QualificationLevel})
+		}
+		if req.Bio != nil {
+			updates = append(updates, firestore.Update{Path: "bio", Value: *req.Bio})
+		}
+		if req.PreviousRoles != nil {
+			updates = append(updates, firestore.Update{Path: "previousRoles", Value: *req.PreviousRoles})
+		}
+		if req.Address != nil {
+			updates = append(updates, firestore.Update{Path: "address", Value: *req.Address})
+		}
+		if req.OpeningHours != nil {
+			updates = append(updates, firestore.Update{Path: "openingHours", Value: *req.OpeningHours})
+		}
+		if req.OfstedRating != nil {
+			updates = append(updates, firestore.Update{Path: "ofstedRating", Value: *req.OfstedRating})
+		}
+		if req.Photos != nil {
+			updates = append(updates, firestore.Update{Path: "photos", Value: *req.Photos})
+		}
+		if req.Age != nil {
+			updates = append(updates, firestore.Update{Path: "age", Value: *req.Age})
+		}
+		if req.City != nil {
+			updates = append(updates, firestore.Update{Path: "city", Value: *req.City})
+		}
+		if req.TravelDistanceMiles != nil {
+			updates = append(updates, firestore.Update{Path: "travelDistanceMiles", Value: *req.TravelDistanceMiles})
+		}
+		if req.Languages != nil {
+			updates = append(updates, firestore.Update{Path: "languages", Value: *req.Languages})
+		}
+		if req.ProfessionalSummary != nil {
+			updates = append(updates, firestore.Update{Path: "professionalSummary", Value: *req.ProfessionalSummary})
+		}
+		if req.Qualifications != nil {
+			updates = append(updates, firestore.Update{Path: "qualifications", Value: *req.Qualifications})
+		}
+		if req.Skills != nil {
+			updates = append(updates, firestore.Update{Path: "skills", Value: *req.Skills})
+		}
+		if req.AvailabilityDays != nil {
+			updates = append(updates, firestore.Update{Path: "availabilityDays", Value: *req.AvailabilityDays})
+		}
+		if req.AvailabilityShifts != nil {
+			updates = append(updates, firestore.Update{Path: "availabilityShifts", Value: *req.AvailabilityShifts})
+		}
+		if req.DBSCertificateNumber != nil {
+			updates = append(updates, firestore.Update{Path: "dbsCertificateNumber", Value: *req.DBSCertificateNumber})
+		}
+		if req.DBSExpiryDate != nil {
+			t, perr := time.Parse(time.RFC3339, *req.DBSExpiryDate)
+			if perr != nil {
+				return errInvalidDBSExpiry
+			}
+			updates = append(updates, firestore.Update{Path: "dbsExpiryDate", Value: t})
+		}
+		if req.Nationality != nil {
+			updates = append(updates, firestore.Update{Path: "nationality", Value: *req.Nationality})
+		}
+		if req.VisaStatus != nil {
+			updates = append(updates, firestore.Update{Path: "visaStatus", Value: *req.VisaStatus})
+		}
+		if req.RightToWorkStatus != nil {
+			updates = append(updates, firestore.Update{Path: "rightToWorkStatus", Value: *req.RightToWorkStatus})
+		}
+		if req.LogoURL != nil {
+			updates = append(updates, firestore.Update{Path: "logoUrl", Value: *req.LogoURL})
+		}
+		if req.RegisteredCompanyName != nil {
+			updates = append(updates, firestore.Update{Path: "registeredCompanyName", Value: *req.RegisteredCompanyName})
+		}
+		if req.OfstedRegNumber != nil {
+			updates = append(updates, firestore.Update{Path: "ofstedRegNumber", Value: *req.OfstedRegNumber})
+		}
+		if req.YearEstablished != nil {
+			updates = append(updates, firestore.Update{Path: "yearEstablished", Value: *req.YearEstablished})
+		}
+		if req.NurseryType != nil {
+			updates = append(updates, firestore.Update{Path: "nurseryType", Value: *req.NurseryType})
+		}
+		if req.Website != nil {
+			updates = append(updates, firestore.Update{Path: "website", Value: *req.Website})
+		}
+		if req.Postcode != nil {
+			updates = append(updates, firestore.Update{Path: "postcode", Value: *req.Postcode})
+		}
+		if req.Email != nil {
+			updates = append(updates, firestore.Update{Path: "email", Value: *req.Email})
+		}
+		if req.ShortDescription != nil {
+			updates = append(updates, firestore.Update{Path: "shortDescription", Value: *req.ShortDescription})
+		}
+		if req.Facilities != nil {
+			updates = append(updates, firestore.Update{Path: "facilities", Value: *req.Facilities})
+		}
 		if req.Role != nil {
 			if existing.Role != "" {
 				return errRoleAlreadySet
@@ -189,11 +387,21 @@ func updateProfile(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case err == nil:
+		// Also update profilesPublic synchronously so local reads never lag
+		if snap, pErr := ref.Get(ctx); pErr == nil {
+			var updatedP Profile
+			if snap.DataTo(&updatedP) == nil {
+				pub := buildPublicFromProfile(updatedP)
+				_, _ = db.Collection("profilesPublic").Doc(uid).Set(ctx, pub)
+			}
+		}
 		httpjson.WriteJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 	case errors.Is(err, errRoleAlreadySet):
 		httpjson.WriteError(w, http.StatusConflict, "ROLE_ALREADY_SET", "Role can only be set once")
 	case errors.Is(err, errInvalidRole):
 		httpjson.WriteError(w, http.StatusBadRequest, "INVALID_ROLE", "role must be 'nursery' or 'staff'")
+	case errors.Is(err, errInvalidDBSExpiry):
+		httpjson.WriteError(w, http.StatusBadRequest, "INVALID_DBS_EXPIRY", "dbsExpiryDate must be RFC3339")
 	case status.Code(err) == codes.NotFound:
 		httpjson.WriteError(w, http.StatusNotFound, "PROFILE_NOT_FOUND", "Profile not found")
 	default:
@@ -225,7 +433,7 @@ func getProfile(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 		return
 	}
-	httpjson.WriteJSON(w, http.StatusOK, p)
+	httpjson.WriteJSON(w, http.StatusOK, withComputedFields(ctx, uid, p.Role, p))
 }
 
 // getPublicProfile — GET /getPublicProfile?uid=... Returns any user's public
@@ -247,7 +455,24 @@ func getPublicProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	snap, err := db.Collection("profilesPublic").Doc(targetUID).Get(ctx)
 	if status.Code(err) == codes.NotFound {
-		httpjson.WriteError(w, http.StatusNotFound, "PROFILE_NOT_FOUND", "Public profile not found")
+		// Fallback: build from profiles/{targetUID} if public mirror not yet populated
+		pSnap, pErr := db.Collection("profiles").Doc(targetUID).Get(ctx)
+		if status.Code(pErr) == codes.NotFound {
+			httpjson.WriteError(w, http.StatusNotFound, "PROFILE_NOT_FOUND", "Public profile not found")
+			return
+		}
+		if pErr != nil {
+			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", pErr.Error())
+			return
+		}
+		var p Profile
+		if err := pSnap.DataTo(&p); err != nil {
+			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+			return
+		}
+		pub := buildPublicFromProfile(p)
+		_, _ = db.Collection("profilesPublic").Doc(targetUID).Set(ctx, pub)
+		httpjson.WriteJSON(w, http.StatusOK, withComputedFields(ctx, targetUID, pub.Role, pub))
 		return
 	}
 	if err != nil {
@@ -259,7 +484,61 @@ func getPublicProfile(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 		return
 	}
-	httpjson.WriteJSON(w, http.StatusOK, p)
+	httpjson.WriteJSON(w, http.StatusOK, withComputedFields(ctx, targetUID, p.Role, p))
+}
+
+func buildPublicFromProfile(p Profile) ProfilePublic {
+	pub := ProfilePublic{
+		Role:      p.Role,
+		Name:      p.Name,
+		DBSBadge:  p.DBSStatus,
+		Rating:    p.Rating,
+		PhotoURL:  p.PhotoURL,
+		UpdatedAt: time.Now(),
+	}
+	if p.Location != nil {
+		pub.LocationArea = geohashPrefix(p.Location.GetLatitude(), p.Location.GetLongitude(), geohashPrecision)
+	}
+	switch p.Role {
+	case RoleStaff:
+		pub.YearsExperience = p.YearsExperience
+		pub.QualificationLevel = p.QualificationLevel
+		pub.Bio = p.Bio
+		pub.PreviousRoles = p.PreviousRoles
+		pub.Age = p.Age
+		pub.City = p.City
+		pub.TravelDistanceMiles = p.TravelDistanceMiles
+		pub.Languages = p.Languages
+		pub.ProfessionalSummary = p.ProfessionalSummary
+		pub.Qualifications = p.Qualifications
+		pub.Skills = p.Skills
+		pub.AvailabilityDays = p.AvailabilityDays
+		pub.AvailabilityShifts = p.AvailabilityShifts
+		pub.DBSExpiryDate = p.DBSExpiryDate
+		pub.Nationality = p.Nationality
+		pub.VisaStatus = p.VisaStatus
+		pub.RightToWorkStatus = p.RightToWorkStatus
+		pub.RightToWorkVerified = p.RightToWorkVerified
+	case RoleNursery:
+		pub.Description = p.Description
+		pub.OpeningHours = p.OpeningHours
+		pub.OfstedRating = p.OfstedRating
+		pub.Photos = p.Photos
+		pub.LogoURL = p.LogoURL
+		pub.RegisteredCompanyName = p.RegisteredCompanyName
+		pub.OfstedRegNumber = p.OfstedRegNumber
+		pub.YearEstablished = p.YearEstablished
+		pub.NurseryType = p.NurseryType
+		pub.Website = p.Website
+		pub.Postcode = p.Postcode
+		pub.Phone = p.Phone
+		pub.Email = p.Email
+		pub.ShortDescription = p.ShortDescription
+		pub.Facilities = p.Facilities
+		pub.IdentityVerified = p.IdentityVerified
+		pub.OfstedVerified = p.OfstedVerified
+	}
+	return pub
 }
 
 func lastPathSegment(name string) (string, error) {
@@ -305,4 +584,65 @@ func fieldGeo(fields map[string]*firestoredata.Value, key string) (*latlng.LatLn
 		}
 	}
 	return nil, false
+}
+
+func fieldIntPtr(fields map[string]*firestoredata.Value, key string) *int64 {
+	if v, ok := fields[key]; ok {
+		n := v.GetIntegerValue()
+		return &n
+	}
+	return nil
+}
+
+func fieldBool(fields map[string]*firestoredata.Value, key string) bool {
+	if v, ok := fields[key]; ok {
+		return v.GetBooleanValue()
+	}
+	return false
+}
+
+func fieldTimestamp(fields map[string]*firestoredata.Value, key string) *time.Time {
+	if v, ok := fields[key]; ok {
+		if ts := v.GetTimestampValue(); ts != nil {
+			t := ts.AsTime()
+			return &t
+		}
+	}
+	return nil
+}
+
+func fieldStringArray(fields map[string]*firestoredata.Value, key string) []string {
+	v, ok := fields[key]
+	if !ok || v.GetArrayValue() == nil {
+		return nil
+	}
+	values := v.GetArrayValue().GetValues()
+	out := make([]string, 0, len(values))
+	for _, item := range values {
+		out = append(out, item.GetStringValue())
+	}
+	return out
+}
+
+// fieldPreviousRoles converts the previousRoles array-of-maps field into
+// []PreviousRole for the public mirror — full app spec §1.2 step 2.
+func fieldPreviousRoles(fields map[string]*firestoredata.Value, key string) []PreviousRole {
+	v, ok := fields[key]
+	if !ok || v.GetArrayValue() == nil {
+		return nil
+	}
+	values := v.GetArrayValue().GetValues()
+	out := make([]PreviousRole, 0, len(values))
+	for _, item := range values {
+		m := item.GetMapValue().GetFields()
+		if m == nil {
+			continue
+		}
+		out = append(out, PreviousRole{
+			SettingName: fieldString(m, "settingName"),
+			RoleTitle:   fieldString(m, "roleTitle"),
+			Duration:    fieldString(m, "duration"),
+		})
+	}
+	return out
 }

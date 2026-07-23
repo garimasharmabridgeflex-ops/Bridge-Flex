@@ -77,7 +77,7 @@ In another terminal, with the emulators running:
 npm run seed
 ```
 
-Creates 4 Auth users + Firestore profiles (2 nurseries, 2 staff), 4 shifts (`open`/`booked`/
+Creates 5 Auth users + Firestore profiles (2 nurseries, 2 staff, 1 admin), 4 shifts (`open`/`booked`/
 `cancelled`), and — since the Pub/Sub triggers that would normally create them don't fire locally
 (see the trigger-testing gap below) — a pre-seeded chat session and notification for the one
 already-booked shift, so the communication endpoints have something real to hit immediately. Safe
@@ -89,8 +89,30 @@ to re-run; it's idempotent (skips users that already exist).
 | `nursery-willow` | nursery | owns `shift-open-2`, `shift-cancelled-1` |
 | `staff-jane` | staff | `dbsStatus: verified`; booked on `shift-booked-1` |
 | `staff-sam` | staff | `dbsStatus: pending` |
+| `admin-super` | admin | see "Roles" below — signs into the Flutter app's admin review screen |
 
 All seeded users' password is `password123`.
+
+### Roles
+
+There are exactly two marketplace roles, both just the `profiles/{uid}.role` field: `nursery` and
+`staff` (`Role` in models.go). Everything role-gated (`requireRole` in context.go — createShift,
+acceptShift, etc.) checks this field.
+
+**Admin is not a third marketplace role** — it's authorized purely by the Firebase **"admin" custom
+claim** (`isAdmin()` in documents.go), set out-of-band on the Auth user, never through any endpoint
+in this codebase. `admin-super`'s Firestore profile has `role: "admin"` only so it reads sensibly in
+the emulator UI/seed output; the Go `Role` type doesn't recognize "admin" as valid anywhere
+role-gated logic runs, and the Flutter app's `UserRole` enum maps it to `UserRole.none`. The
+frontend router (`app/router.dart`) checks the custom claim (`isAdminProvider`) before the normal
+role-select/onboarding gate, so signing in as `admin-super` lands directly on the admin document
+review screen instead of being asked to pick nursery/staff.
+
+The only admin-gated endpoint today is `reviewDocument` (approve/reject an uploaded document) plus
+`listPendingDocuments` (the review queue it works through) — there is no broader admin dashboard.
+To grant the claim on a real (non-seeded) account: `authClient.SetCustomUserClaims(ctx, uid,
+map[string]interface{}{"admin": true})` via the Admin SDK — see `seed/main.go`'s `seedUser` for the
+exact call.
 
 ## 4. Run the Cloud Functions locally
 

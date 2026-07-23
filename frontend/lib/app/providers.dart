@@ -65,7 +65,10 @@ final authStateProvider = StreamProvider<User?>(
 final ownProfileProvider = FutureProvider<Profile?>((ref) async {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return null;
-  return ref.watch(profileRepositoryProvider).fetchOwnProfile();
+  return ref.watch(profileRepositoryProvider).fetchOwnProfile(
+        fallbackUid: user.uid,
+        fallbackName: user.displayName,
+      );
 });
 
 final publicProfileProvider = FutureProvider.autoDispose.family<PublicProfile?, String>((ref, String uid) {

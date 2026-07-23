@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -51,8 +52,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _professionalSummary = TextEditingController();
   final _dbsCertificateNumber = TextEditingController();
   final _nationality = TextEditingController();
+  final _ageController = TextEditingController();
 
   String _fullPhone = '+44 ';
+  bool _phoneValid = true;
   bool _loading = false;
   bool _initialized = false;
   int _yearsExperience = 0;
@@ -66,7 +69,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   List<String> _facilities = [];
   int? _yearEstablishedValue;
 
-  int? _age;
   int _travelDistanceMiles = 10;
   List<String> _languages = [];
   List<String> _qualifications = [];
@@ -105,7 +107,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _nurseryType = profile.nurseryType;
     _facilities = List<String>.from(profile.facilities);
 
-    _age = profile.age;
+    _ageController.text = (profile.age != null && profile.age! > 0) ? '${profile.age}' : '';
     _city.text = profile.city;
     _professionalSummary.text = profile.professionalSummary;
     _dbsCertificateNumber.text = profile.dbsCertificateNumber;
@@ -143,6 +145,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _professionalSummary.dispose();
     _dbsCertificateNumber.dispose();
     _nationality.dispose();
+    _ageController.dispose();
     super.dispose();
   }
 
@@ -297,7 +300,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             shortDescription: role == UserRole.nursery ? _shortDescription.text.trim() : null,
             nurseryType: role == UserRole.nursery ? _nurseryType : null,
             facilities: role == UserRole.nursery ? _facilities : null,
-            age: role == UserRole.staff ? _age : null,
+            age: role == UserRole.staff ? int.tryParse(_ageController.text.trim()) : null,
             city: role == UserRole.staff ? _city.text.trim() : null,
             travelDistanceMiles: role == UserRole.staff ? _travelDistanceMiles : null,
             languages: role == UserRole.staff ? _languages : null,
@@ -389,6 +392,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   controller: _phone,
                   initialDialCode: '+44',
                   onChanged: (full) => setState(() => _fullPhone = full),
+                  onValidityChanged: (valid) =>
+                      setState(() => _phoneValid = valid),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 OutlinedButton.icon(
@@ -567,13 +572,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     prefixIcon: Icons.location_city_outlined,
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  Text('Age (optional)', style: Theme.of(context).textTheme.labelLarge),
-                  const SizedBox(height: 8),
-                  NumberStepper(
-                    value: _age ?? 0,
-                    min: 0,
-                    max: 80,
-                    onChanged: (v) => setState(() => _age = v == 0 ? null : v),
+                  AppTextField(
+                    label: 'Age (optional)',
+                    controller: _ageController,
+                    keyboardType: TextInputType.number,
+                    prefixIcon: Icons.cake_outlined,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(2),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.md),
                   AppTextField(label: 'About me', controller: _bio, maxLines: 3),
@@ -704,7 +711,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 PrimaryButton(
                   label: 'Save changes',
                   loading: _loading,
-                  onPressed: () => _save(profile.role),
+                  onPressed: _phoneValid ? () => _save(profile.role) : null,
                 ),
               ],
             ),

@@ -54,7 +54,7 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                "How will you use\nBridge Flex?",
+                "How will you use\nK Vision?",
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                       height: 1.15,

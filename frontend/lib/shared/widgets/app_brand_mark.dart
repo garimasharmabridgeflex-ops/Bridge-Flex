@@ -22,7 +22,7 @@ class AppBrandMark extends StatelessWidget {
         mark,
         const SizedBox(width: 12),
         Text(
-          'Bridge Flex',
+          'K Vision',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
       ],

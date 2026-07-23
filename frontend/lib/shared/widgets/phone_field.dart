@@ -90,6 +90,26 @@ const List<_Country> _countries = [
   _Country('Zimbabwe', '🇿🇼', '+263', 9, 9),
 ];
 
+// ─── Input formatter: hard-caps digit count at the selected country's max ─────
+
+/// Rejects any edit that would push the digit count past `maxDigits()` —
+/// stops the "should not pass maximum" case at the keyboard instead of
+/// merely flagging it after the fact with error text.
+class _MaxDigitsFormatter extends TextInputFormatter {
+  _MaxDigitsFormatter(this.maxDigits);
+  final int Function() maxDigits;
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digitCount = newValue.text.replaceAll(RegExp(r'\D'), '').length;
+    if (digitCount <= maxDigits()) return newValue;
+    return oldValue;
+  }
+}
+
 // ─── Widget ───────────────────────────────────────────────────────────────────
 
 /// Phone input field with a tappable country-code prefix.
@@ -107,6 +127,7 @@ class PhoneField extends StatefulWidget {
     this.onChanged,
     this.textInputAction = TextInputAction.done,
     this.onSubmitted,
+    this.onValidityChanged,
   });
 
   final TextEditingController controller;
@@ -114,6 +135,13 @@ class PhoneField extends StatefulWidget {
   final ValueChanged<String>? onChanged;
   final TextInputAction textInputAction;
   final VoidCallback? onSubmitted;
+
+  /// Fires whenever the field's validity changes — `true` once the digit
+  /// count is within the selected country's [min,max] range (or the field
+  /// is empty, since phone is optional in most flows; callers that require
+  /// it also check non-empty separately). Lets callers gate a "Next"/"Save"
+  /// button on real validity instead of just "is it non-empty".
+  final ValueChanged<bool>? onValidityChanged;
 
   @override
   State<PhoneField> createState() => _PhoneFieldState();
@@ -160,6 +188,7 @@ class _PhoneFieldState extends State<PhoneField> {
       }
     }
     if (next != _error) setState(() => _error = next);
+    widget.onValidityChanged?.call(next == null);
   }
 
   Future<void> _pickCountry() async {
@@ -172,6 +201,13 @@ class _PhoneFieldState extends State<PhoneField> {
     );
     if (result != null) {
       setState(() => _selected = result);
+      // Trim any digits beyond the newly-selected country's max, so
+      // switching from e.g. China (11 digits) to Kuwait (8) doesn't leave a
+      // stale over-length number sitting in the field.
+      final digits = widget.controller.text.replaceAll(RegExp(r'\D'), '');
+      if (digits.length > result.maxDigits) {
+        widget.controller.text = digits.substring(0, result.maxDigits);
+      }
       _notify();
     }
   }
@@ -183,7 +219,10 @@ class _PhoneFieldState extends State<PhoneField> {
       controller: widget.controller,
       keyboardType: TextInputType.phone,
       textInputAction: widget.textInputAction,
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d\s\-()]'))],
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'[\d\s\-()]')),
+        _MaxDigitsFormatter(() => _selected.maxDigits),
+      ],
       onFieldSubmitted: widget.onSubmitted != null ? (_) => widget.onSubmitted!() : null,
       decoration: InputDecoration(
         labelText: 'Phone number',

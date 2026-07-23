@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme.dart';
@@ -8,7 +9,12 @@ import '../../../shared/constants/profile_options.dart';
 import '../../../shared/widgets/chip_multi_select.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/status_badge.dart';
+import '../../ratings/domain/review.dart';
 import '../domain/profile.dart';
+
+final reviewsProvider = FutureProvider.autoDispose.family<List<Review>, String>((ref, uid) {
+  return ref.watch(ratingsRepositoryProvider).listRatings(uid);
+});
 
 class PublicProfileScreen extends ConsumerWidget {
   const PublicProfileScreen({super.key, required this.uid});
@@ -145,6 +151,8 @@ class PublicProfileScreen extends ConsumerWidget {
                 NurseryDetails(profile: profile)
               else
                 StaffDetails(profile: profile),
+              const SizedBox(height: AppSpacing.lg),
+              ReviewsList(uid: uid),
             ],
           );
         },
@@ -410,8 +418,8 @@ class StaffDetails extends StatelessWidget {
                 avatar: const Icon(Icons.verified_user_rounded, color: AppColors.mint, size: 18),
                 label: Text(
                   profile.dbsExpiryDate != null
-                      ? 'DBS Verified by Bridge Flex · expires ${profile.dbsExpiryDate!.day}/${profile.dbsExpiryDate!.month}/${profile.dbsExpiryDate!.year}'
-                      : 'DBS Verified by Bridge Flex',
+                      ? 'DBS Verified by K Vision · expires ${profile.dbsExpiryDate!.day}/${profile.dbsExpiryDate!.month}/${profile.dbsExpiryDate!.year}'
+                      : 'DBS Verified by K Vision',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               )
@@ -538,6 +546,116 @@ class ProfileInfoRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Individual reviews, newest first — the aggregate rating/ratingBreakdown
+/// alone doesn't tell a nursery/staff member *who* said what, which both
+/// reference designs treat as a core part of a profile.
+class ReviewsList extends ConsumerWidget {
+  const ReviewsList({super.key, required this.uid});
+  final String uid;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final reviewsAsync = ref.watch(reviewsProvider(uid));
+    return reviewsAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (reviews) {
+        if (reviews.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Reviews', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: AppSpacing.sm),
+            for (var i = 0; i < reviews.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: _ReviewTile(review: reviews[i]).animate().fadeIn(delay: (i * 40).ms, duration: 250.ms),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ReviewTile extends ConsumerWidget {
+  const _ReviewTile({required this.review});
+  final Review review;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final raterAsync = ref.watch(publicProfileProvider(review.raterId));
+    final raterName = raterAsync.valueOrNull?.name;
+    final displayName = (raterName == null || raterName.isEmpty) ? 'K Vision user' : raterName;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: scheme.primary.withValues(alpha: 0.12),
+              backgroundImage:
+                  (raterAsync.valueOrNull?.photoUrl.isNotEmpty ?? false) ? NetworkImage(raterAsync.valueOrNull!.photoUrl) : null,
+              child: (raterAsync.valueOrNull?.photoUrl.isEmpty ?? true)
+                  ? Text(
+                      displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                      style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary, fontSize: 13),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      if (review.createdAt != null)
+                        Text(
+                          DateFormat('d MMM yyyy').format(review.createdAt!),
+                          style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: List.generate(5, (i) {
+                      return Icon(
+                        i < review.score ? Icons.star_rounded : Icons.star_border_rounded,
+                        size: 14,
+                        color: AppColors.amber,
+                      );
+                    }),
+                  ),
+                  if (review.comment.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(review.comment, style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

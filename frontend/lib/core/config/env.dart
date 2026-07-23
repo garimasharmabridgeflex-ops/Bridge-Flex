@@ -11,6 +11,7 @@ enum ApiFunction {
   updateProfile(8101),
   getProfile(8102),
   getPublicProfile(8103),
+  deleteAccount(8118),
   createShift(8104),
   updateShift(8105),
   listOpenShifts(8106),
@@ -20,6 +21,7 @@ enum ApiFunction {
   cancelShift(8109),
   markNoShow(8116),
   createRating(8110),
+  listRatings(8145),
   createDocument(8111),
   reviewDocument(8112),
   getDocumentStatus(8114),
@@ -47,22 +49,18 @@ enum ApiFunction {
 class Env {
   Env._();
 
-  /// True while pointed at the Firebase Emulator Suite + local Go
-  /// processes instead of a deployed project. Flip this (or wire it to
-  /// --dart-define) once real Cloud Functions/Firebase are deployed.
-  static const bool useLocalBackend = true;
+  /// Driven by `--dart-define=USE_LOCAL_BACKEND=false` when building for production.
+  static const bool useLocalBackend = bool.fromEnvironment('USE_LOCAL_BACKEND', defaultValue: true);
 
-  static const String firebaseProjectId = 'demo-bridgeflex';
+  static const String firebaseProjectId = String.fromEnvironment('PROJECT_ID', defaultValue: 'kvision-503115');
+
+  static const String region = String.fromEnvironment('REGION', defaultValue: 'europe-west2');
 
   static const int authEmulatorPort = 9099;
   static const int firestoreEmulatorPort = 8180;
   static const int storageEmulatorPort = 9199;
 
-  /// Host to reach the dev machine from wherever the app is running.
-  /// - Web: the app runs in the same browser sandbox, so `localhost` works.
-  /// - Android emulator: `10.0.2.2` is the special alias for the host loopback.
-  /// - Physical device / iOS simulator / desktop: override via
-  ///   `--dart-define=DEV_HOST=<lan-ip>` since the device can't see `localhost`.
+  /// Host to reach the dev machine from wherever the app is running in dev mode.
   static String get devHost {
     const override = String.fromEnvironment('DEV_HOST');
     if (override.isNotEmpty) return override;
@@ -71,6 +69,11 @@ class Env {
     return 'localhost';
   }
 
-  static Uri functionUri(ApiFunction fn) =>
-      Uri.parse('http://$devHost:${fn.localPort}');
+  static Uri functionUri(ApiFunction fn) {
+    if (useLocalBackend) {
+      return Uri.parse('http://$devHost:${fn.localPort}');
+    }
+    final fnName = fn.name[0].toUpperCase() + fn.name.substring(1);
+    return Uri.parse('https://$region-$firebaseProjectId.cloudfunctions.net/$fnName');
+  }
 }

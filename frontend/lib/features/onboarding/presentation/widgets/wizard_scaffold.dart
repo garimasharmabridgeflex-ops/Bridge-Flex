@@ -56,35 +56,69 @@ class WizardStepScaffold extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
+            child: Column(
               children: [
-                if (onBack != null) ...[
-                  IconButton(
-                    onPressed: onBack,
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Expanded(
-                  child: Row(
-                    children: List.generate(stepCount, (i) {
-                      final active = i <= stepIndex;
-                      return Expanded(
-                        child: Container(
-                          height: 4,
-                          margin: EdgeInsets.only(right: i == stepCount - 1 ? 0 : 6),
-                          decoration: BoxDecoration(
-                            color: active ? scheme.primary : scheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(AppRadius.pill),
-                          ),
+                Row(
+                  children: [
+                    if (onBack != null)
+                      IconButton(
+                        onPressed: onBack,
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      )
+                    else
+                      const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
                         ),
-                      );
-                    }),
-                  ),
+                      ),
+                    ),
+                    const SizedBox(width: 40),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Step Dot Bar
+                Row(
+                  children: List.generate(stepCount, (i) {
+                    final isDone = i < stepIndex;
+                    final isCurrent = i == stepIndex;
+                    return Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isCurrent
+                                  ? AppColors.primary
+                                  : (isDone ? AppColors.primary : Colors.transparent),
+                              border: Border.all(
+                                color: (isDone || isCurrent)
+                                    ? AppColors.primary
+                                    : scheme.outlineVariant,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          if (i < stepCount - 1)
+                            Expanded(
+                              child: Container(
+                                height: 2,
+                                color: isDone ? AppColors.primary : scheme.outlineVariant,
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
                 ),
               ],
             ),

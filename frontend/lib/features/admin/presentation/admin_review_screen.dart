@@ -22,7 +22,7 @@ final allUsersProvider = FutureProvider.autoDispose((ref) {
   return ref.watch(adminRepositoryProvider).listAllUsers();
 });
 
-/// The Bridge Flex super-admin's home screen — full app spec admin-page
+/// The K Vision super-admin's home screen — full app spec admin-page
 /// request: a platform-metrics dashboard, the documents review queue, and
 /// user management (view profile/documents, suspend, verification badges).
 /// Reached only via router.dart's isAdminProvider short-circuit, never

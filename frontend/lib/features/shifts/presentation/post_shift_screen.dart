@@ -42,9 +42,6 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
   @override
   void initState() {
     super.initState();
-    // _detailsValid/_payValid read straight from these controllers, so
-    // without a rebuild on every keystroke, canContinue/Publish never
-    // re-evaluates and the button just looks permanently disabled.
     _title.addListener(_rebuild);
     _payRate.addListener(_rebuild);
   }
@@ -251,18 +248,22 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
             body: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Age group', style: Theme.of(context).textTheme.labelLarge),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: ageGroupOptions.map((g) {
-                    return ChoiceChip(
-                      label: Text(g),
-                      selected: g == _ageGroup,
-                      onSelected: (_) => setState(() => _ageGroup = g),
-                    );
-                  }).toList(),
+                DropdownButtonFormField<String>(
+                  initialValue: _ageGroup,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Age group',
+                    prefixIcon: Icon(Icons.child_care_rounded),
+                  ),
+                  items: ageGroupOptions
+                      .map((g) => DropdownMenuItem(
+                            value: g,
+                            child: Text(g, overflow: TextOverflow.ellipsis),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _ageGroup = v);
+                  },
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Row(

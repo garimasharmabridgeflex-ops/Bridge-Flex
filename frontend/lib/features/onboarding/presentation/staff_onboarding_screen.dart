@@ -36,6 +36,7 @@ class _StaffOnboardingScreenState
 
   // The full phone string (dialCode + local), kept in sync by PhoneField.
   String _fullPhone = '+44 ';
+  bool _phoneValid = true;
 
   // Step 2: Experience
   int _yearsExperience = 0;
@@ -79,7 +80,8 @@ class _StaffOnboardingScreenState
   // "Next" is enabled only when both required fields have content.
   bool get _basicsValid =>
       _nameController.text.trim().isNotEmpty &&
-      _phoneController.text.trim().isNotEmpty;
+      _phoneController.text.trim().isNotEmpty &&
+      _phoneValid;
 
   void _goTo(int step) {
     _pageController.animateToPage(
@@ -199,6 +201,8 @@ class _StaffOnboardingScreenState
                   initialDialCode: '+44',
                   textInputAction: TextInputAction.done,
                   onChanged: (full) => setState(() => _fullPhone = full),
+                  onValidityChanged: (valid) =>
+                      setState(() => _phoneValid = valid),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 OutlinedButton.icon(
@@ -262,13 +266,13 @@ class _StaffOnboardingScreenState
             ),
           ),
 
-          // ── Step 3: DBS ───────────────────────────────────────────────
+          // ── Step 3: Documents ────────────────────────────────────────
           WizardStepScaffold(
             stepIndex: 2,
             stepCount: 3,
-            title: 'DBS verification',
+            title: 'Upload documents',
             subtitle:
-                "You can browse shifts now, but you'll need this to accept one.",
+                "You can browse shifts now, but you'll need your DBS and other checks verified to accept one.",
             illustration: const OnboardingIllustration(
               icon: Icons.verified_user_rounded,
               color: AppColors.coral,
@@ -282,11 +286,11 @@ class _StaffOnboardingScreenState
               children: [
                 if (dbsStatus == DbsStatus.unverified) ...[
                   const Text(
-                    'Upload a photo of your DBS certificate now, or skip and do it later from your profile.',
+                    'Upload your DBS certificate, ID, qualifications and any other documents now, or skip and do it later from your profile.',
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   PrimaryButton(
-                    label: 'Upload DBS certificate',
+                    label: 'Upload documents',
                     icon: Icons.upload_file_outlined,
                     expand: true,
                     onPressed: () async {
@@ -323,7 +327,7 @@ class _StaffOnboardingScreenState
                       ref.invalidate(ownProfileProvider);
                     },
                     icon: const Icon(Icons.upload_file_outlined, size: 18),
-                    label: const Text('Upload a different certificate'),
+                    label: const Text('Manage documents'),
                   ),
                 ],
               ],

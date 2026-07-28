@@ -26,7 +26,7 @@ deploy_pubsub_trigger() {
     --trigger-topic="$topic" --quiet
 }
 
-# HTTP endpoints — ports in run-local.sh, same 7 functions.
+# HTTP endpoints — ports in run-local.sh, same 8 functions.
 deploy_http RegisterFcmToken
 deploy_http UnregisterFcmToken
 deploy_http SendChatMessage
@@ -34,13 +34,17 @@ deploy_http ListChatMessages
 deploy_http ListChatSessions
 deploy_http ListNotifications
 deploy_http MarkNotificationRead
+deploy_http MarkAllNotificationsRead
 
-# Pub/Sub triggers — same 3 functions covered by triggers_test.go. Topics
-# are auto-created by acceptShift/recomputeRating/matchNewShift's publish()
-# helper in core if they don't already exist (see core/function/context.go
-# ensureTopic) — no manual `gcloud pubsub topics create` needed first.
+# Pub/Sub triggers — same 4 functions covered by triggers_test.go (plus
+# OnShiftCancelled, added after that test file's initial 3). Topics are
+# auto-created by acceptShift/cancelShift/recomputeRating/matchNewShift's
+# publish() helper in core if they don't already exist (see
+# core/function/context.go ensureTopic) — no manual `gcloud pubsub topics
+# create` needed first.
 deploy_pubsub_trigger OnShiftBooked shift-booked
 deploy_pubsub_trigger OnRatingReceived rating-received
 deploy_pubsub_trigger OnShiftMatched shift-matched
+deploy_pubsub_trigger OnShiftCancelled shift-cancelled
 
-echo "functions-communication: all 10 functions deployed."
+echo "functions-communication: all 12 functions deployed."

@@ -64,6 +64,7 @@ class AuthRepository {
     }
     if (user != null) {
       await _ensureProfileDocument(user.uid, user.displayName ?? '');
+      unawaited(_syncGooglePhotoIfUnset(user.uid, user.photoURL));
     }
   }
 
@@ -133,6 +134,26 @@ class AuthRepository {
       }).timeout(const Duration(seconds: 8));
     } catch (_) {
       // Best-effort — see doc comment above.
+    }
+  }
+
+  /// Fills the app profile's photo from the signed-in Google account —
+  /// *only* while the profile has no photo of its own. Runs on every Google
+  /// sign-in (not just the first), so a user who never uploaded a custom
+  /// photo keeps picking up their current Gmail avatar, but the moment
+  /// they set one in-app, this stops touching the field permanently.
+  Future<void> _syncGooglePhotoIfUnset(String uid, String? googlePhotoUrl) async {
+    if (googlePhotoUrl == null || googlePhotoUrl.isEmpty) return;
+    try {
+      await Future(() async {
+        final ref = _firestore.collection('profiles').doc(uid);
+        final snap = await ref.get();
+        final existingPhoto = snap.data()?['photoUrl'] as String?;
+        if (existingPhoto != null && existingPhoto.isNotEmpty) return;
+        await ref.set({'photoUrl': googlePhotoUrl}, SetOptions(merge: true));
+      }).timeout(const Duration(seconds: 8));
+    } catch (_) {
+      // Best-effort — same rationale as _ensureProfileDocument above.
     }
   }
 

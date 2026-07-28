@@ -63,11 +63,30 @@ final adminRepositoryProvider = Provider<AdminRepository>(
 /// after a timeout, rather than leaving this pending forever, closes that
 /// gap: worst case a real session takes an extra beat to restore and the
 /// user has to sign in again, instead of never getting past splash at all.
+///
+/// This only guards the *first* event: `Stream.timeout()` restarts its
+/// clock after every event it sees, including ones this callback itself
+/// declines to emit — a naive version of this fired repeatedly during any
+/// long quiet stretch (normal once someone's actually signed in, since
+/// nothing further changes auth state) and injected a spurious "signed
+/// out" partway through a real session, bouncing the user back to the
+/// sign-in screen. `_sawFirstEvent` makes the fallback a one-shot: once a
+/// real event has come through, later timeout ticks are no-ops.
 final authStateProvider = StreamProvider<User?>((ref) {
-  return ref.watch(authRepositoryProvider).authStateChanges.timeout(
+  var sawFirstEvent = false;
+  return ref
+      .watch(authRepositoryProvider)
+      .authStateChanges
+      .timeout(
         const Duration(seconds: 10),
-        onTimeout: (sink) => sink.add(null),
-      );
+        onTimeout: (sink) {
+          if (!sawFirstEvent) sink.add(null);
+        },
+      )
+      .map((user) {
+        sawFirstEvent = true;
+        return user;
+      });
 });
 
 /// The signed-in user's own profile (role, dbsStatus, rating). Fetched over

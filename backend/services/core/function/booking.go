@@ -329,7 +329,9 @@ func cancelShift(w http.ResponseWriter, r *http.Request) {
 	// Published after commit succeeds, same rationale as acceptShift (§4/§1):
 	// Pub/Sub isn't part of Firestore's transactional guarantee.
 	if notify != nil {
-		_ = publish(ctx, topicShiftCancelled, *notify)
+		if err := publish(ctx, topicShiftCancelled, *notify); err != nil {
+			log.Printf("cancelShift: publish shift-cancelled for shift %s failed: %v", req.ShiftID, err)
+		}
 	}
 
 	httpjson.WriteJSON(w, http.StatusOK, map[string]string{"shiftId": req.ShiftID, "status": resultStatus})

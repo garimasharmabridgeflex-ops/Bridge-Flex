@@ -223,6 +223,9 @@ port.
 
 ## Known gaps, stated plainly
 
+Local-dev-specific gaps only — for the full, current list of production limitations and known
+bugs, see [`KNOWN_ISSUES.md`](../KNOWN_ISSUES.md) at the repo root.
+
 - **No local end-to-end trigger dispatch for Go** (above) — covered by unit tests instead of live
   emulation.
 - **`ReviewDocument`'s admin check has no self-service path** — deliberately: the `admin` custom
@@ -235,29 +238,29 @@ port.
 - **Payments is a stub** (`services/payments/TODO.md`) — no Stripe dependency, no real charge/
   payout logic, by design (ARCHITECTURE.md v2 §5).
 
-## Going live (not needed for Phase 0/1)
+## Going live
 
-Deploying any of this to a real Firebase project requires upgrading to the Blaze (pay-as-you-go)
-plan — a required step for any non-emulated Cloud Functions/Cloud Run deployment, not a policy
-this project can route around. Usage can stay entirely within the free quota; the card-linking
-requirement exists regardless. That's a separate, later decision — everything above is designed
-to be fully developed and tested without it.
+**This is already live** — production runs on Firebase project `kvision-503115` (region
+`europe-west2`). `deploy.sh` (below) is the repeatable "push a code change" path; the one-time
+project provisioning it depends on (GCP resource location, Firestore region, IAM roles, Auth/
+Storage initialization) is **not** captured in this repo as code — see
+[`PRODUCTION_SETUP.md`](PRODUCTION_SETUP.md) for that runbook, written up from what production
+actually needed. Read it before assuming a fresh project will "just work" off `deploy.sh` alone —
+several of the bugs it documents produced functions that deployed successfully and showed
+`ACTIVE` while being completely broken for real users.
 
-When you're ready:
+To push a code change to the existing production project:
 
-1. Create a real Firebase project (not `demo-bridgeflex` — that ID only resolves against the
-   emulators) and upgrade it to Blaze.
-2. `gcloud auth login` and `gcloud config set project YOUR_PROJECT_ID`.
-3. `PROJECT_ID=your-real-project-id ./deploy.sh` — deploys Firestore/Storage rules via the normal
-   Firebase CLI, then all 26 Cloud Functions (2nd gen) via `gcloud` directly. **`firebase deploy
+1. `gcloud auth login` and `gcloud config set project kvision-503115`.
+2. `PROJECT_ID=kvision-503115 ./deploy.sh` — deploys Firestore/Storage rules via the normal
+   Firebase CLI, then all 27 Cloud Functions (2nd gen) via `gcloud` directly. **`firebase deploy
    --only functions` does not work here** — that path only supports Node/Python codebases; Go
    requires `gcloud functions deploy` per function, which is what `deploy.sh` (and the
    per-service `services/*/deploy.sh` it calls) automates. Read those scripts for the exact
    trigger config (event filters, Pub/Sub topics) per function.
-4. Fill in `bruno/environments/Production.bru` with the deployed URLs (`gcloud functions describe
+3. Fill in `bruno/environments/Production.bru` with the deployed URLs (`gcloud functions describe
    NAME --gen2 --region=... --format='value(serviceConfig.uri)'` per function — each one gets its
    own URL, unlike the emulator's one-host-many-ports scheme).
 
-Real Stripe Connect work (`services/payments/TODO.md`) is the other piece that still needs
-building before payments does anything beyond the 501 stub — deploying it as-is just makes the
-stub reachable over HTTPS, nothing more.
+See [`KNOWN_ISSUES.md`](../KNOWN_ISSUES.md) at the repo root for what's still stubbed, missing, or
+otherwise not production-complete (payments, iOS distribution, custom domain, etc.).

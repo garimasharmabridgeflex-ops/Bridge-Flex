@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// The K Vision logo mark — cropped from the source brand asset, transparent
+/// The Bridge Flex logo mark — cropped from the source brand asset, transparent
 /// background so it sits cleanly on any surface/theme.
 class AppBrandMark extends StatelessWidget {
   const AppBrandMark({super.key, this.size = 44, this.withWordmark = false});
@@ -22,7 +22,7 @@ class AppBrandMark extends StatelessWidget {
         mark,
         const SizedBox(width: 12),
         Text(
-          'K Vision',
+          'Bridge Flex',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
       ],

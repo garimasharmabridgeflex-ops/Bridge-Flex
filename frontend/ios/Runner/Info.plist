@@ -7,7 +7,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
-		<string>K Vision</string>
+		<string>Bridge Flex</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -18,6 +18,19 @@
 		<string>bridgeflex_app</string>
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<!-- REVERSED_CLIENT_ID from GoogleService-Info.plist — required
+					     for Firebase Auth's Google sign-in redirect to return here. -->
+					<string>com.googleusercontent.apps.288297326448-t5jua0m16qbp6mqlmca1dkbq4mha1qb0</string>
+				</array>
+			</dict>
+		</array>
 		<key>CFBundleShortVersionString</key>
 		<string>$(FLUTTER_BUILD_NAME)</string>
 		<key>CFBundleSignature</key>

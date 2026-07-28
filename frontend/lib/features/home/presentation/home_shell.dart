@@ -101,7 +101,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         onDestinationSelected: (i) => setState(() => _index = i),
         items: items,
         // Both reference designs put the primary "create" action as a
-        // raised center button rather than a plain tab — for K Vision
+        // raised center button rather than a plain tab — for Bridge Flex
         // that's "post a shift", which only makes sense for nurseries.
         centerAction: isStaff
             ? null

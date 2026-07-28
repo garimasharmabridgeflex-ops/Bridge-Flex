@@ -242,14 +242,28 @@ func updateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	ref := db.Collection("profiles").Doc(uid)
 
+	var creating bool
 	err = db.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
 		snap, err := tx.Get(ref)
-		if err != nil {
+		creating = status.Code(err) == codes.NotFound
+		if err != nil && !creating {
 			return err
 		}
 		var existing Profile
-		if err := snap.DataTo(&existing); err != nil {
-			return err
+		// No profiles/{uid} doc yet. Normally one already exists by the time
+		// UpdateProfile is ever called — created either by initProfileOnSignUp
+		// (an Eventarc Auth trigger this project's Eventarc setup can't
+		// deploy — no firebaseauth.googleapis.com provider registered) or by
+		// the client's own best-effort _ensureProfileDocument fallback. Both
+		// are outside this function's control, so falling through to a
+		// generic 404 here would leave a real signed-up user stuck unable to
+		// ever complete onboarding. `existing` just stays the zero Profile{}
+		// in that case — role-already-set check below still works correctly
+		// against a zero-value "" role.
+		if !creating {
+			if err := snap.DataTo(&existing); err != nil {
+				return err
+			}
 		}
 
 		var updates []firestore.Update
@@ -381,10 +395,23 @@ func updateProfile(w http.ResponseWriter, r *http.Request) {
 			}
 			updates = append(updates, firestore.Update{Path: "role", Value: role})
 		}
-		if len(updates) == 0 {
+		if !creating && len(updates) == 0 {
 			return nil
 		}
-		return tx.Update(ref, updates)
+		if !creating {
+			return tx.Update(ref, updates)
+		}
+		// Same default shape initProfileOnSignUp/_ensureProfileDocument both
+		// seed, merged with whatever this call itself is setting.
+		fields := map[string]any{
+			"dbsStatus": DBSUnverified,
+			"rating":    Rating{},
+			"createdAt": time.Now(),
+		}
+		for _, u := range updates {
+			fields[u.Path] = u.Value
+		}
+		return tx.Set(ref, fields, firestore.MergeAll)
 	})
 
 	switch {

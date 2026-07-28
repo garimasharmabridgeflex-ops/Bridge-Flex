@@ -418,8 +418,8 @@ class StaffDetails extends StatelessWidget {
                 avatar: const Icon(Icons.verified_user_rounded, color: AppColors.mint, size: 18),
                 label: Text(
                   profile.dbsExpiryDate != null
-                      ? 'DBS Verified by K Vision · expires ${profile.dbsExpiryDate!.day}/${profile.dbsExpiryDate!.month}/${profile.dbsExpiryDate!.year}'
-                      : 'DBS Verified by K Vision',
+                      ? 'DBS Verified by Bridge Flex · expires ${profile.dbsExpiryDate!.day}/${profile.dbsExpiryDate!.month}/${profile.dbsExpiryDate!.year}'
+                      : 'DBS Verified by Bridge Flex',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               )
@@ -595,7 +595,7 @@ class _ReviewTile extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final raterAsync = ref.watch(publicProfileProvider(review.raterId));
     final raterName = raterAsync.valueOrNull?.name;
-    final displayName = (raterName == null || raterName.isEmpty) ? 'K Vision user' : raterName;
+    final displayName = (raterName == null || raterName.isEmpty) ? 'Bridge Flex user' : raterName;
 
     return Card(
       child: Padding(

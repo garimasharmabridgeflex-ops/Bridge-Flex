@@ -41,7 +41,7 @@ class SplashScreen extends StatelessWidget {
                 .rotate(begin: -0.02, end: 0.02),
             const SizedBox(height: AppSpacing.md),
             Text(
-              'K Vision',
+              'Bridge Flex',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,

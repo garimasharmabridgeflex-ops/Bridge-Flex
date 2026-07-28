@@ -39,7 +39,7 @@ String qualificationLevelLabel(QualificationLevel level) => switch (level) {
       QualificationLevel.level4Plus => 'Level 4+',
     };
 
-/// Self-reported by the nursery, never verified by K Vision —
+/// Self-reported by the nursery, never verified by Bridge Flex —
 /// full app spec §1.3 step 2.
 enum OfstedRating { notRated, requiresImprovement, good, outstanding, inadequate }
 

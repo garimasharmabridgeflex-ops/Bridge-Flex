@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// K Vision brand palette. Deep indigo for trust/professionalism, warm
+/// Bridge Flex brand palette. Deep indigo for trust/professionalism, warm
 /// rose for the "act now" moments (accept shift, post shift) — deliberately
 /// pink/red rather than orange/amber-toned so it stays distinct from the
 /// warm-orange accent used elsewhere in the sector's app UI conventions.

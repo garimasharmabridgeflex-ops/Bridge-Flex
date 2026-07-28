@@ -2,12 +2,23 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
+import '../../../core/config/env.dart';
+
+/// The project's Web OAuth client (client_type 3 in google-services.json) —
+/// not a secret (see CONFIG_AND_KEYS.md), just the audience Firebase expects
+/// the Google ID token to be issued for. Passed as `serverClientId` so
+/// Android's native picker returns a token Firebase can actually verify.
+const _googleWebClientId =
+    '288297326448-k8d6as8g4ouv4iur0romitcffg1sq5o9.apps.googleusercontent.com';
 
 class AuthRepository {
   AuthRepository(this._auth, this._firestore);
 
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
+  bool _googleSignInInitialized = false;
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
@@ -31,20 +42,50 @@ class AuthRepository {
     unawaited(_sendVerificationEmailBestEffort(credential.user));
   }
 
-  /// "Sign in with Google" via Firebase Auth's built-in provider flow
-  /// (not the separate `google_sign_in` package) — deliberately, since this
-  /// project currently runs against a `demo-*` Firebase project
-  /// (firebase_options.dart) with no real Google OAuth client configured.
-  /// `signInWithProvider` is Auth-emulator-aware and shows a fake identity
-  /// picker locally with zero extra setup; swapping in a real Firebase
-  /// project later (and registering OAuth clients / SHA-1 fingerprints in
-  /// its console) makes this start working for real with no code change.
+  /// "Sign in with Google". Two different flows depending on target:
+  ///
+  /// - **Local dev** (`Env.useLocalBackend`, against `demo-bridgeflex`):
+  ///   Firebase Auth's built-in generic-provider flow (`signInWithProvider`).
+  ///   No real Google OAuth client exists for the demo project, but the Auth
+  ///   emulator fakes an identity picker for this flow with zero setup.
+  /// - **Real builds**: the native `google_sign_in` plugin, which drives
+  ///   Android's Credential Manager account picker / iOS's native sheet —
+  ///   the platform-native experience users expect, rather than
+  ///   `signInWithProvider`'s browser-redirect flow (which technically works
+  ///   against a real project, but opens a Custom Tab instead of a native
+  ///   picker — not what "Sign in with Google" normally looks like).
   Future<void> signInWithGoogle() async {
-    final credential = await _auth.signInWithProvider(GoogleAuthProvider());
-    final user = credential.user;
+    final User? user;
+    if (Env.useLocalBackend) {
+      final credential = await _auth.signInWithProvider(GoogleAuthProvider());
+      user = credential.user;
+    } else {
+      user = await _signInWithGoogleNative();
+    }
     if (user != null) {
       await _ensureProfileDocument(user.uid, user.displayName ?? '');
     }
+  }
+
+  Future<User?> _signInWithGoogleNative() async {
+    final googleSignIn = GoogleSignIn.instance;
+    if (!_googleSignInInitialized) {
+      await googleSignIn.initialize(serverClientId: _googleWebClientId);
+      _googleSignInInitialized = true;
+    }
+
+    final GoogleSignInAccount account;
+    try {
+      account = await googleSignIn.authenticate();
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) return null;
+      rethrow;
+    }
+
+    final idToken = account.authentication.idToken;
+    final credential = GoogleAuthProvider.credential(idToken: idToken);
+    final userCredential = await _auth.signInWithCredential(credential);
+    return userCredential.user;
   }
 
   /// Firebase Auth's own "verify your email" send — full app spec: "the app

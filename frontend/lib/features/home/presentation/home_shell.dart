@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
+import '../../../core/update/app_update_service.dart';
 import '../../chat/presentation/chat_list_screen.dart';
 import '../../profile/domain/profile.dart';
 import '../../shifts/presentation/browse_shifts_screen.dart';
@@ -13,6 +14,7 @@ import '../../training/presentation/training_screen.dart';
 import 'widgets/email_verification_banner.dart';
 import 'widgets/floating_nav_bar.dart';
 import 'widgets/profile_completion_banner.dart';
+import 'widgets/update_banner.dart';
 
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
@@ -25,12 +27,29 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
   bool _bannerDismissed = false;
   bool _verifyBannerDismissed = false;
+  bool _updateBannerDismissed = false;
+  bool _requiredUpdateDialogShown = false;
 
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(ownProfileProvider).valueOrNull;
     final isStaff = profile?.role == UserRole.staff;
     final emailVerified = ref.watch(emailVerifiedProvider).valueOrNull ?? true;
+
+    // A required update blocks with a dialog rather than a banner — shown
+    // at most once per HomeShell mount (fetch itself only runs once, since
+    // appUpdateStatusProvider isn't autoDispose/family, so re-triggering
+    // isn't a concern here).
+    ref.listen(appUpdateStatusProvider, (_, next) {
+      final info = next.valueOrNull;
+      if (info != null && info.status == AppUpdateStatus.required && !_requiredUpdateDialogShown) {
+        _requiredUpdateDialogShown = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) showRequiredUpdateDialog(context, info.downloadUrl);
+        });
+      }
+    });
+    final updateInfo = ref.watch(appUpdateStatusProvider).valueOrNull;
 
     final tabs = [
       if (isStaff) const BrowseShiftsScreen(),
@@ -75,6 +94,13 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             if (!emailVerified && !_verifyBannerDismissed)
               EmailVerificationBanner(
                 onDismiss: () => setState(() => _verifyBannerDismissed = true),
+              ),
+            if (updateInfo != null &&
+                updateInfo.status == AppUpdateStatus.optional &&
+                !_updateBannerDismissed)
+              UpdateAvailableBanner(
+                downloadUrl: updateInfo.downloadUrl,
+                onDismiss: () => setState(() => _updateBannerDismissed = true),
               ),
             if (showBanner)
               ProfileCompletionBanner(

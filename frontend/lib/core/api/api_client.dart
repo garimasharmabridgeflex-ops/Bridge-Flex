@@ -16,19 +16,29 @@ class ApiClient {
   final FirebaseAuth _auth;
   final http.Client _http = http.Client();
 
+  // Firebase's own token-refresh call and the HTTP request itself both used
+  // to be able to hang indefinitely on a bad connection — with nothing
+  // above this layer imposing a limit either, that could strand a caller
+  // forever (ownProfileProvider sits on the splash → app redirect path in
+  // router.dart, so this wasn't just a slow-spinner problem).
+  static const _tokenTimeout = Duration(seconds: 10);
+  static const _requestTimeout = Duration(seconds: 15);
+
   Future<Map<String, dynamic>> post(
     ApiFunction fn, {
     Map<String, dynamic> body = const {},
   }) async {
-    final token = await _auth.currentUser?.getIdToken();
-    final response = await _http.post(
-      Env.functionUri(fn),
-      headers: {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(body),
-    );
+    final token = await _auth.currentUser?.getIdToken().timeout(_tokenTimeout);
+    final response = await _http
+        .post(
+          Env.functionUri(fn),
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(_requestTimeout);
     return _decode(response);
   }
 
@@ -40,15 +50,17 @@ class ApiClient {
     ApiFunction fn, {
     Map<String, String> query = const {},
   }) async {
-    final token = await _auth.currentUser?.getIdToken();
+    final token = await _auth.currentUser?.getIdToken().timeout(_tokenTimeout);
     final uri = Env.functionUri(fn).replace(queryParameters: query);
-    final response = await _http.post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      },
-    );
+    final response = await _http
+        .post(
+          uri,
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+        )
+        .timeout(_requestTimeout);
     return _decode(response);
   }
 

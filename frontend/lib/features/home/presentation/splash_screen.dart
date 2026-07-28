@@ -1,11 +1,59 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/providers.dart';
 import '../../../app/theme.dart';
 import '../../../shared/widgets/app_brand_mark.dart';
 
-class SplashScreen extends StatelessWidget {
+/// Splash previously had no way out if the app got stuck here — router.dart
+/// waits on a chain of auth/profile providers before it'll navigate away,
+/// and every one of those has since been given its own timeout/fallback.
+/// This is the last line of defense on top of those: if none of that
+/// resolves things within [_stuckAfter], show a manual "sign out and
+/// retry" escape hatch rather than leaving the user stranded with no
+/// recourse but force-quitting the app.
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
+
+  @override
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends ConsumerState<SplashScreen> {
+  static const _stuckAfter = Duration(seconds: 12);
+
+  bool _showRetry = false;
+  bool _retrying = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(_stuckAfter, () {
+      if (mounted) setState(() => _showRetry = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _retry() async {
+    setState(() => _retrying = true);
+    try {
+      await ref.read(firebaseAuthProvider).signOut();
+    } catch (_) {
+      // Best-effort — even if sign-out itself fails, falling through lets
+      // the user see the retry button again rather than hanging silently.
+    } finally {
+      if (mounted) setState(() => _retrying = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +95,20 @@ class SplashScreen extends StatelessWidget {
                     letterSpacing: 0.5,
                   ),
             ).animate().fadeIn(delay: 250.ms, duration: 400.ms).slideY(begin: 0.2, end: 0),
+            if (_showRetry) ...[
+              const SizedBox(height: AppSpacing.xl),
+              Text(
+                'This is taking longer than usual.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextButton(
+                onPressed: _retrying ? null : _retry,
+                child: Text(_retrying ? 'Retrying…' : 'Retry'),
+              ),
+            ].animate().fadeIn(duration: 300.ms),
           ],
         ),
       ),

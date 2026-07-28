@@ -52,9 +52,23 @@ final adminRepositoryProvider = Provider<AdminRepository>(
 );
 
 /// The single source of truth for "who is signed in" throughout the app.
-final authStateProvider = StreamProvider<User?>(
-  (ref) => ref.watch(authRepositoryProvider).authStateChanges,
-);
+///
+/// router.dart's redirect logic waits for this to have a value before it
+/// will leave the splash route — if `authStateChanges()` never emits (a
+/// stuck/corrupted native persisted-session restore, seen in practice after
+/// installing over an existing app several times with new Firebase SDKs
+/// added), the app was stuck on splash *before ever reaching* the
+/// isAdminProvider/ownProfileProvider timeouts below, since the redirect
+/// returns early on `!authState.hasValue`. Falling back to "signed out"
+/// after a timeout, rather than leaving this pending forever, closes that
+/// gap: worst case a real session takes an extra beat to restore and the
+/// user has to sign in again, instead of never getting past splash at all.
+final authStateProvider = StreamProvider<User?>((ref) {
+  return ref.watch(authRepositoryProvider).authStateChanges.timeout(
+        const Duration(seconds: 10),
+        onTimeout: (sink) => sink.add(null),
+      );
+});
 
 /// The signed-in user's own profile (role, dbsStatus, rating). Fetched over
 /// plain HTTP rather than a live Firestore stream — see
@@ -84,6 +98,13 @@ final publicProfileProvider = FutureProvider.autoDispose.family<PublicProfile?, 
 final isAdminProvider = FutureProvider<bool>((ref) async {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return false;
-  final result = await user.getIdTokenResult();
-  return result.claims?['admin'] == true;
+  // Bounded and defaulted to false on failure/timeout — this sits on the
+  // splash → app redirect path (router.dart), so a stalled network call
+  // here used to strand the user on splash forever with no way out.
+  try {
+    final result = await user.getIdTokenResult().timeout(const Duration(seconds: 10));
+    return result.claims?['admin'] == true;
+  } catch (_) {
+    return false;
+  }
 });

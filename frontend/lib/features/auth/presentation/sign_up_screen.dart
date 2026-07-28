@@ -174,7 +174,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.g_mobiledata_rounded, size: 26),
+                          : Image.asset('assets/branding/google_logo.png', width: 18, height: 18),
                       label: const Text('Continue with Google'),
                     ).animate().fadeIn(delay: 280.ms, duration: 300.ms),
                     const SizedBox(height: AppSpacing.lg),

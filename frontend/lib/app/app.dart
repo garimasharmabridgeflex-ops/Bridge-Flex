@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/analytics/analytics_service.dart';
 import '../core/notifications/fcm_service.dart';
 import 'providers.dart';
 import 'router.dart';
@@ -30,6 +31,10 @@ class _BridgeFlexAppState extends ConsumerState<BridgeFlexApp> {
         _fcmInitialized = false;
         ref.read(fcmServiceProvider).unregister();
       }
+      // Ties Analytics events (including automatic screen_view logging via
+      // analyticsObserverProvider) to a user ID so "active users" reflects
+      // real signed-in accounts, not just anonymous sessions.
+      ref.read(analyticsProvider).setUserId(id: user?.uid);
     });
 
     return MaterialApp.router(

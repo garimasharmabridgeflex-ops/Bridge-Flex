@@ -22,6 +22,7 @@ import '../features/profile/presentation/edit_profile_screen.dart';
 import '../features/profile/presentation/public_profile_screen.dart';
 import '../features/shifts/presentation/post_shift_screen.dart';
 import '../features/shifts/presentation/shift_detail_screen.dart';
+import '../core/analytics/analytics_service.dart';
 import 'providers.dart';
 
 /// Bridges Riverpod's authStateProvider/ownProfileProvider into go_router's
@@ -42,6 +43,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
     refreshListenable: refresh,
+    observers: [ref.watch(analyticsObserverProvider)],
     redirect: (context, state) {
       final onSplash = state.matchedLocation == '/splash';
       final authState = ref.read(authStateProvider);

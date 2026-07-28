@@ -1,0 +1,31 @@
+meta {
+  name: Create Document
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{coreBaseUrl}}:8111/
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+body:json {
+  {
+    "storagePath": "dbs-documents/{{uid}}/certificate.pdf",
+    "type": "dbs_certificate"
+  }
+}
+
+docs {
+  functions-core: CreateDocument (port 8111). Sign in as staff-sam first
+  (dbsStatus starts "pending"). storagePath must sit under the caller's own
+  dbs-documents/{uid}/ prefix (§2/§3) — {{uid}} is set automatically by the
+  sign-in requests in auth/. This call doesn't actually upload a file to
+  Storage — it only writes the Firestore metadata doc; a real client would
+  upload to that same path via the Storage SDK first.
+}

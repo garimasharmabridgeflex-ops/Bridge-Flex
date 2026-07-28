@@ -1,0 +1,29 @@
+meta {
+  name: Sign In - staff-sam
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{authBaseUrl}}/accounts:signInWithPassword?key={{apiKey}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "sam@example.com",
+    "password": "password123",
+    "returnSecureToken": true
+  }
+}
+
+script:post-response {
+  bru.setEnvVar("idToken", res.body.idToken);
+  bru.setEnvVar("uid", res.body.localId);
+}
+
+docs {
+  Seeded staff user with dbsStatus "pending" — useful for exercising the
+  documents/review flow.
+}

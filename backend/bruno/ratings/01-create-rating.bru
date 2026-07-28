@@ -1,0 +1,38 @@
+meta {
+  name: Create Rating
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{coreBaseUrl}}:8110/
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+body:json {
+  {
+    "shiftId": "shift-booked-1",
+    "rateeId": "nursery-acorn",
+    "score": 5,
+    "comment": "Well organized, clear handover notes."
+  }
+}
+
+docs {
+  functions-core: CreateRating (port 8110). Sign in as staff-jane (the booked
+  staff on shift-booked-1) first — rater/ratee must be the actual
+  nursery/booked-staff pair on the referenced shift (§3/§4).
+
+  This creates the ratings/{id} doc, which is all this HTTP endpoint does.
+  In a real deployment that write fires recomputeRating (an Eventarc
+  trigger), which updates profiles/nursery-acorn.rating. Locally there is no
+  live Eventarc dispatch for Go (§7), so that recompute will NOT happen just
+  from calling this request — see README.md's testing-gap note for how
+  trigger handlers like this one get exercised instead (hand-constructed
+  event payload, direct unit test).
+}

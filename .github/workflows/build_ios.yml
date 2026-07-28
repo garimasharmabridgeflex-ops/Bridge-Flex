@@ -1,0 +1,72 @@
+name: Build iOS App
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: Build iOS IPA
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: |
+          cd frontend
+          flutter pub get
+
+      - name: Wire GoogleService-Info.plist into the Xcode project
+        # A file just sitting in ios/Runner/ isn't enough — Xcode only bundles
+        # resources it has a project.pbxproj reference for, and that reference
+        # is normally created by dragging the file into Xcode interactively.
+        # There's no Xcode UI in CI, so add it programmatically instead
+        # (hand-editing project.pbxproj's UUID-linked format by hand is a
+        # well-known way to silently corrupt the whole Xcode project).
+        run: |
+          cd frontend/ios
+          gem install xcodeproj --no-document
+          ruby -e "
+            require 'xcodeproj'
+            project = Xcodeproj::Project.open('Runner.xcodeproj')
+            target = project.targets.find { |t| t.name == 'Runner' }
+            group = project.main_group['Runner']
+            existing = group.files.find { |f| f.path == 'GoogleService-Info.plist' }
+            file_ref = existing || group.new_reference('GoogleService-Info.plist')
+            unless target.resources_build_phase.files_references.include?(file_ref)
+              target.resources_build_phase.add_file_reference(file_ref)
+            end
+            project.save
+          "
+
+      - name: Build iOS IPA
+        run: |
+          cd frontend
+          flutter build ios --release --no-codesign --dart-define=USE_LOCAL_BACKEND=false --dart-define=PROJECT_ID=kvision-503115
+
+      - name: Compress Runner Build
+        run: |
+          cd frontend/build/ios/iphoneos
+          zip -r ../../../K_Vision_iOS_App.zip Runner.app
+
+      - name: Upload iOS App Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: K_Vision_iOS_App
+          path: frontend/K_Vision_iOS_App.zip

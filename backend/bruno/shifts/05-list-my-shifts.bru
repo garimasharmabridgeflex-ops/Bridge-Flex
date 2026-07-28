@@ -1,0 +1,23 @@
+meta {
+  name: List My Shifts
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{coreBaseUrl}}:8113/
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+docs {
+  functions-core: ListMyShifts (port 8113). Nursery gets shifts it posted
+  (any status); staff get shifts booked to them — determined server-side
+  from the caller's own profile role. Plain-HTTP mirror of a query that's
+  already client-legal per Security Rules (§3), added because the frontend
+  moved off the Firestore client SDK — see root README.md.
+}

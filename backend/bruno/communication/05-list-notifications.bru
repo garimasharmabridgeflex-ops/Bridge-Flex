@@ -1,0 +1,21 @@
+meta {
+  name: List Notifications
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{communicationBaseUrl}}:8125/
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{idToken}}
+}
+
+docs {
+  functions-communication: ListNotifications (port 8125). Own notifications
+  only. Sign in as staff-jane first — notif-1 is pre-seeded for them (standing
+  in for what onShiftBooked would have created; see §7 trigger-testing gap).
+}

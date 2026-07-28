@@ -7,6 +7,9 @@ A two-sided marketplace for last-minute nursery shifts: nurseries post shifts, s
   [`backend/README.md`](backend/README.md) and [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full
   system design.
 - Frontend: Flutter (iOS/Android/Web) — see [`frontend/`](frontend/), documented below.
+- Production infra (one-time GCP/Firebase project setup) — [`backend/PRODUCTION_SETUP.md`](backend/PRODUCTION_SETUP.md).
+- Current limitations/known issues — [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md).
+- API keys/config inventory — [`CONFIG_AND_KEYS.md`](CONFIG_AND_KEYS.md).
 
 ---
 

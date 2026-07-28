@@ -3,6 +3,7 @@ package function
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"time"
 
@@ -155,11 +156,16 @@ func acceptShift(w http.ResponseWriter, r *http.Request) {
 	// Publish AFTER commit succeeds — never inside the transaction (§4/§1).
 	// A publish failure doesn't roll back the booking; it stands, and a
 	// retry/backfill mechanism (not modeled in Phase 1) is the right fix.
-	_ = publish(ctx, topicShiftBooked, shiftBookedMessage{
+	// Logged (not discarded) so a broken chat-session/notification cascade
+	// is visible in Cloud Logging instead of silently vanishing — exactly
+	// what happened when projectID() pointed publish() at the wrong project.
+	if err := publish(ctx, topicShiftBooked, shiftBookedMessage{
 		ShiftID:   req.ShiftID,
 		NurseryID: nurseryID,
 		StaffID:   uid,
-	})
+	}); err != nil {
+		log.Printf("acceptShift: publish shift-booked for shift %s failed: %v", req.ShiftID, err)
+	}
 
 	// resultStatus reflects whether capacity is now full, not a hardcoded
 	// "booked" — a shift with capacity 2 correctly stays "open" after the

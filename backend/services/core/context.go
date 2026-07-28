@@ -8,6 +8,7 @@ import (
 	"os"
 	"sync"
 
+	"cloud.google.com/go/compute/metadata"
 	"cloud.google.com/go/firestore"
 	"cloud.google.com/go/pubsub/v2"
 	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
@@ -76,8 +77,26 @@ func fsDB(ctx context.Context) (*firestore.Client, error) {
 	return fsClient, fsErr
 }
 
+// projectID resolves the real project ID as a plain string (not the
+// firebase.App auto-detection fbapp.New uses — Pub/Sub's client needs an
+// actual string for both NewClient and the "projects/%s/topics/%s" name
+// built in ensureTopic, not something that can stay unset).
+//
+// Same bug class as fbapp.New previously had: this used to check only
+// GCLOUD_PROJECT and fall through to a hardcoded "demo-bridgeflex" default
+// that's always hit in production (Cloud Functions/Cloud Run never set that
+// var), silently scoping every publish() call at a topic name in the wrong,
+// nonexistent project — acceptShift's `_ = publish(...)` swallowed the
+// resulting error, so a real shift-accept looked like it succeeded while
+// OnShiftBooked never fired and no chat session was ever created.
 func projectID() string {
-	if p := os.Getenv("GCLOUD_PROJECT"); p != "" {
+	if os.Getenv("PUBSUB_EMULATOR_HOST") != "" || os.Getenv("FIRESTORE_EMULATOR_HOST") != "" {
+		if p := os.Getenv("GCLOUD_PROJECT"); p != "" {
+			return p
+		}
+		return "demo-bridgeflex"
+	}
+	if p, err := metadata.ProjectIDWithContext(context.Background()); err == nil && p != "" {
 		return p
 	}
 	return "demo-bridgeflex"

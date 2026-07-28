@@ -21,6 +21,11 @@ plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     id("com.android.application") version "9.0.1" apply false
     id("org.jetbrains.kotlin.android") version "2.3.20" apply false
+    // Reads android/app/google-services.json at build time and generates the
+    // native resources FCM needs (values/google-services.xml) — without this,
+    // firebase_messaging's token registration is unreliable even though
+    // Auth/Firestore/Storage work fine off firebase_options.dart alone.
+    id("com.google.gms.google-services") version "4.4.2" apply false
 }
 
 include(":app")

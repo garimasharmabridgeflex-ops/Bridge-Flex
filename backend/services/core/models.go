@@ -40,7 +40,7 @@ const (
 )
 
 // OfstedRating is informational only — self-reported by the nursery, never
-// verified by K Vision (full app spec §1.3 step 2).
+// verified by Bridge Flex (full app spec §1.3 step 2).
 type OfstedRating string
 
 const (

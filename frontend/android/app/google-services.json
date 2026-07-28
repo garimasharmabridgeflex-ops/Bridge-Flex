@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "288297326448",
+    "project_id": "kvision-503115",
+    "storage_bucket": "kvision-503115.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:288297326448:android:c3146b6d47e68b3ae3e1b5",
+        "android_client_info": {
+          "package_name": "com.bridgeflex.bridgeflex_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "288297326448-7o13oo5gfdiv0dns71nsd5j1eoeln5si.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bridgeflex.bridgeflex_app",
+            "certificate_hash": "1434b8816b7707b0700e5d65d3bfdb94be125966"
+          }
+        },
+        {
+          "client_id": "288297326448-k8d6as8g4ouv4iur0romitcffg1sq5o9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfS1s21CuzXvqAz2aeJvRFO_utHh3VHug"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "288297326448-k8d6as8g4ouv4iur0romitcffg1sq5o9.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "288297326448-t5jua0m16qbp6mqlmca1dkbq4mha1qb0.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.bridgeflex.bridgeflexApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

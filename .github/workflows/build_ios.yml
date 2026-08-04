@@ -114,6 +114,7 @@ jobs:
             -authenticationKeyIssuerID ${{ secrets.APPSTORE_API_ISSUER_ID }} \
             DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
             CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
             CODE_SIGN_ENTITLEMENTS=Runner/Runner.entitlements
 
       - name: Write export options

@@ -398,11 +398,10 @@ func seedRating(ctx context.Context, db *firestore.Client) error {
 		return fmt.Errorf("write ratings/demo-rating-1: %w", err)
 	}
 
-	if _, err := db.Collection("profiles").Doc("demo-staff-amelia").Set(ctx, map[string]any{
-		"rating": map[string]any{"average": 5.0, "count": int64(1)},
-	}, firestore.MergeAll); err != nil {
-		return fmt.Errorf("update staff rating aggregate: %w", err)
-	}
+	// Deliberately does NOT write profiles/{uid}.rating. In production the
+	// onRatingReceived trigger *increments* the aggregate off this write, so
+	// seeding the aggregate by hand as well double-counts it (a manual
+	// count:1 plus the trigger's +1 showed up as count:2).
 	fmt.Println("  rating demo-rating-1          5★ for demo-staff-amelia")
 	return nil
 }

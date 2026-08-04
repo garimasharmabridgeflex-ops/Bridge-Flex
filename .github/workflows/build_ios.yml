@@ -1,9 +1,19 @@
 name: Build iOS App
 
+# Deliberately NOT on every push to main. Each run creates a distribution
+# certificate whenever DIST_CERT_P12 is unset, and Apple caps an account at 2 —
+# so incidental pushes (docs, seed scripts, web page edits) were exhausting that
+# cap and failing. Every run also consumes a TestFlight build slot that expires
+# after 90 days. Releases are now deliberate: dispatch manually, or push a
+# v-prefixed tag.
+#
+# To go back to building on every push, add back:
+#   push:
+#     branches: [ main ]
 on:
-  push:
-    branches: [ main, master ]
   workflow_dispatch:
+  push:
+    tags: [ 'v*' ]
 
 jobs:
   build-ios:

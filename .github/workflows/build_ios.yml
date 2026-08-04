@@ -54,13 +54,23 @@ jobs:
           cd frontend
           flutter pub get
 
-      - name: Wire GoogleService-Info.plist into the Xcode project
+      - name: Wire GoogleService-Info.plist and Distribution signing into the Xcode project
         # A file just sitting in ios/Runner/ isn't enough — Xcode only bundles
         # resources it has a project.pbxproj reference for, and that reference
         # is normally created by dragging the file into Xcode interactively.
         # There's no Xcode UI in CI, so add it programmatically instead
         # (hand-editing project.pbxproj's UUID-linked format by hand is a
         # well-known way to silently corrupt the whole Xcode project).
+        #
+        # CODE_SIGN_IDENTITY/CODE_SIGN_ENTITLEMENTS are set here, on the
+        # Runner target's build settings specifically, rather than as
+        # `xcodebuild archive KEY=value` CLI overrides — CLI overrides apply
+        # to every target in the build (including every CocoaPods/SPM
+        # dependency), which broke their own unrelated entitlements lookups,
+        # and a CLI-level CODE_SIGN_IDENTITY override conflicts with the
+        # "iPhone Developer" default already baked into this project's
+        # Release config, which Xcode's automatic signing resolves against
+        # before CLI overrides are applied.
         if: steps.secrets_check.outputs.ready == 'true'
         run: |
           cd frontend/ios
@@ -74,6 +84,11 @@ jobs:
             file_ref = existing || group.new_reference('GoogleService-Info.plist')
             unless target.resources_build_phase.files_references.include?(file_ref)
               target.resources_build_phase.add_file_reference(file_ref)
+            end
+            target.build_configurations.each do |config|
+              next unless config.name == 'Release'
+              config.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'
+              config.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'Runner/Runner.entitlements'
             end
             project.save
           "
@@ -95,10 +110,11 @@ jobs:
           echo "${{ secrets.APPSTORE_API_KEY_P8 }}" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_API_KEY_ID }}.p8
 
       - name: Archive (auto-signed via App Store Connect API key)
-        # DEVELOPMENT_TEAM/CODE_SIGN_STYLE/CODE_SIGN_ENTITLEMENTS are passed
-        # as build-setting overrides here rather than baked into
-        # project.pbxproj, so this doesn't depend on Xcode having been
-        # opened locally to configure signing first.
+        # DEVELOPMENT_TEAM/CODE_SIGN_STYLE apply harmlessly across the whole
+        # build (dependency targets ignore them). CODE_SIGN_IDENTITY and
+        # CODE_SIGN_ENTITLEMENTS are NOT passed here — they're set only on
+        # the Runner target in project.pbxproj by the step above, since a
+        # global CLI override here would apply to every dependency target.
         if: steps.secrets_check.outputs.ready == 'true'
         run: |
           cd frontend/ios
@@ -113,9 +129,7 @@ jobs:
             -authenticationKeyID ${{ secrets.APPSTORE_API_KEY_ID }} \
             -authenticationKeyIssuerID ${{ secrets.APPSTORE_API_ISSUER_ID }} \
             DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
-            CODE_SIGN_STYLE=Automatic \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            CODE_SIGN_ENTITLEMENTS=Runner/Runner.entitlements
+            CODE_SIGN_STYLE=Automatic
 
       - name: Write export options
         if: steps.secrets_check.outputs.ready == 'true'

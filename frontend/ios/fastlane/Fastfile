@@ -1,0 +1,123 @@
+# Fastlane config for CI-only iOS release builds. Nothing here is meant to be
+# run from a developer's Mac -- it creates a throwaway keychain and rewrites
+# signing settings in Runner.xcodeproj, which you don't want happening in a
+# working copy you're also developing in.
+#
+# Why Fastlane at all: plain `xcodebuild -allowProvisioningUpdates` can only
+# create provisioning profiles under *automatic* signing, and automatic signing
+# insists on minting an iOS App Development profile first -- which Apple refuses
+# to issue for a team with no registered device UDIDs. Fastlane's sigh talks to
+# the App Store Connect API directly and can create an App Store *distribution*
+# profile with zero devices registered, which is what a TestFlight/App Store
+# build actually needs.
+
+default_platform(:ios)
+
+APP_IDENTIFIER = "com.bridgeflex.bridgeflexApp"
+KEYCHAIN_NAME = "bridgeflex-ci"
+
+platform :ios do
+  desc "Build a signed release IPA and upload it to TestFlight"
+  lane :ci_testflight do
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("APPSTORE_API_KEY_ID"),
+      issuer_id: ENV.fetch("APPSTORE_API_ISSUER_ID"),
+      key_content: ENV.fetch("APPSTORE_API_KEY_P8"),
+      is_key_content_base64: true,
+      in_house: false
+    )
+
+    keychain_password = ENV.fetch("KEYCHAIN_PASSWORD")
+
+    create_keychain(
+      name: KEYCHAIN_NAME,
+      password: keychain_password,
+      default_keychain: true,
+      unlock: true,
+      timeout: 3600,
+      lock_when_sleeps: false
+    )
+
+    keychain_path = File.expand_path("~/Library/Keychains/#{KEYCHAIN_NAME}-db")
+
+    # Apple caps an account at 2 distribution certificates, and it never hands
+    # back the private key of an existing one. So on an ephemeral CI runner
+    # `get_certificates` has no choice but to create a *new* certificate every
+    # run, which would exhaust that cap within a couple of builds.
+    #
+    # To avoid that: after the first successful run, export the generated
+    # certificate as a .p12 and store it (base64) as the DIST_CERT_P12 secret
+    # with its password as DIST_CERT_PASSWORD. When those are present we import
+    # and reuse them instead of asking Apple for another certificate.
+    if (ENV["DIST_CERT_P12"] || "").empty?
+      UI.important("DIST_CERT_P12 not set -- asking Apple for a new distribution certificate.")
+      UI.important("Apple allows only 2. Persist this one as a secret (see comment in Fastfile) to stop burning them.")
+      get_certificates(
+        api_key: api_key,
+        keychain_path: keychain_path,
+        keychain_password: keychain_password,
+        output_path: "./build/certs"
+      )
+    else
+      UI.message("Importing the stored distribution certificate from DIST_CERT_P12.")
+      require "base64"
+      p12_path = "./build/certs/dist.p12"
+      FileUtils.mkdir_p(File.dirname(p12_path))
+      File.binwrite(p12_path, Base64.decode64(ENV.fetch("DIST_CERT_P12")))
+      import_certificate(
+        certificate_path: p12_path,
+        certificate_password: ENV.fetch("DIST_CERT_PASSWORD"),
+        keychain_name: KEYCHAIN_NAME,
+        keychain_password: keychain_password
+      )
+    end
+
+    # development:false + adhoc:false selects an App Store profile, the only
+    # profile type Apple will issue without any registered devices.
+    get_provisioning_profile(
+      api_key: api_key,
+      app_identifier: APP_IDENTIFIER,
+      development: false,
+      adhoc: false,
+      force: true,
+      output_path: "./build/profiles"
+    )
+
+    profile_name = lane_context[SharedValues::SIGH_NAME]
+    UI.message("Signing with provisioning profile: #{profile_name}")
+
+    # Pin manual signing on the Runner target only. Doing this via build
+    # settings on the target (rather than global xcodebuild flags) matters:
+    # a global CODE_SIGN_* override also hits every SPM/CocoaPods dependency
+    # target and breaks their own signing/entitlements resolution.
+    update_code_signing_settings(
+      path: "Runner.xcodeproj",
+      use_automatic_signing: false,
+      team_id: ENV.fetch("APPLE_TEAM_ID"),
+      targets: ["Runner"],
+      build_configurations: ["Release"],
+      code_sign_identity: "Apple Distribution",
+      profile_name: profile_name
+    )
+
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "./build/ipa",
+      output_name: "BridgeFlex.ipa",
+      export_options: {
+        signingStyle: "manual",
+        provisioningProfiles: { APP_IDENTIFIER => profile_name }
+      }
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      # The build still has to finish Apple-side processing before it's
+      # installable, but there's no value in holding a CI job open for it.
+      skip_waiting_for_build_processing: true
+    )
+  end
+end

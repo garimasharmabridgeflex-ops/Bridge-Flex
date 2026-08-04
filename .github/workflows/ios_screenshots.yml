@@ -1,0 +1,114 @@
+name: Capture iOS Screenshots
+
+# Manual only. This produces App Store screenshots; it has no business running
+# on every push, and it needs no signing secrets — simulator builds are not
+# code-signed, so this workflow cannot touch certificates or provisioning.
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: 'Simulator device type to match (substring, e.g. "Pro Max" or "iPhone 16 Pro Max")'
+        required: false
+        default: 'Pro Max'
+
+jobs:
+  screenshots:
+    name: Capture on simulator
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: |
+          cd frontend
+          flutter pub get
+
+      - name: Boot a simulator
+        id: sim
+        # App Store screenshots must match an accepted size class exactly, and
+        # the accepted iPhone size is the largest display Apple currently lists
+        # (6.9" = 1320x2868; a Pro Max simulator renders at exactly that).
+        # The device type is resolved at runtime rather than hardcoded, because
+        # which iPhone models ship with the runner's Xcode changes over time.
+        run: |
+          set -euo pipefail
+          WANT='${{ inputs.device }}'
+
+          echo "Available iPhone device types:"
+          xcrun simctl list devicetypes | grep iPhone || true
+
+          # simctl prints "iPhone 16 Pro Max (com.apple.…SimDeviceType.iPhone-16-Pro-Max)";
+          # take the identifier from the parentheses of the last match.
+          DEVICE_TYPE=$(xcrun simctl list devicetypes \
+            | grep iPhone \
+            | grep -i -- "$WANT" \
+            | tail -1 \
+            | sed -E 's/^.*\((.*)\)$/\1/')
+
+          if [ -z "$DEVICE_TYPE" ]; then
+            echo "::error::no simulator device type matching '$WANT'"
+            exit 1
+          fi
+          echo "Using device type: $DEVICE_TYPE"
+
+          # No runtime argument: simctl then picks the newest runtime that
+          # supports this device, which avoids hardcoding an iOS version that
+          # stops existing whenever the runner's Xcode moves on.
+          UDID=$(xcrun simctl create screenshot-device "$DEVICE_TYPE")
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl list devices | grep "$UDID" || true
+
+      - name: Capture screenshots
+        # Points at the production backend so the seeded demo accounts exist —
+        # the test signs in as the demo staff member, otherwise every screen
+        # would be an empty state and useless for a store listing.
+        run: |
+          cd frontend
+          flutter drive \
+            --driver=test_driver/screenshot_driver.dart \
+            --target=integration_test/screenshots_test.dart \
+            -d ${{ steps.sim.outputs.udid }} \
+            --dart-define=USE_LOCAL_BACKEND=false \
+            --dart-define=PROJECT_ID=kvision-503115
+
+      - name: Report captured sizes
+        # Surfaces the pixel dimensions in the log so it's immediately obvious
+        # whether they match an App Store size class, rather than finding out
+        # at upload time.
+        if: always()
+        run: |
+          cd frontend
+          if [ ! -d screenshots ]; then echo "::warning::no screenshots directory produced"; exit 0; fi
+          for f in screenshots/*.png; do
+            [ -f "$f" ] || continue
+            W=$(sips -g pixelWidth "$f" | awk '/pixelWidth/{print $2}')
+            H=$(sips -g pixelHeight "$f" | awk '/pixelHeight/{print $2}')
+            echo "$f — ${W}x${H}"
+          done
+          echo "App Store accepts 1320x2868, 1290x2796 or 1260x2736 for the 6.9\" class."
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-store-screenshots
+          path: frontend/screenshots/*.png
+          if-no-files-found: warn
+
+      - name: Shut down simulator
+        if: always()
+        run: |
+          xcrun simctl shutdown ${{ steps.sim.outputs.udid }} || true
+          xcrun simctl delete ${{ steps.sim.outputs.udid }} || true

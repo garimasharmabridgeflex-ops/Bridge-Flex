@@ -7,20 +7,41 @@ on:
 
 jobs:
   build-ios:
-    name: Build iOS IPA
+    name: Build, Sign & Upload iOS IPA
     runs-on: macos-latest
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Check required signing secrets
+        # Lets this workflow keep running green on every push before the App
+        # Store Connect API key exists yet, instead of failing outright.
+        # Add APPSTORE_API_KEY_ID, APPSTORE_API_ISSUER_ID, APPSTORE_API_KEY_P8
+        # (base64 of the .p8 file) and APPLE_TEAM_ID as repo secrets
+        # (Settings > Secrets and variables > Actions) to turn on signed
+        # builds + automatic TestFlight/App Store Connect upload.
+        id: secrets_check
+        run: |
+          if [ -n "${{ secrets.APPSTORE_API_KEY_ID }}" ] && \
+             [ -n "${{ secrets.APPSTORE_API_ISSUER_ID }}" ] && \
+             [ -n "${{ secrets.APPSTORE_API_KEY_P8 }}" ] && \
+             [ -n "${{ secrets.APPLE_TEAM_ID }}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Signed iOS build skipped — missing one or more of APPSTORE_API_KEY_ID, APPSTORE_API_ISSUER_ID, APPSTORE_API_KEY_P8, APPLE_TEAM_ID repository secrets."
+          fi
+
       - name: Setup Java
+        if: steps.secrets_check.outputs.ready == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Setup Flutter
+        if: steps.secrets_check.outputs.ready == 'true'
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.27.x'
@@ -28,6 +49,7 @@ jobs:
           cache: true
 
       - name: Install Dependencies
+        if: steps.secrets_check.outputs.ready == 'true'
         run: |
           cd frontend
           flutter pub get
@@ -39,6 +61,7 @@ jobs:
         # There's no Xcode UI in CI, so add it programmatically instead
         # (hand-editing project.pbxproj's UUID-linked format by hand is a
         # well-known way to silently corrupt the whole Xcode project).
+        if: steps.secrets_check.outputs.ready == 'true'
         run: |
           cd frontend/ios
           gem install xcodeproj --no-document
@@ -55,18 +78,83 @@ jobs:
             project.save
           "
 
-      - name: Build iOS IPA
+      - name: Compile Flutter (unsigned) to generate Xcode build config
+        # Populates ios/Flutter/Generated.xcconfig with the Dart AOT output
+        # and --dart-define values the archive step below then reuses —
+        # xcodebuild archive re-runs Flutter's build script phase, but reads
+        # its config from here rather than from CLI flags of its own.
+        if: steps.secrets_check.outputs.ready == 'true'
         run: |
           cd frontend
           flutter build ios --release --no-codesign --dart-define=USE_LOCAL_BACKEND=false --dart-define=PROJECT_ID=kvision-503115
 
-      - name: Compress Runner Build
+      - name: Import App Store Connect API key
+        if: steps.secrets_check.outputs.ready == 'true'
         run: |
-          cd frontend/build/ios/iphoneos
-          zip -r ../../../K_Vision_iOS_App.zip Runner.app
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APPSTORE_API_KEY_P8 }}" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_API_KEY_ID }}.p8
 
-      - name: Upload iOS App Artifact
+      - name: Archive (auto-signed via App Store Connect API key)
+        # DEVELOPMENT_TEAM/CODE_SIGN_STYLE/CODE_SIGN_ENTITLEMENTS are passed
+        # as build-setting overrides here rather than baked into
+        # project.pbxproj, so this doesn't depend on Xcode having been
+        # opened locally to configure signing first.
+        if: steps.secrets_check.outputs.ready == 'true'
+        run: |
+          cd frontend/ios
+          xcodebuild archive \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath build/Runner.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_API_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.APPSTORE_API_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.APPSTORE_API_ISSUER_ID }} \
+            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
+            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_ENTITLEMENTS=Runner/Runner.entitlements
+
+      - name: Write export options
+        if: steps.secrets_check.outputs.ready == 'true'
+        run: |
+          cat > frontend/ios/ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>teamID</key>
+            <string>${{ secrets.APPLE_TEAM_ID }}</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>destination</key>
+            <string>upload</string>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Export & upload to App Store Connect (TestFlight)
+        if: steps.secrets_check.outputs.ready == 'true'
+        run: |
+          cd frontend/ios
+          xcodebuild -exportArchive \
+            -archivePath build/Runner.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath build/ipa \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_API_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.APPSTORE_API_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.APPSTORE_API_ISSUER_ID }}
+
+      - name: Upload IPA as build artifact
+        # Kept alongside the App Store Connect upload above so a build is
+        # still downloadable/inspectable from the Actions run even once it's
+        # also live in TestFlight.
+        if: steps.secrets_check.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: K_Vision_iOS_App
-          path: frontend/K_Vision_iOS_App.zip
+          name: BridgeFlex_iOS_IPA
+          path: frontend/ios/build/ipa/*.ipa

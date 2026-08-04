@@ -178,10 +178,15 @@ correct.
   `kvision-503115.web.app`/`.firebaseapp.com` (permanently tied to the project ID, cannot be
   renamed). A branded domain requires buying one and adding it via Firebase Hosting's custom-domain
   feature — not done yet.
-- **iOS distribution** — no Apple Developer Program account exists. `.github/workflows/build_ios.yml`
-  currently produces an unsigned build only (`--no-codesign`), which cannot be installed on a real
-  device. Getting to a TestFlight link requires enrolling in the paid ($99/yr) Apple Developer
-  Program and generating an App Store Connect API key, then wiring it into that workflow as GitHub
-  Actions secrets and adding a real code-signing/archive step.
+- **iOS distribution** — an Apple Developer Program account now exists, and `.github/workflows/build_ios.yml`
+  has a real signed-archive + TestFlight/App Store Connect upload step, but it's gated on four
+  GitHub Actions repository secrets that haven't been added yet (`APPSTORE_API_KEY_ID`,
+  `APPSTORE_API_ISSUER_ID`, `APPSTORE_API_KEY_P8`, `APPLE_TEAM_ID` — see `CONFIG_AND_KEYS.md`), so
+  it currently still skips signing. Also still needed: uploading the APNs push key (a separate
+  `.p8`, generated in the Apple dashboard under Keys) to Firebase Console's Cloud Messaging settings
+  — without it, push notifications silently never arrive on iOS even though the app-side FCM code
+  is already in place. Once both are done: Internal TestFlight testing works immediately; External
+  TestFlight needs Apple's Beta App Review (~24-48h); a full public App Store listing needs Apple's
+  full App Review plus store metadata (screenshots, privacy policy URL, App Privacy questionnaire).
 - **Android Play Store listing** — the app is currently distributed as a direct APK download from
   the website, not through Google Play. No Play Console account/listing exists.

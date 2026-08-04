@@ -39,6 +39,16 @@
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		<key>NSCameraUsageDescription</key>
+		<string>Bridge Flex uses your camera to take photos for your profile and for document uploads.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Bridge Flex needs access to your photo library to attach a profile photo or documents.</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Bridge Flex uses your location to show and match nearby shifts.</string>
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>remote-notification</string>
+		</array>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

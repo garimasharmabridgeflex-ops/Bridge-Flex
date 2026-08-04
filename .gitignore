@@ -1,0 +1,4 @@
+# Private keys — never commit these (APNs / App Store Connect API keys, etc.)
+*.p8
+*.p12
+*.pem

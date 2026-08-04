@@ -130,9 +130,12 @@ jobs:
         if: steps.secrets_check.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
+          # Globbed rather than a fixed path: fastlane resolves relative paths
+          # against an inconsistent working directory, and a missed export here
+          # silently costs one of Apple's 2 certificate slots.
           name: distribution-certificate-p12-base64
-          path: frontend/ios/build/certs/dist.p12.base64
-          if-no-files-found: ignore
+          path: frontend/**/dist.p12.base64
+          if-no-files-found: warn
           retention-days: 1
 
       - name: Upload IPA as build artifact

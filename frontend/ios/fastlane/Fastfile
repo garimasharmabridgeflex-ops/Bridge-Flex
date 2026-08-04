@@ -73,11 +73,15 @@ platform :ios do
         UI.important("permanently consuming one of your 2 certificate slots. Set DIST_CERT_PASSWORD")
         UI.important("to have future runs export a reusable encrypted .p12 instead.")
       else
-        # Absolute paths throughout: fastlane's `sh` helper runs with the
-        # fastlane/ directory as its working directory, not the project root
-        # that the Ruby-level actions above resolve relative paths against.
-        export_path = File.expand_path("./build/certs/dist.p12")
-        FileUtils.mkdir_p(File.dirname(export_path))
+        # Derive the output directory from where cert actually put the .cer,
+        # rather than expanding a relative path. Relative paths are unreliable
+        # here: fastlane's own actions, its `sh` helper, and plain Ruby all
+        # resolve them against different working directories, which has
+        # already caused both a failed export and an export written somewhere
+        # the workflow's artifact step couldn't find.
+        certs_dir = File.dirname(lane_context[SharedValues::CERT_FILE_PATH])
+        export_path = File.join(certs_dir, "dist.p12")
+        FileUtils.mkdir_p(certs_dir)
         sh(
           "security", "export",
           "-k", keychain_path,

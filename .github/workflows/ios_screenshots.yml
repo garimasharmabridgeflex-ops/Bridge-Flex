@@ -7,9 +7,13 @@ on:
   workflow_dispatch:
     inputs:
       device:
-        description: 'Simulator device type to match (substring, e.g. "Pro Max" or "iPhone 16 Pro Max")'
+        description: 'Simulator device type to match (substring, e.g. "16 Pro Max")'
         required: false
-        default: 'Pro Max'
+        # Specific model, not just "Pro Max": picking the last alphabetical
+        # match landed on iPhone XS Max ("X" sorts after digits), which renders
+        # at 1242x2688 — the older 6.5" class. A 16 Pro Max gives 1320x2868,
+        # the size Apple currently prefers.
+        default: '16 Pro Max'
 
 jobs:
   screenshots:

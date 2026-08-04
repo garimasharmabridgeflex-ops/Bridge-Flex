@@ -4,7 +4,7 @@ Current state as of this handover. Production runs on Firebase project `kvision-
 
 ## Distribution
 
-- **iOS has no real distribution path yet.** There is no Apple Developer Program account. The CI workflow (`.github/workflows/build\_ios.yml`) only produces an **unsigned** build (`--no-codesign`), which cannot be installed on a physical device — this is an Apple platform requirement, not something workable around. Getting to a TestFlight link requires enrolling in the paid Apple Developer Program and generating an App Store Connect API key. See `backend/PRODUCTION\_SETUP.md`'s "What's still outside this runbook" section.
+- **iOS distribution is in progress, not live yet.** An Apple Developer Program account now exists. `.github/workflows/build_ios.yml` does a real signed archive + TestFlight/App Store Connect upload, gated on four repository secrets (`APPSTORE_API_KEY_ID`, `APPSTORE_API_ISSUER_ID`, `APPSTORE_API_KEY_P8`, `APPLE_TEAM_ID` — see `CONFIG_AND_KEYS.md`) that haven't been added yet, so it currently still skips signing and logs a warning. Also outstanding: uploading the APNs push key to Firebase Console (Cloud Messaging > Apple app configuration) — without it, FCM tokens register fine on iOS but no notification is ever actually delivered. Once both are done, the plan is Internal TestFlight first to validate the pipeline, then External TestFlight (needs Apple's Beta App Review, ~24-48h), then full App Store submission (needs store listing metadata + Apple's full App Review) to replace the TestFlight link with a normal App Store download button on the site, matching Android's.
 
 - **Android is not on the Play Store.** It's distributed as a direct APK download from the Firebase-hosted website. No Google Play Console account/listing exists.
 

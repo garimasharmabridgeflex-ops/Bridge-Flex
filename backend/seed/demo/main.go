@@ -311,9 +311,19 @@ func seedShifts(ctx context.Context, db *firestore.Client) error {
 		},
 	}
 
+	// Shift hours are wall-clock times at a Manchester nursery, so build them in
+	// UK time rather than whatever zone this command happens to run in —
+	// seeding from Nairobi otherwise stored an "08:00" shift as 05:00 UTC, and
+	// it rendered as a 5am start for anyone viewing it.
+	uk, err := time.LoadLocation("Europe/London")
+	if err != nil {
+		uk = time.UTC
+		fmt.Println("  warn: Europe/London tzdata unavailable, falling back to UTC")
+	}
+
 	for _, s := range shifts {
-		day := now.AddDate(0, 0, s.DayOff)
-		start := time.Date(day.Year(), day.Month(), day.Day(), s.StartHour, 0, 0, 0, day.Location())
+		day := now.In(uk).AddDate(0, 0, s.DayOff)
+		start := time.Date(day.Year(), day.Month(), day.Day(), s.StartHour, 0, 0, 0, uk)
 		doc := map[string]any{
 			"nurseryId": nursery,
 			"title":     s.Title,

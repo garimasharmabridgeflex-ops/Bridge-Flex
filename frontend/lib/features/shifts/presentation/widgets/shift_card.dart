@@ -75,14 +75,17 @@ class _ShiftCardState extends State<ShiftCard> {
                         color: AppColors.primary.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
+                      // Was a hardcoded 'K' (left over from the KVision name),
+                      // so every shift card showed a "K" avatar no matter which
+                      // nursery posted it. ShiftCard only receives a Shift,
+                      // which carries nurseryId but no nursery name, so there
+                      // is no initial to derive here — a neutral mark is
+                      // correct rather than a wrong letter.
                       child: const Center(
-                        child: Text(
-                          'K',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.primary,
-                            fontSize: 20,
-                          ),
+                        child: Icon(
+                          Icons.child_care_rounded,
+                          color: AppColors.primary,
+                          size: 22,
                         ),
                       ),
                     ),

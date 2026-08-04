@@ -62,15 +62,21 @@ jobs:
         # (hand-editing project.pbxproj's UUID-linked format by hand is a
         # well-known way to silently corrupt the whole Xcode project).
         #
-        # Signing is switched to Manual (both the build setting AND the
-        # project-level TargetAttributes.ProvisioningStyle Xcode's "Automatically
-        # manage signing" checkbox controls -- xcodebuild cross-checks both).
-        # "Automatic" signing means Xcode picks the identity itself and
-        # rejects any explicit CODE_SIGN_IDENTITY as a conflict; pinning
-        # Apple Distribution requires Manual. -allowProvisioningUpdates still
-        # auto-creates/fetches the actual certificate and profile behind it
-        # via the API key -- Manual here only fixes *which* identity type,
-        # not who's responsible for provisioning.
+        # Signing stays Automatic (both the build setting and the project-level
+        # TargetAttributes.ProvisioningStyle that Xcode's "Automatically manage
+        # signing" checkbox controls -- xcodebuild cross-checks the two, and a
+        # mismatch is itself reported as a provisioning conflict). Automatic is
+        # required here: -allowProvisioningUpdates can only create/download
+        # profiles under Automatic signing. Under Manual, xcodebuild expects a
+        # profile you supply yourself and fails outright when none is set.
+        #
+        # CODE_SIGN_IDENTITY is deliberately *deleted* rather than pinned to
+        # "Apple Distribution": Automatic signing chooses the identity itself
+        # and rejects any explicit value as a conflicting setting. What steers
+        # it to a distribution profile instead of a development one is the
+        # entitlements file's aps-environment=production -- a "development"
+        # value there constrains the match to an iOS App Development profile,
+        # which also requires a registered device UDID the team may not have.
         if: steps.secrets_check.outputs.ready == 'true'
         run: |
           cd frontend/ios
@@ -87,14 +93,15 @@ jobs:
             end
             target.build_configurations.each do |config|
               next unless config.name == 'Release'
-              config.build_settings['CODE_SIGN_STYLE'] = 'Manual'
-              config.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'
+              config.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
               config.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'Runner/Runner.entitlements'
-              config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = ''
+              config.build_settings.delete('CODE_SIGN_IDENTITY')
+              config.build_settings.delete('CODE_SIGN_IDENTITY[sdk=iphoneos*]')
+              config.build_settings.delete('PROVISIONING_PROFILE_SPECIFIER')
             end
             attrs = project.root_object.attributes['TargetAttributes'] ||= {}
             attrs[target.uuid] ||= {}
-            attrs[target.uuid]['ProvisioningStyle'] = 'Manual'
+            attrs[target.uuid]['ProvisioningStyle'] = 'Automatic'
             project.save
           "
 

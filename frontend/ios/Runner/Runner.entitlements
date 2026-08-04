@@ -2,7 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- "production" is what App Store / TestFlight builds require. A
+	     "development" value here only matches an iOS App Development
+	     provisioning profile (which additionally needs a registered device),
+	     so it breaks distribution archives. Debug builds run from Xcode
+	     against a development profile still get development APNs routing,
+	     because Xcode substitutes the value at build time. -->
 	<key>aps-environment</key>
-	<string>development</string>
+	<string>production</string>
 </dict>
 </plist>

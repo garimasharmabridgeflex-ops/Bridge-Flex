@@ -51,13 +51,42 @@ platform :ios do
     # and reuse them instead of asking Apple for another certificate.
     if (ENV["DIST_CERT_P12"] || "").empty?
       UI.important("DIST_CERT_P12 not set -- asking Apple for a new distribution certificate.")
-      UI.important("Apple allows only 2. Persist this one as a secret (see comment in Fastfile) to stop burning them.")
+      UI.important("Apple allows only 2, and the private key of one created here dies with this runner.")
       get_certificates(
         api_key: api_key,
         keychain_path: keychain_path,
         keychain_password: keychain_password,
         output_path: "./build/certs"
       )
+
+      # Export the identity (certificate + private key) so it can be stored as
+      # a secret and reused, instead of asking Apple for a new certificate on
+      # every run until the 2-certificate cap is hit.
+      #
+      # Gated on DIST_CERT_PASSWORD deliberately: the export is a private key,
+      # and it gets uploaded as a workflow artifact that anyone with repo read
+      # access can download. Requiring a passphrase means what leaves this job
+      # is at least encrypted rather than a bare key.
+      if (ENV["DIST_CERT_PASSWORD"] || "").empty?
+        UI.important("DIST_CERT_PASSWORD not set -- skipping certificate export.")
+        UI.important("This certificate's private key will be LOST when this runner is destroyed,")
+        UI.important("permanently consuming one of your 2 certificate slots. Set DIST_CERT_PASSWORD")
+        UI.important("to have future runs export a reusable encrypted .p12 instead.")
+      else
+        export_path = "./build/certs/dist.p12"
+        sh(
+          "security", "export",
+          "-k", keychain_path,
+          "-t", "identities",
+          "-f", "pkcs12",
+          "-P", ENV.fetch("DIST_CERT_PASSWORD"),
+          "-o", export_path
+        )
+        sh("bash", "-c", "base64 -i '#{export_path}' > '#{export_path}.base64'")
+        UI.success("Exported an encrypted .p12 to #{export_path}.base64.")
+        UI.success("Download it from this run's artifacts and store its contents as the")
+        UI.success("DIST_CERT_P12 secret so subsequent runs reuse this certificate.")
+      end
     else
       UI.message("Importing the stored distribution certificate from DIST_CERT_P12.")
       require "base64"
@@ -72,13 +101,13 @@ platform :ios do
       )
     end
 
-    # development:false + adhoc:false selects an App Store profile, the only
-    # profile type Apple will issue without any registered devices.
+    # An App Store profile is sigh's default, and it's the only profile type
+    # Apple will issue with no devices registered. `development` and `adhoc`
+    # are deliberately NOT passed: sigh rejects them as conflicting options
+    # whenever both are supplied, even when both are set to false.
     get_provisioning_profile(
       api_key: api_key,
       app_identifier: APP_IDENTIFIER,
-      development: false,
-      adhoc: false,
       force: true,
       output_path: "./build/profiles"
     )

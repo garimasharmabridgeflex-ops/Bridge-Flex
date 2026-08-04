@@ -120,6 +120,21 @@ jobs:
           FASTLANE_HIDE_CHANGELOG: 'true'
         run: fastlane ci_testflight
 
+      - name: Upload exported distribution certificate (one-time setup)
+        # Only produced when a new certificate was created AND
+        # DIST_CERT_PASSWORD is set — see the Fastfile. Download this once,
+        # store its contents as the DIST_CERT_P12 secret, and every later run
+        # reuses that certificate instead of consuming a new slot from Apple's
+        # limit of 2. The .p12 is passphrase-encrypted, but it is still key
+        # material: delete this artifact once the secret is saved.
+        if: steps.secrets_check.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: distribution-certificate-p12-base64
+          path: frontend/ios/build/certs/dist.p12.base64
+          if-no-files-found: ignore
+          retention-days: 1
+
       - name: Upload IPA as build artifact
         # Kept alongside the TestFlight upload so a build is still
         # downloadable/inspectable from the Actions run itself.

@@ -21,6 +21,8 @@ class Review {
         raterId: json['raterId'] as String? ?? '',
         score: (json['score'] as num?)?.toInt() ?? 0,
         comment: json['comment'] as String? ?? '',
-        createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'] as String) : null,
+        createdAt: json['createdAt'] != null
+            ? DateTime.tryParse(json['createdAt'] as String)?.toLocal()
+            : null,
       );
 }

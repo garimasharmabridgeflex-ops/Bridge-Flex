@@ -116,7 +116,9 @@ class AdminDocumentEntry {
         status: docReviewStatusFromString(json['status'] as String? ?? 'none'),
         storagePath: json['storagePath'] as String? ?? '',
         reviewNote: json['reviewNote'] as String? ?? '',
-        uploadedAt: json['uploadedAt'] != null ? DateTime.tryParse(json['uploadedAt'] as String) : null,
+        uploadedAt: json['uploadedAt'] != null
+            ? DateTime.tryParse(json['uploadedAt'] as String)?.toLocal()
+            : null,
       );
 }
 

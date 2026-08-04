@@ -73,7 +73,11 @@ platform :ios do
         UI.important("permanently consuming one of your 2 certificate slots. Set DIST_CERT_PASSWORD")
         UI.important("to have future runs export a reusable encrypted .p12 instead.")
       else
-        export_path = "./build/certs/dist.p12"
+        # Absolute paths throughout: fastlane's `sh` helper runs with the
+        # fastlane/ directory as its working directory, not the project root
+        # that the Ruby-level actions above resolve relative paths against.
+        export_path = File.expand_path("./build/certs/dist.p12")
+        FileUtils.mkdir_p(File.dirname(export_path))
         sh(
           "security", "export",
           "-k", keychain_path,
@@ -82,7 +86,8 @@ platform :ios do
           "-P", ENV.fetch("DIST_CERT_PASSWORD"),
           "-o", export_path
         )
-        sh("bash", "-c", "base64 -i '#{export_path}' > '#{export_path}.base64'")
+        require "base64"
+        File.write("#{export_path}.base64", Base64.strict_encode64(File.binread(export_path)))
         UI.success("Exported an encrypted .p12 to #{export_path}.base64.")
         UI.success("Download it from this run's artifacts and store its contents as the")
         UI.success("DIST_CERT_P12 secret so subsequent runs reuse this certificate.")
@@ -90,7 +95,7 @@ platform :ios do
     else
       UI.message("Importing the stored distribution certificate from DIST_CERT_P12.")
       require "base64"
-      p12_path = "./build/certs/dist.p12"
+      p12_path = File.expand_path("./build/certs/dist.p12")
       FileUtils.mkdir_p(File.dirname(p12_path))
       File.binwrite(p12_path, Base64.decode64(ENV.fetch("DIST_CERT_P12")))
       import_certificate(

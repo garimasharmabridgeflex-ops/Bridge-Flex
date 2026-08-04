@@ -64,23 +64,31 @@ void main() {
     }
 
     // ── Bottom navigation tabs ────────────────────────────────────────────
-    // Labels come from home_shell.dart. Training is skipped — it is not a
-    // shift-flow screen and adds nothing to a store listing.
-    for (final tab in ['Browse', 'Messages', 'Profile']) {
-      if (await _tapText(tester, tab)) {
+    // Tapped by ICON, not label: floating_nav_bar.dart only renders the label
+    // for the currently selected tab, so find.text('Messages') never matches
+    // while some other tab is active. Icons are the unselected variants from
+    // home_shell.dart. Training is skipped — not a shift-flow screen, so it
+    // adds nothing to a store listing.
+    final tabs = <String, IconData>{
+      'my-shifts': Icons.event_note_outlined,
+      'messages': Icons.chat_bubble_outline_rounded,
+      'profile': Icons.person_outline_rounded,
+    };
+    for (final entry in tabs.entries) {
+      if (await _tapIcon(tester, entry.value)) {
         await _settle(tester, seconds: 6);
-        await capture(tab.toLowerCase());
+        await capture(entry.key);
       }
     }
 
     // ── Shift detail ──────────────────────────────────────────────────────
-    // Open a seeded shift from Browse; its detail screen is the most
+    // Back to Browse, then open a shift: its detail screen is the most
     // informative single screen in the app for a store listing.
-    if (await _tapText(tester, 'Browse')) {
-      await _settle(tester, seconds: 6);
-      for (final title in ['Morning cover', 'Full day', 'Afternoon cover']) {
+    if (await _tapIcon(tester, Icons.search_outlined)) {
+      await _settle(tester, seconds: 8);
+      for (final title in ['Morning cover', 'Full day', 'Afternoon cover', 'cover']) {
         if (await _tapTextContaining(tester, title)) {
-          await _settle(tester, seconds: 6);
+          await _settle(tester, seconds: 8);
           await capture('shift-detail');
           break;
         }
@@ -104,6 +112,17 @@ Future<bool> _tapText(WidgetTester tester, String text) async {
   final finder = find.text(text);
   if (!tester.any(finder)) {
     debugPrint('WARNING: no widget with text "$text" — skipping');
+    return false;
+  }
+  await tester.tap(finder.first, warnIfMissed: false);
+  await tester.pump(const Duration(milliseconds: 500));
+  return true;
+}
+
+Future<bool> _tapIcon(WidgetTester tester, IconData icon) async {
+  final finder = find.byIcon(icon);
+  if (!tester.any(finder)) {
+    debugPrint('WARNING: no icon $icon on screen — skipping');
     return false;
   }
   await tester.tap(finder.first, warnIfMissed: false);

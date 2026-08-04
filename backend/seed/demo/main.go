@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -240,60 +241,94 @@ func seedShifts(ctx context.Context, db *firestore.Client) error {
 	nursery := "demo-nursery-sunnydale"
 	staff := "demo-staff-amelia"
 
+	// Enough shifts, at varied rates/rooms/dates, to fill the browse feed on a
+	// tall phone screen — App Store screenshots of a two-item list look like an
+	// empty product. StartHour varies too, so the list isn't visibly templated.
 	shifts := []struct {
-		ID       string
-		Title    string
-		Status   string
-		Booked   []string
-		PayRate  float64
-		DayOff   int // days from now
-		Room     string
-		AgeGroup string
-		Children int64
-		Duties   []string
-		Reqs     []string
+		ID        string
+		Title     string
+		Status    string
+		Booked    []string
+		PayRate   float64
+		DayOff    int // days from now
+		StartHour int
+		Hours     int
+		Capacity  int64
+		Room      string
+		AgeGroup  string
+		Children  int64
+		Duties    []string
+		Reqs      []string
 	}{
 		{
 			ID: "demo-shift-open-baby", Title: "Morning cover — Baby room", Status: "open",
-			PayRate: 14.50, DayOff: 2, Room: "Baby room", AgeGroup: "3 months – 2 years", Children: 8,
+			PayRate: 14.50, DayOff: 2, StartHour: 8, Hours: 5, Capacity: 1,
+			Room: "Baby room", AgeGroup: "3 months – 2 years", Children: 8,
 			Duties: []string{"Support free-flow play", "Nappy changes and feeds", "Record daily observations"},
 			Reqs:   []string{"Level 2 or above", "Valid DBS", "Paediatric first aid desirable"},
 		},
 		{
 			ID: "demo-shift-open-toddler", Title: "Full day — Toddler room", Status: "open",
-			PayRate: 15.00, DayOff: 4, Room: "Toddler room", AgeGroup: "2 – 3 years", Children: 12,
+			PayRate: 15.00, DayOff: 4, StartHour: 8, Hours: 9, Capacity: 2,
+			Room: "Toddler room", AgeGroup: "2 – 3 years", Children: 12,
 			Duties: []string{"Lead messy play session", "Support lunch and nap routine", "Garden supervision"},
 			Reqs:   []string{"Level 3 preferred", "Valid DBS"},
 		},
 		{
-			ID: "demo-shift-open-preschool", Title: "Afternoon cover — Pre-school", Status: "open",
-			PayRate: 13.75, DayOff: 6, Room: "Pre-school room", AgeGroup: "3 – 5 years", Children: 16,
+			ID: "demo-shift-open-preschool", Title: "Afternoon cover — Pre-school room", Status: "open",
+			PayRate: 13.75, DayOff: 6, StartHour: 12, Hours: 6, Capacity: 1,
+			Room: "Pre-school room", AgeGroup: "3 – 5 years", Children: 16,
 			Duties: []string{"Phonics activity", "Outdoor learning", "Tidy-up and handover"},
 			Reqs:   []string{"Level 2 or above", "Valid DBS"},
 		},
 		{
+			ID: "demo-shift-open-lunch", Title: "Lunch cover — Toddler room", Status: "open",
+			PayRate: 13.00, DayOff: 3, StartHour: 11, Hours: 4, Capacity: 1,
+			Room: "Toddler room", AgeGroup: "2 – 3 years", Children: 10,
+			Duties: []string{"Serve and support lunch", "Nappy changes", "Settle children for nap"},
+			Reqs:   []string{"Level 2 or above", "Valid DBS"},
+		},
+		{
+			ID: "demo-shift-open-sen", Title: "1:1 SEN support — Pre-school", Status: "open",
+			PayRate: 17.50, DayOff: 5, StartHour: 9, Hours: 7, Capacity: 1,
+			Room: "Pre-school room", AgeGroup: "3 – 5 years", Children: 1,
+			Duties: []string{"Dedicated 1:1 support", "Follow the child's care plan", "Liaise with the room leader"},
+			Reqs:   []string{"Level 3", "Valid DBS", "SEN experience essential"},
+		},
+		{
+			ID: "demo-shift-open-late", Title: "Late shift — Baby room", Status: "open",
+			PayRate: 16.00, DayOff: 8, StartHour: 13, Hours: 5, Capacity: 1,
+			Room: "Baby room", AgeGroup: "3 months – 2 years", Children: 6,
+			Duties: []string{"Afternoon bottles and teas", "Prepare handover notes", "Closing tidy-down"},
+			Reqs:   []string{"Level 3 preferred", "Valid DBS"},
+		},
+		{
 			ID: "demo-shift-booked", Title: "Early shift — Baby room", Status: "booked",
-			Booked: []string{staff}, PayRate: 15.50, DayOff: 1, Room: "Baby room",
-			AgeGroup: "3 months – 2 years", Children: 6,
+			Booked: []string{staff}, PayRate: 15.50, DayOff: 1, StartHour: 7, Hours: 8, Capacity: 1,
+			Room: "Baby room", AgeGroup: "3 months – 2 years", Children: 6,
 			Duties: []string{"Opening setup", "Breakfast service", "Key-person observations"},
 			Reqs:   []string{"Level 3", "Valid DBS"},
 		},
 	}
 
 	for _, s := range shifts {
-		start := now.AddDate(0, 0, s.DayOff).Truncate(time.Hour)
+		day := now.AddDate(0, 0, s.DayOff)
+		start := time.Date(day.Year(), day.Month(), day.Day(), s.StartHour, 0, 0, 0, day.Location())
 		doc := map[string]any{
-			"nurseryId":        nursery,
-			"title":            s.Title,
-			"description":      "Demo shift for platform walkthrough.",
+			"nurseryId": nursery,
+			"title":     s.Title,
+			"description": fmt.Sprintf(
+				"%s cover in our %s. Friendly, well-resourced setting a short walk from Oxford Road.",
+				s.AgeGroup, strings.ToLower(s.Room),
+			),
 			"date":             start.Format("2006-01-02"),
 			"startTime":        start,
-			"endTime":          start.Add(8 * time.Hour),
+			"endTime":          start.Add(time.Duration(s.Hours) * time.Hour),
 			"payRate":          s.PayRate,
 			"status":           s.Status,
-			"capacity":         int64(1),
+			"capacity":         s.Capacity,
 			"paymentStatus":    "not_required",
-			"createdAt":        now,
+			"createdAt":        now.Add(-time.Duration(s.DayOff) * time.Hour),
 			"room":             s.Room,
 			"ageGroup":         s.AgeGroup,
 			"numberOfChildren": s.Children,
@@ -309,7 +344,7 @@ func seedShifts(ctx context.Context, db *firestore.Client) error {
 		if _, err := db.Collection("shifts").Doc(s.ID).Set(ctx, doc); err != nil {
 			return fmt.Errorf("write shifts/%s: %w", s.ID, err)
 		}
-		fmt.Printf("  shift  %-22s %-34s %s\n", s.ID, s.Title, s.Status)
+		fmt.Printf("  shift  %-26s %-34s £%.2f  %s\n", s.ID, s.Title, s.PayRate, s.Status)
 	}
 	return nil
 }

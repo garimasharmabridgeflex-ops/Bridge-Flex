@@ -28,7 +28,13 @@ class NotificationItem {
     if (value is Map && value['_seconds'] != null) {
       return DateTime.fromMillisecondsSinceEpoch((value['_seconds'] as num).toInt() * 1000);
     }
-    if (value is String) return DateTime.tryParse(value);
+    // toLocal() is required, not cosmetic. The backend serializes timestamps
+    // as RFC 3339 UTC, so tryParse returns a DateTime with isUtc: true, and
+    // DateFormat renders whatever zone the DateTime carries — printing the
+    // same UTC clock time on a device in Nairobi and one in London. Relative
+    // labels ("9 minutes ago") looked correct regardless, because difference()
+    // compares instants and ignores the zone flag.
+    if (value is String) return DateTime.tryParse(value)?.toLocal();
     return null;
   }
 

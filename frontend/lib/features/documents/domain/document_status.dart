@@ -76,7 +76,7 @@ class DocumentStatusInfo {
           ? json['reviewNote'] as String
           : null,
       uploadedAt: json['uploadedAt'] != null
-          ? DateTime.tryParse(json['uploadedAt'] as String)
+          ? DateTime.tryParse(json['uploadedAt'] as String)?.toLocal()
           : null,
     );
   }
@@ -105,7 +105,8 @@ class PendingDocument {
         uid: json['uid'] as String,
         type: documentTypeFromString(json['type'] as String?),
         storagePath: json['storagePath'] as String? ?? '',
-        uploadedAt:
-            json['uploadedAt'] != null ? DateTime.tryParse(json['uploadedAt'] as String) : null,
+        uploadedAt: json['uploadedAt'] != null
+            ? DateTime.tryParse(json['uploadedAt'] as String)?.toLocal()
+            : null,
       );
 }

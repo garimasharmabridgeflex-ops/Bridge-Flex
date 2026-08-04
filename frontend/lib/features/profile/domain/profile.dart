@@ -378,6 +378,10 @@ class Profile {
         availabilityDays: (json['availabilityDays'] as List?)?.cast<String>() ?? const [],
         availabilityShifts: (json['availabilityShifts'] as List?)?.cast<String>() ?? const [],
         dbsCertificateNumber: json['dbsCertificateNumber'] as String? ?? '',
+        // Intentionally NOT .toLocal(), unlike the instant fields elsewhere: a
+        // DBS expiry is a calendar date stored as midnight UTC, so shifting it
+        // into a negative-offset zone would land on the previous day and show
+        // the certificate expiring a day early.
         dbsExpiryDate:
             json['dbsExpiryDate'] != null ? DateTime.tryParse(json['dbsExpiryDate'] as String) : null,
         nationality: json['nationality'] as String? ?? '',
@@ -530,6 +534,10 @@ class PublicProfile {
         skills: (json['skills'] as List?)?.cast<String>() ?? const [],
         availabilityDays: (json['availabilityDays'] as List?)?.cast<String>() ?? const [],
         availabilityShifts: (json['availabilityShifts'] as List?)?.cast<String>() ?? const [],
+        // Intentionally NOT .toLocal(), unlike the instant fields elsewhere: a
+        // DBS expiry is a calendar date stored as midnight UTC, so shifting it
+        // into a negative-offset zone would land on the previous day and show
+        // the certificate expiring a day early.
         dbsExpiryDate:
             json['dbsExpiryDate'] != null ? DateTime.tryParse(json['dbsExpiryDate'] as String) : null,
         nationality: json['nationality'] as String? ?? '',

@@ -39,6 +39,12 @@ declare -A FUNCS=(
   [SetUserSuspended]=8143
   [SetVerificationBadge]=8144
   [ListRatings]=8145
+  [ListTrainingModules]=8146
+  [SubmitTrainingQuiz]=8147
+  [MarkTrainingVideoWatched]=8148
+  [ListTrainingModulesAdmin]=8149
+  [UpsertTrainingModule]=8150
+  [DeleteTrainingModule]=8151
 )
 
 pids=()

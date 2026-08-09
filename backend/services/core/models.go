@@ -141,6 +141,81 @@ type Profile struct {
 	// Firebase Auth account's disabled flag so the admin user-list can show
 	// status without a per-row Auth lookup. Never client-writable.
 	Suspended bool `firestore:"suspended,omitempty" json:"suspended,omitempty"`
+
+	// Training completion summary (Bridge Flex Training & Onboarding Modules
+	// spec). The authoritative per-module record lives in the
+	// profiles/{uid}/trainingProgress subcollection; this denormalised list
+	// exists so syncProfilePublic can mirror completion into profilesPublic —
+	// a subcollection write wouldn't fire that trigger, and a nursery
+	// approving an applicant has to be able to see training status without
+	// read access to the private profile. Written only by submitTrainingQuiz,
+	// never by updateProfile.
+	TrainingCompletedModuleIDs []string   `firestore:"trainingCompletedModuleIds,omitempty" json:"trainingCompletedModuleIds,omitempty"`
+	TrainingUpdatedAt          *time.Time `firestore:"trainingUpdatedAt,omitempty" json:"trainingUpdatedAt,omitempty"`
+}
+
+// TrainingQuestion is one multiple-choice item on a module's knowledge check.
+// CorrectIndex is stored here but never serialised to a practitioner — see
+// toStaffModule in training.go.
+type TrainingQuestion struct {
+	ID           string   `firestore:"id" json:"id"`
+	Prompt       string   `firestore:"prompt" json:"prompt"`
+	Options      []string `firestore:"options" json:"options"`
+	CorrectIndex int64    `firestore:"correctIndex" json:"correctIndex"`
+	Explanation  string   `firestore:"explanation,omitempty" json:"explanation,omitempty"`
+}
+
+// TrainingModule is trainingModules/{moduleId}. Authored by an admin at
+// runtime rather than compiled in, because the spec expects question wording
+// and timings to change without shipping an app release.
+type TrainingModule struct {
+	Order          int64    `firestore:"order" json:"order"`
+	Title          string   `firestore:"title" json:"title"`
+	Purpose        string   `firestore:"purpose,omitempty" json:"purpose,omitempty"`
+	ContentOutline []string `firestore:"contentOutline,omitempty" json:"contentOutline,omitempty"`
+
+	// VideoStoragePath is the preferred form: a path inside the Firebase
+	// Storage bucket that the app resolves with getDownloadURL(), matching how
+	// documents and profile photos already work. It keeps the video behind the
+	// signed-in read rule, and re-uploading over the same path swaps the video
+	// for every practitioner without touching this document.
+	// VideoURL is the escape hatch for content hosted elsewhere; when both are
+	// set the storage path wins.
+	VideoStoragePath     string `firestore:"videoStoragePath,omitempty" json:"videoStoragePath,omitempty"`
+	VideoURL             string `firestore:"videoUrl,omitempty" json:"videoUrl,omitempty"`
+	VideoDurationSeconds int64  `firestore:"videoDurationSeconds,omitempty" json:"videoDurationSeconds,omitempty"`
+
+	Questions []TrainingQuestion `firestore:"questions,omitempty" json:"questions,omitempty"`
+	// PassMark is a count of correct answers, not a percentage. Zero means
+	// "unset" and falls back to 80% rounded up (passMarkFor).
+	PassMark int64 `firestore:"passMark,omitempty" json:"passMark,omitempty"`
+
+	Published bool      `firestore:"published" json:"published"`
+	CreatedAt time.Time `firestore:"createdAt" json:"createdAt"`
+	UpdatedAt time.Time `firestore:"updatedAt" json:"updatedAt"`
+}
+
+type TrainingProgressStatus string
+
+const (
+	TrainingNotStarted TrainingProgressStatus = "not_started"
+	TrainingInProgress TrainingProgressStatus = "in_progress"
+	TrainingCompleted  TrainingProgressStatus = "completed"
+)
+
+// TrainingProgress is profiles/{uid}/trainingProgress/{moduleId} — one
+// practitioner's record against one module.
+type TrainingProgress struct {
+	ModuleID       string                 `firestore:"moduleId" json:"moduleId"`
+	Status         TrainingProgressStatus `firestore:"status" json:"status"`
+	VideoWatched   bool                   `firestore:"videoWatched,omitempty" json:"videoWatched,omitempty"`
+	Attempts       int64                  `firestore:"attempts,omitempty" json:"attempts,omitempty"`
+	LastScore      int64                  `firestore:"lastScore,omitempty" json:"lastScore,omitempty"`
+	BestScore      int64                  `firestore:"bestScore,omitempty" json:"bestScore,omitempty"`
+	TotalQuestions int64                  `firestore:"totalQuestions,omitempty" json:"totalQuestions,omitempty"`
+	LastAttemptAt  *time.Time             `firestore:"lastAttemptAt,omitempty" json:"lastAttemptAt,omitempty"`
+	CompletedAt    *time.Time             `firestore:"completedAt,omitempty" json:"completedAt,omitempty"`
+	UpdatedAt      *time.Time             `firestore:"updatedAt,omitempty" json:"updatedAt,omitempty"`
 }
 
 // ProfilePublic is the PUBLIC profilesPublic/{uid} document, derived from
@@ -183,6 +258,11 @@ type ProfilePublic struct {
 	VisaStatus          string `firestore:"visaStatus,omitempty" json:"visaStatus,omitempty"`
 	RightToWorkStatus   string `firestore:"rightToWorkStatus,omitempty" json:"rightToWorkStatus,omitempty"`
 	RightToWorkVerified bool   `firestore:"rightToWorkVerified,omitempty" json:"rightToWorkVerified,omitempty"`
+
+	// Mirrored from Profile by syncProfilePublic so a nursery can see which
+	// training a shift applicant has completed before approving them. Only
+	// the module ids are exposed — scores and attempt counts stay private.
+	TrainingCompletedModuleIDs []string `firestore:"trainingCompletedModuleIds,omitempty" json:"trainingCompletedModuleIds,omitempty"`
 
 	// Nursery only.
 	Description  string       `firestore:"description,omitempty" json:"description,omitempty"`

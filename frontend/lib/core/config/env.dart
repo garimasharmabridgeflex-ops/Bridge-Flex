@@ -40,7 +40,15 @@ enum ApiFunction {
   listNotifications(8125),
   markNotificationRead(8126),
   markAllNotificationsRead(8128),
-  createPayout(8093);
+  createPayout(8093),
+
+  // Training modules — ports mirror backend/services/core/run-local.sh.
+  listTrainingModules(8146),
+  submitTrainingQuiz(8147),
+  markTrainingVideoWatched(8148),
+  listTrainingModulesAdmin(8149),
+  upsertTrainingModule(8150),
+  deleteTrainingModule(8151);
 
   const ApiFunction(this.localPort);
   final int localPort;

@@ -133,6 +133,10 @@ func syncProfilePublic(ctx context.Context, e event.Event) error {
 		pub.VisaStatus = fieldString(fields, "visaStatus")
 		pub.RightToWorkStatus = fieldString(fields, "rightToWorkStatus")
 		pub.RightToWorkVerified = fieldBool(fields, "rightToWorkVerified")
+		// Only the completed module ids cross into the public doc — a nursery
+		// approving an applicant needs to know what they've completed, not how
+		// many attempts it took or what they scored.
+		pub.TrainingCompletedModuleIDs = fieldStringArray(fields, "trainingCompletedModuleIds")
 	case RoleNursery:
 		pub.Description = fieldString(fields, "description")
 		pub.OpeningHours = fieldString(fields, "openingHours")

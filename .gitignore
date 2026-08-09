@@ -2,3 +2,9 @@
 *.p8
 *.p12
 *.pem
+
+# Training source videos — these live in Firebase Storage, not the repo.
+*.mp4
+
+# LibreOffice lock files
+.~lock.*#

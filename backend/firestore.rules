@@ -22,10 +22,20 @@ service cloud.firestore {
     // ---------------------------------------------------------------------
     match /profiles/{uid} {
       allow read: if isOwner(uid);
-      allow create: if isOwner(uid);
+      // trainingCompletedModuleIds must be absent on create for the same
+      // reason it is frozen on update below.
+      allow create: if isOwner(uid)
+        && !('trainingCompletedModuleIds' in request.resource.data);
       allow update: if isOwner(uid)
         && request.resource.data.dbsStatus == resource.data.dbsStatus
-        && request.resource.data.rating == resource.data.rating;
+        && request.resource.data.rating == resource.data.rating
+        // Frozen client-side: completion is awarded only by
+        // submitTrainingQuiz, which scores the attempt server-side. Without
+        // this a practitioner could mark their own training complete with a
+        // direct profile write, and training completion is what a nursery
+        // relies on when approving someone for paid work.
+        && request.resource.data.get('trainingCompletedModuleIds', [])
+             == resource.data.get('trainingCompletedModuleIds', []);
       allow delete: if false;
 
       // Write-only from the client's perspective; only server functions read
@@ -34,6 +44,14 @@ service cloud.firestore {
         allow read: if false;
         allow create, delete: if isOwner(uid);
         allow update: if false;
+      }
+
+      // Per-module training record. Readable by its owner so the app can show
+      // progress offline, but never client-writable — scores and completion
+      // come from submitTrainingQuiz only.
+      match /trainingProgress/{moduleId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
       }
     }
 
@@ -45,6 +63,18 @@ service cloud.firestore {
     match /profilesPublic/{uid} {
       allow read: if isSignedIn();
       allow write: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // trainingModules/{moduleId} — SERVER ONLY, not merely write-protected.
+    // The module document embeds each question's correctIndex, so any client
+    // read would hand over the answer key to a knowledge check that gates
+    // paid work. Practitioners reach modules through listTrainingModules,
+    // which strips the answers; admins author them through
+    // upsertTrainingModule. Both use the Admin SDK, which bypasses rules.
+    // ---------------------------------------------------------------------
+    match /trainingModules/{moduleId} {
+      allow read, write: if false;
     }
 
     // ---------------------------------------------------------------------

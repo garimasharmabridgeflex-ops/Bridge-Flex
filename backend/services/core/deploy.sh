@@ -88,6 +88,16 @@ deploy_http SetUserSuspended
 deploy_http SetVerificationBadge
 deploy_http ListRatings
 
+# Training modules (Bridge Flex Training & Onboarding Modules spec). The three
+# admin endpoints are gated by the admin custom claim inside the handler, same
+# as the admin dashboard functions above.
+deploy_http ListTrainingModules
+deploy_http SubmitTrainingQuiz
+deploy_http MarkTrainingVideoWatched
+deploy_http ListTrainingModulesAdmin
+deploy_http UpsertTrainingModule
+deploy_http DeleteTrainingModule
+
 # Eventarc triggers — same 4 functions covered by triggers_test.go.
 deploy_auth_trigger InitProfileOnSignUp
 deploy_firestore_trigger SyncProfilePublic google.cloud.firestore.document.v1.written "profiles/{uid}"

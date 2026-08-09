@@ -663,3 +663,66 @@ func writeTrainingError(w http.ResponseWriter, err error) {
 		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 	}
 }
+
+// ─── Training gate ───────────────────────────────────────────────────────────
+
+// trainingConfigDoc holds platform-wide training settings. Kept in Firestore
+// rather than as a constant so the gate can be turned on without a deploy:
+// with only two modules published, blocking every application would strand
+// practitioners, but that changes as the module set grows.
+const trainingConfigDoc = "platformConfig/training"
+
+type trainingConfig struct {
+	// RequiredModuleIDs must all be completed before a practitioner may apply
+	// for a shift. Empty (the default, and the current production value) means
+	// no gate at all.
+	RequiredModuleIDs []string `firestore:"requiredModuleIds,omitempty"`
+}
+
+// missingRequiredTraining returns the required module ids the user has not
+// completed. An empty result means they may apply.
+//
+// Reads the completion summary from the profile document rather than the
+// trainingProgress subcollection: it is one read instead of N, and it is the
+// same field a nursery sees on the public profile, so the gate and the
+// approval screen can never disagree about who has completed what.
+func missingRequiredTraining(ctx context.Context, db *firestore.Client, uid string) ([]string, error) {
+	cfgSnap, err := db.Doc(trainingConfigDoc).Get(ctx)
+	if status.Code(err) == codes.NotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var cfg trainingConfig
+	if err := cfgSnap.DataTo(&cfg); err != nil {
+		return nil, err
+	}
+	if len(cfg.RequiredModuleIDs) == 0 {
+		return nil, nil
+	}
+
+	profSnap, err := db.Collection("profiles").Doc(uid).Get(ctx)
+	if status.Code(err) == codes.NotFound {
+		return cfg.RequiredModuleIDs, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var p Profile
+	if err := profSnap.DataTo(&p); err != nil {
+		return nil, err
+	}
+	done := make(map[string]bool, len(p.TrainingCompletedModuleIDs))
+	for _, id := range p.TrainingCompletedModuleIDs {
+		done[id] = true
+	}
+
+	var missing []string
+	for _, id := range cfg.RequiredModuleIDs {
+		if !done[id] {
+			missing = append(missing, id)
+		}
+	}
+	return missing, nil
+}

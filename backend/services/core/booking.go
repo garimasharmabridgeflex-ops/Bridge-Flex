@@ -83,6 +83,21 @@ func acceptShift(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Training gate. Enforced here rather than in the client so it cannot be
+	// bypassed, and driven by config rather than code so it can be switched on
+	// the day enough modules exist — with only two published, hard-blocking
+	// applications would strand practitioners who have nothing to complete.
+	// An empty requiredModuleIds (the default) means no gate, and the nursery
+	// approval step is what checks training in the meantime.
+	if missing, err := missingRequiredTraining(ctx, db, uid); err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	} else if len(missing) > 0 {
+		httpjson.WriteError(w, http.StatusForbidden, "TRAINING_REQUIRED",
+			"Complete your required training modules before applying for shifts")
+		return
+	}
+
 	ref := db.Collection("shifts").Doc(req.ShiftID)
 	var nurseryID string
 	var resultStatus string

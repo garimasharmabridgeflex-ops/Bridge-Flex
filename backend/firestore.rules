@@ -78,6 +78,16 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------------
+    // platformConfig/{doc} — SERVER ONLY. Holds the training gate's
+    // requiredModuleIds. Client-writable config would let a practitioner
+    // empty the list and skip the gate entirely; client-readable is harmless
+    // but unnecessary, since the gate is enforced server-side in acceptShift.
+    // ---------------------------------------------------------------------
+    match /platformConfig/{document} {
+      allow read, write: if false;
+    }
+
+    // ---------------------------------------------------------------------
     // shifts/{shiftId}
     // ---------------------------------------------------------------------
     match /shifts/{shiftId} {

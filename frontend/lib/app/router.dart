@@ -17,6 +17,8 @@ import '../features/documents/presentation/dbs_upload_screen.dart';
 import '../features/home/presentation/home_shell.dart';
 import '../features/home/presentation/splash_screen.dart';
 import '../features/notifications/presentation/notifications_screen.dart';
+import '../features/training/presentation/training_module_screen.dart';
+import '../features/training/presentation/training_quiz_screen.dart';
 import '../features/profile/domain/profile.dart';
 import '../features/profile/presentation/edit_profile_screen.dart';
 import '../features/profile/presentation/public_profile_screen.dart';
@@ -111,6 +113,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingRouterScreen()),
       GoRoute(path: '/home', builder: (_, __) => const HomeShell()),
       GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
+      // Quiz sits under the module so a back gesture from the quiz returns to
+      // the module rather than the tab root.
+      GoRoute(
+        path: '/training/:moduleId',
+        builder: (_, state) => TrainingModuleScreen(moduleId: state.pathParameters['moduleId']!),
+        routes: [
+          GoRoute(
+            path: 'quiz',
+            builder: (_, state) => TrainingQuizScreen(moduleId: state.pathParameters['moduleId']!),
+          ),
+        ],
+      ),
       GoRoute(path: '/profile/edit', builder: (_, __) => const EditProfileScreen()),
       GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
       GoRoute(

@@ -440,6 +440,7 @@ class PublicProfile {
     this.visaStatus = '',
     this.rightToWorkStatus = '',
     this.rightToWorkVerified = false,
+    this.trainingCompletedModuleIds = const [],
     this.logoUrl = '',
     this.registeredCompanyName = '',
     this.ofstedRegNumber = '',
@@ -483,6 +484,11 @@ class PublicProfile {
   final String visaStatus;
   final String rightToWorkStatus;
   final bool rightToWorkVerified;
+
+  /// Module ids this practitioner has completed, mirrored from their
+  /// private profile by syncProfilePublic. Ids only — scores and attempt
+  /// counts stay private.
+  final List<String> trainingCompletedModuleIds;
 
   final String description;
   final String openingHours;
@@ -544,6 +550,8 @@ class PublicProfile {
         visaStatus: json['visaStatus'] as String? ?? '',
         rightToWorkStatus: json['rightToWorkStatus'] as String? ?? '',
         rightToWorkVerified: json['rightToWorkVerified'] as bool? ?? false,
+        trainingCompletedModuleIds:
+            (json['trainingCompletedModuleIds'] as List?)?.cast<String>() ?? const [],
         logoUrl: json['logoUrl'] as String? ?? '',
         registeredCompanyName: json['registeredCompanyName'] as String? ?? '',
         ofstedRegNumber: json['ofstedRegNumber'] as String? ?? '',

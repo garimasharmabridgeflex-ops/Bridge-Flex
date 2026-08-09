@@ -85,8 +85,22 @@ class ShiftRepository {
     });
   }
 
-  Future<void> acceptShift(String shiftId) =>
+  /// Applies for a shift. Despite the endpoint name this no longer books the
+  /// shift outright — it registers an application the nursery then approves or
+  /// declines, and the shift stays open to other staff in the meantime.
+  Future<void> applyForShift(String shiftId) =>
       _api.post(ApiFunction.acceptShift, body: {'shiftId': shiftId});
+
+  /// Nursery-only: confirms an applicant, consuming one of the shift's places.
+  Future<void> approveApplicant({required String shiftId, required String staffId}) =>
+      _api.post(ApiFunction.approveShiftApplicant,
+          body: {'shiftId': shiftId, 'staffId': staffId});
+
+  /// Nursery-only: declines an applicant. The shift keeps its capacity and
+  /// stays open to others.
+  Future<void> rejectApplicant({required String shiftId, required String staffId}) =>
+      _api.post(ApiFunction.rejectShiftApplicant,
+          body: {'shiftId': shiftId, 'staffId': staffId});
 
   Future<void> cancelShift(String shiftId) =>
       _api.post(ApiFunction.cancelShift, body: {'shiftId': shiftId});

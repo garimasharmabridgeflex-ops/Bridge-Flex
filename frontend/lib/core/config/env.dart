@@ -48,7 +48,11 @@ enum ApiFunction {
   markTrainingVideoWatched(8148),
   listTrainingModulesAdmin(8149),
   upsertTrainingModule(8150),
-  deleteTrainingModule(8151);
+  deleteTrainingModule(8151),
+
+  // Nursery approval of shift applicants.
+  approveShiftApplicant(8152),
+  rejectShiftApplicant(8153);
 
   const ApiFunction(this.localPort);
   final int localPort;

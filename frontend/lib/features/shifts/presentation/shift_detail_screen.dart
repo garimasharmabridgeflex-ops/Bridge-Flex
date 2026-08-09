@@ -51,20 +51,73 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
     }
   }
 
-  Future<void> _accept(Shift shift) async {
+  Future<void> _apply(Shift shift) async {
     setState(() => _busy = true);
     try {
-      await ref.read(shiftRepositoryProvider).acceptShift(shift.id);
+      await ref.read(shiftRepositoryProvider).applyForShift(shift.id);
       ref.invalidate(shiftDetailProvider(shift.id));
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Shift booked — see you there!')));
+        // Deliberately not "booked": the nursery still has to approve this,
+        // and telling someone they have a shift they might not get would be
+        // worse than the extra step of explaining.
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Applied — the nursery will confirm before it's yours."),
+          ),
+        );
       }
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.message)),
         );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _decideApplicant(Shift shift, String staffId, bool approve) async {
+    if (!approve) {
+      // Declining is one-way — the applicant can't re-apply — so it gets a
+      // confirmation step where approving doesn't.
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Decline this applicant?'),
+          content: const Text(
+              "They'll be told the shift went to someone else and won't be able to apply again. "
+              'The shift stays open for other staff.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Decline')),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+
+    setState(() => _busy = true);
+    try {
+      final repo = ref.read(shiftRepositoryProvider);
+      if (approve) {
+        await repo.approveApplicant(shiftId: shift.id, staffId: staffId);
+      } else {
+        await repo.rejectApplicant(shiftId: shift.id, staffId: staffId);
+      }
+      ref.invalidate(shiftDetailProvider(shift.id));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(approve
+                ? 'Approved — they can now see the shift as booked and message you.'
+                : 'Applicant declined.'),
+          ),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -166,8 +219,15 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
           final alreadyAccepted = isBookedStaff;
           final isInProgress = now.isAfter(shift.startTime) && now.isBefore(shift.endTime);
           final isDone = now.isAfter(shift.endTime);
+          // Application state, distinct from booking: applying no longer
+          // secures the shift, so someone waiting on a decision must not be
+          // offered the apply button again, and must not be shown as booked.
+          final hasApplied = user != null && shift.hasAppliedBy(user.uid);
+          final wasDeclined = user != null && shift.wasRejectedFor(user.uid);
           final canAccept = !isOwner &&
               !alreadyAccepted &&
+              !hasApplied &&
+              !wasDeclined &&
               shift.status == ShiftStatus.open &&
               profile?.role == UserRole.staff;
           final canCancel = (isOwner || isBookedStaff) &&
@@ -331,14 +391,43 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                 ],
                 if (canAccept)
                   PrimaryButton(
-                    label: 'Accept shift',
+                    label: 'Apply for shift',
                     icon: Icons.check_circle_outline_rounded,
                     loading: _busy,
-                    onPressed: () => _accept(shift),
+                    onPressed: () => _apply(shift),
                   ).animate().fadeIn(duration: 250.ms).scale(
                         begin: const Offset(0.97, 0.97),
                         end: const Offset(1, 1),
                       ),
+                if (hasApplied) ...[
+                  _StatusNotice(
+                    icon: Icons.hourglass_top_rounded,
+                    color: AppColors.amber,
+                    text: 'Application sent — waiting for the nursery to confirm. '
+                        'The shift stays open to others until they do.',
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
+                if (wasDeclined) ...[
+                  _StatusNotice(
+                    icon: Icons.info_outline_rounded,
+                    color: Colors.grey,
+                    text: 'This shift went to someone else.',
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
+                // Applicants list, nursery side. Placed with the actions
+                // rather than the details because approving is the nursery's
+                // main job on this screen once people start applying.
+                if (isOwner && shift.pendingStaffIds.isNotEmpty) ...[
+                  _ApplicantList(
+                    shift: shift,
+                    busy: _busy,
+                    onApprove: (staffId) => _decideApplicant(shift, staffId, true),
+                    onReject: (staffId) => _decideApplicant(shift, staffId, false),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 // Owner (nursery) rating is handled per booked-staff-member
                 // above, since a multi-capacity shift can have more than one
                 // ratee; only the staff→nursery direction has a single party.
@@ -456,6 +545,200 @@ class _PartyTile extends ConsumerWidget {
           loading: () => 'Loading…',
           error: (_, __) => 'View profile',
         ),
+      ),
+    );
+  }
+}
+
+
+/// A short coloured banner for a shift's application state.
+class _StatusNotice extends StatelessWidget {
+  const _StatusNotice({required this.icon, required this.color, required this.text});
+
+  final IconData icon;
+  final Color color;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The nursery's decision list for a shift.
+///
+/// Each applicant is a tappable row through to their public profile — the
+/// whole point of the approval step is that the setting looks at who they are
+/// (training, DBS, experience) before committing cover to them.
+class _ApplicantList extends ConsumerWidget {
+  const _ApplicantList({
+    required this.shift,
+    required this.busy,
+    required this.onApprove,
+    required this.onReject,
+  });
+
+  final Shift shift;
+  final bool busy;
+  final ValueChanged<String> onApprove;
+  final ValueChanged<String> onReject;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.how_to_reg_rounded, size: 18, color: scheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                shift.applicantCount == 1
+                    ? '1 applicant awaiting your decision'
+                    : '${shift.applicantCount} applicants awaiting your decision',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Approving fills ${shift.spotsRemaining == 1 ? 'the last place' : 'one of ${shift.spotsRemaining} places'}. '
+            'Anyone still waiting is told the shift filled once it does.',
+            style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          for (final staffId in shift.pendingStaffIds) ...[
+            _ApplicantRow(
+              staffId: staffId,
+              busy: busy,
+              onApprove: () => onApprove(staffId),
+              onReject: () => onReject(staffId),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ApplicantRow extends ConsumerWidget {
+  const _ApplicantRow({
+    required this.staffId,
+    required this.busy,
+    required this.onApprove,
+    required this.onReject,
+  });
+
+  final String staffId;
+  final bool busy;
+  final VoidCallback onApprove;
+  final VoidCallback onReject;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final profile = ref.watch(publicProfileProvider(staffId));
+
+    // The name may still be loading; the approve/decline controls stay usable
+    // either way rather than being gated on a lookup that is only cosmetic.
+    final name = profile.valueOrNull?.name ?? 'Applicant';
+    final dbsVerified = profile.valueOrNull?.dbsBadge == DbsStatus.verified;
+    final trainingCount = profile.valueOrNull?.trainingCompletedModuleIds.length ?? 0;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => context.push('/profile/$staffId'),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: scheme.primary.withValues(alpha: 0.12),
+                  child: Icon(Icons.person_rounded, size: 18, color: scheme.primary),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 2),
+                      Wrap(
+                        spacing: 6,
+                        children: [
+                          if (dbsVerified)
+                            const Text('DBS verified',
+                                style: TextStyle(fontSize: 11.5, color: Colors.green)),
+                          Text(
+                            trainingCount > 0
+                                ? '$trainingCount training module${trainingCount == 1 ? '' : 's'}'
+                                : 'No training completed',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: trainingCount > 0 ? Colors.green : scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: busy ? null : onReject,
+                  child: const Text('Decline'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton(
+                  onPressed: busy ? null : onApprove,
+                  child: const Text('Approve'),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

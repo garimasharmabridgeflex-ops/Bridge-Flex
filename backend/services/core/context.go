@@ -32,6 +32,11 @@ const (
 	topicShiftMatched   = "shift-matched"
 	topicRatingReceived = "rating-received"
 	topicShiftCancelled = "shift-cancelled"
+	// Applications are a separate event from bookings: shift-applied only
+	// tells the nursery someone is waiting, while shift-booked (published on
+	// approval) is what opens the chat session.
+	topicShiftApplied = "shift-applied"
+	topicShiftDecided = "shift-application-decided"
 )
 
 var (

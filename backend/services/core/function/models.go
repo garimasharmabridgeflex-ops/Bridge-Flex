@@ -325,7 +325,25 @@ type Shift struct {
 	// BookedStaffID above is kept in sync as "most recent acceptor" only
 	// for backward compatibility with any code still reading the singular
 	// field; membership/cancellation logic must use this array.
+	//
+	// Since the nursery-approval flow, this means APPROVED staff only.
+	// Anything already in here before that change was a confirmed booking, so
+	// existing shifts carry over as approved with no migration.
 	BookedStaffIDs []string `firestore:"bookedStaffIds,omitempty" json:"bookedStaffIds,omitempty"`
+
+	// PendingStaffIDs are applicants awaiting the nursery's decision. They do
+	// not count toward capacity: the shift stays open and visible to other
+	// staff until enough applicants have been APPROVED, so a single applicant
+	// can't take a shift off the market while the nursery deliberates — and
+	// more people may apply than there are places, which is what gives the
+	// nursery someone to choose between.
+	PendingStaffIDs []string `firestore:"pendingStaffIds,omitempty" json:"pendingStaffIds,omitempty"`
+
+	// RejectedStaffIDs records who was turned down, so the app can show a
+	// decided outcome rather than silently dropping someone back to "not
+	// applied", and so a rejected applicant can't immediately re-apply to the
+	// same shift.
+	RejectedStaffIDs []string `firestore:"rejectedStaffIds,omitempty" json:"rejectedStaffIds,omitempty"`
 
 	// Shift-detail fields.
 	AgeGroup         string   `firestore:"ageGroup,omitempty" json:"ageGroup,omitempty"`

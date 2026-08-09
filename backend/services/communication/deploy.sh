@@ -43,6 +43,8 @@ deploy_http MarkAllNotificationsRead
 # core/function/context.go ensureTopic) — no manual `gcloud pubsub topics
 # create` needed first.
 deploy_pubsub_trigger OnShiftBooked shift-booked
+deploy_pubsub_trigger OnShiftApplied shift-applied
+deploy_pubsub_trigger OnShiftApplicationDecided shift-application-decided
 deploy_pubsub_trigger OnRatingReceived rating-received
 deploy_pubsub_trigger OnShiftMatched shift-matched
 deploy_pubsub_trigger OnShiftCancelled shift-cancelled

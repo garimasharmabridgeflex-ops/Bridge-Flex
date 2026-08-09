@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/api_client.dart';
 import '../features/admin/data/admin_repository.dart';
+import '../features/training/data/training_repository.dart';
+import '../features/training/domain/training_module.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/chat/data/chat_repository.dart';
 import '../features/documents/data/documents_repository.dart';
@@ -49,6 +51,16 @@ final chatRepositoryProvider = Provider<ChatRepository>(
 
 final adminRepositoryProvider = Provider<AdminRepository>(
   (ref) => AdminRepository(ref.watch(apiClientProvider)),
+);
+
+final trainingRepositoryProvider = Provider<TrainingRepository>(
+  (ref) => TrainingRepository(ref.watch(apiClientProvider), ref.watch(firebaseStorageProvider)),
+);
+
+/// The practitioner's training modules plus their own progress. Watched by the
+/// training tab and by the profile badge, so completing a quiz refreshes both.
+final trainingOverviewProvider = FutureProvider.autoDispose<TrainingOverview>(
+  (ref) => ref.watch(trainingRepositoryProvider).list(),
 );
 
 /// The single source of truth for "who is signed in" throughout the app.

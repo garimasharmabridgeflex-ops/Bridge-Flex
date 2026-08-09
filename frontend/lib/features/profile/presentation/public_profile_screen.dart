@@ -395,6 +395,12 @@ class StaffDetails extends StatelessWidget {
           const SizedBox(height: 8),
           ChipDisplayRow(values: profile.qualifications, options: staffQualificationOptions),
         ],
+        if (profile.trainingCompletedModuleIds.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.md),
+          Text('Bridge Flex training', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          _CompletedTraining(completedIds: profile.trainingCompletedModuleIds),
+        ],
         if (profile.availabilityDays.isNotEmpty || profile.availabilityShifts.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
           Text('Availability', style: Theme.of(context).textTheme.labelLarge),
@@ -657,6 +663,60 @@ class _ReviewTile extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+
+/// Training a practitioner has completed, shown to a nursery deciding whether
+/// to approve them for a shift.
+///
+/// The public profile carries only module ids, so titles are resolved from the
+/// module list. If that lookup fails or a module has since been unpublished,
+/// the count is still shown rather than nothing — a nursery seeing "2
+/// completed" with no names is more useful than an empty section.
+class _CompletedTraining extends ConsumerWidget {
+  const _CompletedTraining({required this.completedIds});
+
+  final List<String> completedIds;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final overview = ref.watch(trainingOverviewProvider);
+    final titles = overview.maybeWhen(
+      data: (data) => {for (final m in data.modules) m.moduleId: m.title},
+      orElse: () => <String, String>{},
+    );
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final id in completedIds)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: Colors.green.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.verified_rounded, size: 14, color: Colors.green),
+                const SizedBox(width: 6),
+                Text(
+                  titles[id] ?? 'Module completed',
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

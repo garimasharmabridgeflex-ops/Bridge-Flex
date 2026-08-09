@@ -14,6 +14,8 @@ func init() {
 	functions.CloudEvent("OnRatingReceived", onRatingReceived)
 	functions.CloudEvent("OnShiftMatched", onShiftMatched)
 	functions.CloudEvent("OnShiftCancelled", onShiftCancelled)
+	functions.CloudEvent("OnShiftApplied", onShiftApplied)
+	functions.CloudEvent("OnShiftApplicationDecided", onShiftApplicationDecided)
 }
 
 // pubSubMessage / messagePublishedData mirror the Pub/Sub CloudEvent JSON
@@ -157,4 +159,75 @@ func onShiftCancelled(ctx context.Context, e event.Event) error {
 		}
 	}
 	return nil
+}
+
+type shiftAppliedPayload struct {
+	ShiftID   string `json:"shiftId"`
+	NurseryID string `json:"nurseryId"`
+	StaffID   string `json:"staffId"`
+}
+
+// onShiftApplied notifies the nursery that someone wants the shift. It
+// deliberately does NOT create a chat session — that happens on approval, so
+// a nursery never ends up with a thread against someone it turned down.
+func onShiftApplied(ctx context.Context, e event.Event) error {
+	var msg messagePublishedData
+	if err := e.DataAs(&msg); err != nil {
+		return fmt.Errorf("event.DataAs: %w", err)
+	}
+	var payload shiftAppliedPayload
+	if err := json.Unmarshal(msg.Message.Data, &payload); err != nil {
+		return fmt.Errorf("unmarshal shift-applied payload: %w", err)
+	}
+
+	return notifyUser(ctx, payload.NurseryID, "shift_application",
+		"New applicant",
+		"Someone has applied for one of your shifts. Review their profile to approve or decline.",
+		map[string]any{"shiftId": payload.ShiftID, "staffId": payload.StaffID},
+	)
+}
+
+type shiftDecisionPayload struct {
+	ShiftID      string `json:"shiftId"`
+	NurseryID    string `json:"nurseryId"`
+	StaffID      string `json:"staffId"`
+	Approved     bool   `json:"approved"`
+	AutoRejected bool   `json:"autoRejected"`
+}
+
+// onShiftApplicationDecided tells an applicant the outcome.
+//
+// An auto-rejection gets different wording from a decline: the shift simply
+// filled up, which is not a judgement on the applicant, and telling someone
+// they were "declined" when nobody looked at them would be both inaccurate
+// and discouraging.
+func onShiftApplicationDecided(ctx context.Context, e event.Event) error {
+	var msg messagePublishedData
+	if err := e.DataAs(&msg); err != nil {
+		return fmt.Errorf("event.DataAs: %w", err)
+	}
+	var payload shiftDecisionPayload
+	if err := json.Unmarshal(msg.Message.Data, &payload); err != nil {
+		return fmt.Errorf("unmarshal shift decision payload: %w", err)
+	}
+
+	notificationType := "shift_application_declined"
+	title := "Application declined"
+	body := "The nursery has gone with someone else for this shift."
+	switch {
+	case payload.Approved:
+		notificationType = "shift_application_approved"
+		title = "You got the shift"
+		// The separate shift_booked notification from onShiftBooked covers
+		// the booking itself; this one is specifically the decision.
+		body = "The nursery approved your application. Check your shifts for the details."
+	case payload.AutoRejected:
+		notificationType = "shift_application_closed"
+		title = "Shift filled"
+		body = "This shift has been fully staffed, so your application has closed."
+	}
+
+	return notifyUser(ctx, payload.StaffID, notificationType, title, body,
+		map[string]any{"shiftId": payload.ShiftID, "approved": payload.Approved},
+	)
 }

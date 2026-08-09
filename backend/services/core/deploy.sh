@@ -75,6 +75,8 @@ deploy_http GetShift
 deploy_http AcceptShift
 deploy_http CancelShift
 deploy_http MarkNoShow
+deploy_http ApproveShiftApplicant
+deploy_http RejectShiftApplicant
 deploy_http CreateRating
 deploy_http CreateDocument
 deploy_http ReviewDocument
@@ -104,4 +106,4 @@ deploy_firestore_trigger SyncProfilePublic google.cloud.firestore.document.v1.wr
 deploy_firestore_trigger RecomputeRating google.cloud.firestore.document.v1.created "ratings/{ratingId}"
 deploy_firestore_trigger MatchNewShift google.cloud.firestore.document.v1.created "shifts/{shiftId}"
 
-echo "functions-core: all 27 functions deployed."
+echo "functions-core: all 35 functions deployed."

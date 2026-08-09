@@ -40,6 +40,8 @@ class Shift {
     this.expectedDuties = const [],
     this.requirements = const [],
     this.noShowStaffIds = const [],
+    this.pendingStaffIds = const [],
+    this.rejectedStaffIds = const [],
   });
 
   final String id;
@@ -72,6 +74,15 @@ class Shift {
   final List<String> requirements;
   final List<String> noShowStaffIds;
 
+  /// Applicants awaiting the nursery's decision. These do NOT consume
+  /// capacity: the shift stays open and visible to other staff until enough
+  /// applicants have been approved.
+  final List<String> pendingStaffIds;
+
+  /// Applicants the nursery declined, or who were cleared automatically when
+  /// the shift filled up.
+  final List<String> rejectedStaffIds;
+
   Duration get duration => endTime.difference(startTime);
 
   double get totalPay => duration.inMinutes / 60 * payRate;
@@ -83,6 +94,17 @@ class Shift {
   bool isBookedBy(String uid) => bookedStaffIds.contains(uid);
 
   bool isMarkedNoShow(String uid) => noShowStaffIds.contains(uid);
+
+  bool hasAppliedBy(String uid) => pendingStaffIds.contains(uid);
+
+  bool wasRejectedFor(String uid) => rejectedStaffIds.contains(uid);
+
+  /// True when this user has no further action available on the shift: they
+  /// are booked, waiting on a decision, or have already been declined.
+  bool hasDecidedOrPending(String uid) =>
+      isBookedBy(uid) || hasAppliedBy(uid) || wasRejectedFor(uid);
+
+  int get applicantCount => pendingStaffIds.length;
 
   /// Parses the JSON shape returned by ListOpenShifts/ListMyShifts/GetShift:
   /// `{"shiftId": "...", "shift": {...}}` (or just the inner map for
@@ -112,6 +134,8 @@ class Shift {
       expectedDuties: (json['expectedDuties'] as List?)?.cast<String>() ?? const [],
       requirements: (json['requirements'] as List?)?.cast<String>() ?? const [],
       noShowStaffIds: (json['noShowStaffIds'] as List?)?.cast<String>() ?? const [],
+      pendingStaffIds: (json['pendingStaffIds'] as List?)?.cast<String>() ?? const [],
+      rejectedStaffIds: (json['rejectedStaffIds'] as List?)?.cast<String>() ?? const [],
     );
   }
 
@@ -140,6 +164,8 @@ class Shift {
       expectedDuties: (data['expectedDuties'] as List?)?.cast<String>() ?? const [],
       requirements: (data['requirements'] as List?)?.cast<String>() ?? const [],
       noShowStaffIds: (data['noShowStaffIds'] as List?)?.cast<String>() ?? const [],
+      pendingStaffIds: (data['pendingStaffIds'] as List?)?.cast<String>() ?? const [],
+      rejectedStaffIds: (data['rejectedStaffIds'] as List?)?.cast<String>() ?? const [],
     );
   }
 
@@ -165,5 +191,7 @@ class Shift {
         expectedDuties: expectedDuties,
         requirements: requirements,
         noShowStaffIds: noShowStaffIds,
+        pendingStaffIds: pendingStaffIds,
+        rejectedStaffIds: rejectedStaffIds,
       );
 }

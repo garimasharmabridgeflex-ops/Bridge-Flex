@@ -37,11 +37,18 @@ deploy_http MarkNotificationRead
 deploy_http MarkAllNotificationsRead
 
 # Pub/Sub triggers — same 4 functions covered by triggers_test.go (plus
-# OnShiftCancelled, added after that test file's initial 3). Topics are
-# auto-created by acceptShift/cancelShift/recomputeRating/matchNewShift's
-# publish() helper in core if they don't already exist (see
-# core/function/context.go ensureTopic) — no manual `gcloud pubsub topics
-# create` needed first.
+# OnShiftCancelled, added after that test file's initial 3).
+#
+# Topics must EXIST before these deploys: a 2nd-gen --trigger-topic deploy
+# fails validation with "Resource not found" rather than creating the topic.
+# core's ensureTopic() only auto-creates against the Pub/Sub emulator during
+# local development; it does not run before a production deploy. Create any
+# new topic first:
+#
+#   gcloud pubsub topics create <topic> --project="$PROJECT_ID"
+#
+# (Publishing to a missing topic is logged and swallowed by design, so the
+# symptom is silently absent notifications rather than failed bookings.)
 deploy_pubsub_trigger OnShiftBooked shift-booked
 deploy_pubsub_trigger OnShiftApplied shift-applied
 deploy_pubsub_trigger OnShiftApplicationDecided shift-application-decided

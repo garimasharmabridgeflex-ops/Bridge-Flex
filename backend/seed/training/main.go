@@ -45,12 +45,18 @@ type question struct {
 	Explanation  string
 }
 
+type section struct {
+	Heading string
+	Body    []string
+}
+
 type module struct {
 	ID                   string
 	Order                int64
 	Title                string
 	Purpose              string
 	ContentOutline       []string
+	Sections             []section
 	VideoStoragePath     string
 	VideoDurationSeconds int64
 	PassMark             int64
@@ -72,6 +78,60 @@ func modules() []module {
 				"Preschool room (3–5 years) — mark-making table, construction area, reading corner",
 				"Outdoor area — mud kitchen, sensory garden, safety fencing and gates",
 				"Key adults — the key worker system and how staff are identified",
+			},
+			Sections: []section{
+				{
+					Heading: "Why settings are split into rooms",
+					Body: []string{
+						"A UK nursery is not one big room of mixed ages. It is divided by age band, and the divisions are not arbitrary — they follow the staffing ratios the Early Years Foundation Stage (EYFS) sets in law.",
+						"Under twos must have one adult to every three children. Two-year-olds are one to five. Three-year-olds and over are one to eight, or one to thirteen when someone with Qualified Teacher Status or equivalent Level 6 qualification is working directly with them.",
+						"This is why you will be told which room you are covering before anything else: the room determines how many children you are responsible for, and the setting is legally required to keep that number correct all day. If you are moved between rooms, both rooms' ratios have to still work.",
+					},
+				},
+				{
+					Heading: "Arriving: reception and signing in",
+					Body: []string{
+						"Every setting has a sign-in system at the entrance, and you use it even for a single day's cover. It is not administration. In a fire evacuation the register is what tells the person at the assembly point who should be in the building.",
+						"Near reception you will usually find the key worker board, showing which staff member is the key person for which children, and a parent notice area. Both are worth thirty seconds of your time — the key worker board tells you who to go to about a particular child.",
+					},
+				},
+				{
+					Heading: "The baby room (under 2)",
+					Body: []string{
+						"Expect cots or sleep mats, soft flooring, and a deliberately low-stimulation area. Babies here are doing a great deal of sleeping, feeding and nappy changing, and the room is arranged so those can happen calmly rather than in the middle of noisy play.",
+						"At least one member of staff in a baby room must hold a Level 3 qualification and have real experience with under twos. As cover, you are working alongside that person, not replacing them.",
+						"Sleep arrangements are a safeguarding matter with specific rules, and they vary by setting. Always ask how this room does sleep checks rather than assuming.",
+					},
+				},
+				{
+					Heading: "The toddler room (2 to 3)",
+					Body: []string{
+						"This room is built for movement and mess: a role-play kitchen corner, a messy play zone, low tables. Two-year-olds are learning through doing, and the layout expects spills.",
+						"Nappy changing and early toileting both happen here, often for different children in the same room. Ask where the changing area is and what the setting's recording routine is before you need it.",
+					},
+				},
+				{
+					Heading: "The pre-school room (3 to 5)",
+					Body: []string{
+						"Here you will find a mark-making table, a construction area and a reading corner. These children are getting ready for school, so the resources point at early writing, building and stories.",
+						"Adults in this room are expected to extend play rather than supervise it — sitting at child height, asking open questions, joining in. Standing at the edge of the room is the most common thing a new starter gets quiet feedback about.",
+					},
+				},
+				{
+					Heading: "Outdoors",
+					Body: []string{
+						"Most settings run free-flow or timetabled outdoor play in nearly all weather. Expect a mud kitchen, a sensory or planting area, and fencing with gates that latch above child height.",
+						"Check the gate and boundary yourself when you first go out. If a gate does not latch properly, tell the room leader immediately — outdoor supervision is where head counts matter most.",
+					},
+				},
+				{
+					Heading: "The key person system",
+					Body: []string{
+						"Every child in an EYFS setting must be assigned a key person. This is a legal requirement, not a nice-to-have.",
+						"That person builds the relationship with the child, knows their routines and needs in detail, and is the main point of contact for their family. They also record the child's development.",
+						"As temporary cover you will not be anyone's key person, but you need to know who is. If a child is upset, unwell, or a parent asks you something about their development, the key person — or the room leader — is who you go to.",
+					},
+				},
 			},
 			VideoStoragePath:     module1Video,
 			VideoDurationSeconds: 60,
@@ -149,6 +209,54 @@ func modules() []module {
 				"15:00–16:00 — Free play / afternoon activity",
 				"16:00–16:30 — Tea time",
 				"16:30–18:00 — Free play, wind-down, home time",
+			},
+			Sections: []section{
+				{
+					Heading: "Why the routine matters more than it looks",
+					Body: []string{
+						"A nursery day looks repetitive from the outside. That repetition is the point: young children regulate their behaviour around a predictable rhythm, and most difficult moments in a day happen at transitions, not during activities.",
+						"As cover, you are the one person who does not know the rhythm. Learning it in the first hour is the single most useful thing you can do — it is the difference between following the room and holding it up.",
+						"Timings below are a typical shape. Every setting varies, and yours will differ by fifteen or twenty minutes in places. Always check the room's own routine, which is usually displayed on the wall.",
+					},
+				},
+				{
+					Heading: "Morning: arrival to snack",
+					Body: []string{
+						"Arrival (roughly 7:30–8:30) is staggered as parents drop off. Free play is set out deliberately so children can join at any point without interrupting anything. Handovers happen here — a parent may tell you their child slept badly or is teething, and that information needs passing to the key person.",
+						"Breakfast follows where the setting offers it, then circle time and the register at around 9:00. Circle time is short and settles the group; the register is a safeguarding record of exactly who is present.",
+						"Mid-morning is the main structured activity, linked to the EYFS areas of learning. Snack at around 10:15 is usually a rolling or seated small-group affair depending on the room.",
+					},
+				},
+				{
+					Heading: "Late morning: outdoors and story",
+					Body: []string{
+						"Outdoor play is typically the late-morning block. Count the children as they go out and as they come back in, every time, without waiting to be asked.",
+						"Story or song time before lunch is doing a specific job: it brings the energy down so that lunch is calm. If you are asked to lead it, slower and quieter is almost always right.",
+					},
+				},
+				{
+					Heading: "Lunch and the changeover",
+					Body: []string{
+						"Lunch is around midday, at low tables in small groups, with staff sitting with the children rather than standing over them.",
+						"Allergies are checked before food is served, every single time, against the room's allergy list. Never rely on memory or on what someone told you yesterday. If you are unsure about a child's dietary needs, ask a senior member of staff before serving.",
+						"Nappy changes and toileting follow lunch, and this is also when staff lunch breaks are covered — so the room's staffing shifts around. Expect to be asked to hold the room briefly.",
+					},
+				},
+				{
+					Heading: "Afternoon: sleep and quiet",
+					Body: []string{
+						"Babies and toddlers sleep in the early afternoon. Sleeping children must be checked at the interval your setting specifies and the checks recorded. Ask what that interval is — it is a safeguarding requirement and it varies.",
+						"Pre-school children do not usually nap. They have quiet activities instead, which still need an adult engaged with them rather than supervising from a distance.",
+						"Afternoon snack, a second activity or free play block, and tea follow, then a wind-down into home time from about 16:30.",
+					},
+				},
+				{
+					Heading: "Handover at the end of the day",
+					Body: []string{
+						"Children are collected at staggered times, and each collection is a handover: what the child ate, how they slept, anything notable.",
+						"If something happened that a parent should know about — a bump, a difficult moment, a first — make sure the key person or room leader has it before you leave. As cover you may not be there tomorrow, so anything only you know is lost when you go.",
+					},
+				},
 			},
 			VideoStoragePath:     module2Video,
 			VideoDurationSeconds: 60,
@@ -246,11 +354,17 @@ func main() {
 			})
 		}
 
+		sections := make([]map[string]any, 0, len(m.Sections))
+		for _, sec := range m.Sections {
+			sections = append(sections, map[string]any{"heading": sec.Heading, "body": sec.Body})
+		}
+
 		doc := map[string]any{
 			"order":                m.Order,
 			"title":                m.Title,
 			"purpose":              m.Purpose,
 			"contentOutline":       m.ContentOutline,
+			"sections":             sections,
 			"videoStoragePath":     m.VideoStoragePath,
 			"videoDurationSeconds": m.VideoDurationSeconds,
 			"questions":            questions,

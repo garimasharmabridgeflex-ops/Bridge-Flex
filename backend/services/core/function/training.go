@@ -54,16 +54,17 @@ type staffQuestion struct {
 }
 
 type staffModule struct {
-	ModuleID             string          `json:"moduleId"`
-	Order                int64           `json:"order"`
-	Title                string          `json:"title"`
-	Purpose              string          `json:"purpose"`
-	ContentOutline       []string        `json:"contentOutline"`
-	VideoStoragePath     string          `json:"videoStoragePath,omitempty"`
-	VideoURL             string          `json:"videoUrl,omitempty"`
-	VideoDurationSeconds int64           `json:"videoDurationSeconds,omitempty"`
-	Questions            []staffQuestion `json:"questions"`
-	PassMark             int64           `json:"passMark"`
+	ModuleID             string            `json:"moduleId"`
+	Order                int64             `json:"order"`
+	Title                string            `json:"title"`
+	Purpose              string            `json:"purpose"`
+	ContentOutline       []string          `json:"contentOutline"`
+	Sections             []TrainingSection `json:"sections,omitempty"`
+	VideoStoragePath     string            `json:"videoStoragePath,omitempty"`
+	VideoURL             string            `json:"videoUrl,omitempty"`
+	VideoDurationSeconds int64             `json:"videoDurationSeconds,omitempty"`
+	Questions            []staffQuestion   `json:"questions"`
+	PassMark             int64             `json:"passMark"`
 
 	// Caller's own progress, folded in so the module list is a single round
 	// trip rather than one call per module.
@@ -84,6 +85,7 @@ func toStaffModule(id string, m TrainingModule, p *TrainingProgress) staffModule
 		Title:                m.Title,
 		Purpose:              m.Purpose,
 		ContentOutline:       m.ContentOutline,
+		Sections:             m.Sections,
 		VideoStoragePath:     m.VideoStoragePath,
 		VideoURL:             m.VideoURL,
 		VideoDurationSeconds: m.VideoDurationSeconds,
@@ -410,6 +412,7 @@ type upsertModuleRequest struct {
 	Title                string             `json:"title"`
 	Purpose              string             `json:"purpose"`
 	ContentOutline       []string           `json:"contentOutline"`
+	Sections             []TrainingSection  `json:"sections"`
 	VideoStoragePath     string             `json:"videoStoragePath"`
 	VideoURL             string             `json:"videoUrl"`
 	VideoDurationSeconds int64              `json:"videoDurationSeconds"`
@@ -489,6 +492,7 @@ func upsertTrainingModule(w http.ResponseWriter, r *http.Request) {
 		Title:                req.Title,
 		Purpose:              req.Purpose,
 		ContentOutline:       req.ContentOutline,
+		Sections:             req.Sections,
 		VideoStoragePath:     req.VideoStoragePath,
 		VideoURL:             req.VideoURL,
 		VideoDurationSeconds: req.VideoDurationSeconds,

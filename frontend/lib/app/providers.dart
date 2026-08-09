@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/api_client.dart';
 import '../features/admin/data/admin_repository.dart';
+import '../features/admin/data/admin_training_repository.dart';
+import '../features/admin/domain/admin_training_module.dart';
 import '../features/training/data/training_repository.dart';
 import '../features/training/domain/training_module.dart';
 import '../features/auth/data/auth_repository.dart';
@@ -51,6 +53,18 @@ final chatRepositoryProvider = Provider<ChatRepository>(
 
 final adminRepositoryProvider = Provider<AdminRepository>(
   (ref) => AdminRepository(ref.watch(apiClientProvider)),
+);
+
+final adminTrainingRepositoryProvider = Provider<AdminTrainingRepository>(
+  (ref) => AdminTrainingRepository(ref.watch(apiClientProvider)),
+);
+
+/// Admin view of the modules, answer key included. Separate from
+/// [trainingOverviewProvider] because that one is the practitioner's view with
+/// the answers stripped — an edit has to invalidate both.
+final adminTrainingModulesProvider =
+    FutureProvider.autoDispose<List<AdminTrainingModule>>(
+  (ref) => ref.watch(adminTrainingRepositoryProvider).list(),
 );
 
 final trainingRepositoryProvider = Provider<TrainingRepository>(

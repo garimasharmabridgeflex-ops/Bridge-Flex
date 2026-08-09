@@ -9,6 +9,8 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../documents/domain/document_status.dart';
 import '../../profile/domain/profile.dart';
 import '../domain/admin_models.dart';
+import '../domain/admin_training_module.dart';
+import 'admin_training_edit_screen.dart';
 
 final pendingDocumentsProvider = FutureProvider.autoDispose((ref) {
   return ref.watch(documentsRepositoryProvider).listPendingDocuments();
@@ -33,7 +35,7 @@ class AdminReviewScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Admin'),
@@ -42,6 +44,7 @@ class AdminReviewScreen extends ConsumerWidget {
               Tab(text: 'Overview'),
               Tab(text: 'Queue'),
               Tab(text: 'Users'),
+              Tab(text: 'Training'),
             ],
           ),
           actions: [
@@ -53,7 +56,7 @@ class AdminReviewScreen extends ConsumerWidget {
           ],
         ),
         body: const TabBarView(
-          children: [_OverviewTab(), _QueueTab(), _UsersTab()],
+          children: [_OverviewTab(), _QueueTab(), _UsersTab(), _TrainingTab()],
         ),
       ),
     );
@@ -85,10 +88,10 @@ class _OverviewTab extends ConsumerWidget {
             Text('Platform', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(height: AppSpacing.sm),
             _StatGrid(items: [
-              _Stat('Nurseries', '${stats.totalNurseries}', Icons.home_work_rounded, AppColors.indigo),
-              _Stat('Staff', '${stats.totalStaff}', Icons.badge_rounded, AppColors.indigo),
-              _Stat('Suspended', '${stats.suspendedUsers}', Icons.block_rounded, Theme.of(context).colorScheme.error),
-              _Stat('Pending DBS', '${stats.pendingDbs}', Icons.pending_actions_rounded, AppColors.amber),
+              _Stat('Nurseries', '${stats.totalNurseries}', Icons.home_work_rounded, AppColors.indigo, onTapTab: 2),
+              _Stat('Staff', '${stats.totalStaff}', Icons.badge_rounded, AppColors.indigo, onTapTab: 2),
+              _Stat('Suspended', '${stats.suspendedUsers}', Icons.block_rounded, Theme.of(context).colorScheme.error, onTapTab: 2),
+              _Stat('Pending DBS', '${stats.pendingDbs}', Icons.pending_actions_rounded, AppColors.amber, onTapTab: 1),
             ]),
             const SizedBox(height: AppSpacing.lg),
             Text('Shifts', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
@@ -103,7 +106,7 @@ class _OverviewTab extends ConsumerWidget {
             ]),
             const SizedBox(height: AppSpacing.lg),
             _StatGrid(items: [
-              _Stat('Docs awaiting review', '${stats.pendingDocuments}', Icons.folder_shared_rounded, AppColors.coral),
+              _Stat('Docs awaiting review', '${stats.pendingDocuments}', Icons.folder_shared_rounded, AppColors.coral, onTapTab: 1),
             ]),
           ],
         ).animate().fadeIn(duration: 250.ms),
@@ -113,11 +116,14 @@ class _OverviewTab extends ConsumerWidget {
 }
 
 class _Stat {
-  const _Stat(this.label, this.value, this.icon, this.color);
+  // onTapTab jumps to the tab that actually lists these records; null for
+  // figures with nowhere meaningful to go (shift counts, ratings).
+  const _Stat(this.label, this.value, this.icon, this.color, {this.onTapTab});
   final String label;
   final String value;
   final IconData icon;
   final Color color;
+  final int? onTapTab;
 }
 
 class _StatGrid extends StatelessWidget {
@@ -142,7 +148,8 @@ class _StatGrid extends StatelessWidget {
       itemCount: items.length,
       itemBuilder: (context, i) {
         final item = items[i];
-        return Card(
+        final controller = DefaultTabController.maybeOf(context);
+        final card = Card(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
             child: Row(
@@ -167,6 +174,12 @@ class _StatGrid extends StatelessWidget {
               ],
             ),
           ),
+        );
+        if (item.onTapTab == null || controller == null) return card;
+        return InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          onTap: () => controller.animateTo(item.onTapTab!),
+          child: card,
         );
       },
     );
@@ -503,6 +516,100 @@ class _UserRowState extends ConsumerState<_UserRow> {
                 tooltip: user.suspended ? 'Reinstate' : 'Suspend',
                 onPressed: _toggleSuspend,
               ),
+      ),
+    );
+  }
+}
+
+/// Training module authoring — the answer to "where do I add questions?".
+///
+/// Modules are data, not code, so everything a practitioner sees is editable
+/// here without an app release: content, video path, questions, answers, pass
+/// mark, and whether the module is visible at all.
+class _TrainingTab extends ConsumerWidget {
+  const _TrainingTab();
+
+  Future<void> _open(BuildContext context, AdminTrainingModule module, bool isNew) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AdminTrainingEditScreen(module: module, isNew: isNew),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final modulesAsync = ref.watch(adminTrainingModulesProvider);
+    final scheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _open(context, AdminTrainingModule(moduleId: ''), true),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('New module'),
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(adminTrainingModulesProvider),
+        child: modulesAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => ListView(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            children: [
+              const SizedBox(height: 80),
+              EmptyState(
+                icon: Icons.error_outline,
+                title: "Couldn't load modules",
+                subtitle: '$e',
+              ),
+            ],
+          ),
+          data: (modules) => ListView(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxl * 2),
+            children: [
+              if (modules.isEmpty) ...[
+                const SizedBox(height: 60),
+                const EmptyState(
+                  icon: Icons.school_outlined,
+                  title: 'No modules yet',
+                  subtitle: 'Create one to get started — it stays unpublished until you say so.',
+                ),
+              ],
+              for (final m in modules)
+                Card(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                    leading: CircleAvatar(
+                      backgroundColor: (m.published ? AppColors.mint : AppColors.amber)
+                          .withValues(alpha: 0.15),
+                      child: Text(
+                        '${m.order}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: m.published ? AppColors.mint : AppColors.amber,
+                        ),
+                      ),
+                    ),
+                    title: Text(m.title.isEmpty ? m.moduleId : m.title,
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '${m.questions.length} question${m.questions.length == 1 ? '' : 's'} · '
+                        '${m.sections.length} section${m.sections.length == 1 ? '' : 's'} · '
+                        '${m.published ? 'Published' : 'Draft'}',
+                        style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                      ),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _open(context, m, false),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

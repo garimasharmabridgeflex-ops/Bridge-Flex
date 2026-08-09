@@ -30,6 +30,21 @@ class TrainingQuestion {
       );
 }
 
+/// One teachable chunk of a module: a heading and the paragraphs under it.
+/// Distinct from [TrainingModule.contentOutline], which is the at-a-glance
+/// summary; this is the lesson itself.
+class TrainingSection {
+  const TrainingSection({required this.heading, required this.body});
+
+  final String heading;
+  final List<String> body;
+
+  factory TrainingSection.fromJson(Map<String, dynamic> json) => TrainingSection(
+        heading: json['heading'] as String? ?? '',
+        body: (json['body'] as List?)?.cast<String>() ?? const [],
+      );
+}
+
 class TrainingModule {
   const TrainingModule({
     required this.moduleId,
@@ -37,6 +52,7 @@ class TrainingModule {
     required this.title,
     required this.purpose,
     required this.contentOutline,
+    required this.sections,
     required this.videoStoragePath,
     required this.videoUrl,
     required this.videoDurationSeconds,
@@ -56,6 +72,9 @@ class TrainingModule {
   final String title;
   final String purpose;
   final List<String> contentOutline;
+
+  /// The written lesson. Empty for modules that are video-and-outline only.
+  final List<TrainingSection> sections;
 
   /// Path inside the Firebase Storage bucket, resolved with getDownloadURL().
   /// Preferred over [videoUrl] so the video can be replaced in place without
@@ -84,6 +103,11 @@ class TrainingModule {
         title: json['title'] as String? ?? '',
         purpose: json['purpose'] as String? ?? '',
         contentOutline: (json['contentOutline'] as List?)?.cast<String>() ?? const [],
+        sections: (json['sections'] as List?)
+                ?.cast<Map<String, dynamic>>()
+                .map(TrainingSection.fromJson)
+                .toList() ??
+            const [],
         videoStoragePath: json['videoStoragePath'] as String? ?? '',
         videoUrl: json['videoUrl'] as String? ?? '',
         videoDurationSeconds: (json['videoDurationSeconds'] as num?)?.toInt() ?? 0,

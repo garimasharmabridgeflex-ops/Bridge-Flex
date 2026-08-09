@@ -191,10 +191,37 @@ class _ModuleBodyState extends ConsumerState<_ModuleBody> {
             ),
           ),
         ],
+        // The written lesson. Rendered above the outline because it is the
+        // teaching; the outline is a summary of what the video shows.
+        if (module.sections.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.lg),
+          for (final sec in module.sections) ...[
+            Text(
+              sec.heading,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            for (final para in sec.body)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  para,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(height: 1.55),
+                ),
+              ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+        ],
         if (module.contentOutline.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.lg),
           Text(
-            "What's covered",
+            module.sections.isEmpty ? "What's covered" : 'In the video',
             style: Theme.of(context)
                 .textTheme
                 .titleMedium

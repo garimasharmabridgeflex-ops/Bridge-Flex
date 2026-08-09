@@ -165,6 +165,16 @@ type TrainingQuestion struct {
 	Explanation  string   `firestore:"explanation,omitempty" json:"explanation,omitempty"`
 }
 
+// TrainingSection is one teachable chunk of a module: a heading and the
+// paragraphs under it. Modules originally carried only a flat bullet list,
+// which was the spec's outline FOR THE VIDEO PRODUCER — useful as a summary,
+// but not something a practitioner can learn from. Sections hold the actual
+// teaching; ContentOutline stays as the at-a-glance summary.
+type TrainingSection struct {
+	Heading string   `firestore:"heading" json:"heading"`
+	Body    []string `firestore:"body" json:"body"`
+}
+
 // TrainingModule is trainingModules/{moduleId}. Authored by an admin at
 // runtime rather than compiled in, because the spec expects question wording
 // and timings to change without shipping an app release.
@@ -184,6 +194,10 @@ type TrainingModule struct {
 	VideoStoragePath     string `firestore:"videoStoragePath,omitempty" json:"videoStoragePath,omitempty"`
 	VideoURL             string `firestore:"videoUrl,omitempty" json:"videoUrl,omitempty"`
 	VideoDurationSeconds int64  `firestore:"videoDurationSeconds,omitempty" json:"videoDurationSeconds,omitempty"`
+
+	// Sections carry the lesson itself. Optional so a module can exist as
+	// video + outline before its written content is authored.
+	Sections []TrainingSection `firestore:"sections,omitempty" json:"sections,omitempty"`
 
 	Questions []TrainingQuestion `firestore:"questions,omitempty" json:"questions,omitempty"`
 	// PassMark is a count of correct answers, not a percentage. Zero means

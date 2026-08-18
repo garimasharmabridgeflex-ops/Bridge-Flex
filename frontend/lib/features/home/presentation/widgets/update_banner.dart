@@ -39,7 +39,7 @@ class UpdateAvailableBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'A new version of Bridge Flex is available.',
+                  'A new version of KFlex is available.',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
                 const SizedBox(height: 6),
@@ -84,7 +84,7 @@ Future<void> showRequiredUpdateDialog(BuildContext context, String downloadUrl) 
         icon: const Icon(Icons.system_update_rounded, color: AppColors.indigo, size: 32),
         title: const Text('Update required'),
         content: const Text(
-          'This version of Bridge Flex is no longer supported. Please download the latest '
+          'This version of KFlex is no longer supported. Please download the latest '
           'version to keep using the app.',
         ),
         actions: [

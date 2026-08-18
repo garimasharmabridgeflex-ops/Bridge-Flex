@@ -7,14 +7,14 @@ import 'providers.dart';
 import 'router.dart';
 import 'theme.dart';
 
-class BridgeFlexApp extends ConsumerStatefulWidget {
-  const BridgeFlexApp({super.key});
+class KFlexApp extends ConsumerStatefulWidget {
+  const KFlexApp({super.key});
 
   @override
-  ConsumerState<BridgeFlexApp> createState() => _BridgeFlexAppState();
+  ConsumerState<KFlexApp> createState() => _KFlexAppState();
 }
 
-class _BridgeFlexAppState extends ConsumerState<BridgeFlexApp> {
+class _KFlexAppState extends ConsumerState<KFlexApp> {
   bool _fcmInitialized = false;
 
   @override
@@ -38,7 +38,7 @@ class _BridgeFlexAppState extends ConsumerState<BridgeFlexApp> {
     });
 
     return MaterialApp.router(
-      title: 'Bridge Flex',
+      title: 'KFlex',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

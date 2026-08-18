@@ -56,7 +56,7 @@ var users = []sampleUser{
 	{
 		UID: "admin-super", Email: "admin@example.com", Password: "password123",
 		DisplayName: "Super Admin", Role: "admin", DBSStatus: "verified",
-		Description: "Bridge Flex Platform Super Administrator.",
+		Description: "KFlex Platform Super Administrator.",
 		Lat: 53.4808, Lng: -2.2426,
 	},
 }

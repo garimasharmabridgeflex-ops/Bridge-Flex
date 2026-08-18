@@ -397,7 +397,7 @@ class StaffDetails extends StatelessWidget {
         ],
         if (profile.trainingCompletedModuleIds.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
-          Text('Bridge Flex training', style: Theme.of(context).textTheme.labelLarge),
+          Text('KFlex training', style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 8),
           _CompletedTraining(completedIds: profile.trainingCompletedModuleIds),
         ],
@@ -424,8 +424,8 @@ class StaffDetails extends StatelessWidget {
                 avatar: const Icon(Icons.verified_user_rounded, color: AppColors.mint, size: 18),
                 label: Text(
                   profile.dbsExpiryDate != null
-                      ? 'DBS Verified by Bridge Flex · expires ${profile.dbsExpiryDate!.day}/${profile.dbsExpiryDate!.month}/${profile.dbsExpiryDate!.year}'
-                      : 'DBS Verified by Bridge Flex',
+                      ? 'DBS Verified by KFlex · expires ${profile.dbsExpiryDate!.day}/${profile.dbsExpiryDate!.month}/${profile.dbsExpiryDate!.year}'
+                      : 'DBS Verified by KFlex',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               )
@@ -601,7 +601,7 @@ class _ReviewTile extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final raterAsync = ref.watch(publicProfileProvider(review.raterId));
     final raterName = raterAsync.valueOrNull?.name;
-    final displayName = (raterName == null || raterName.isEmpty) ? 'Bridge Flex user' : raterName;
+    final displayName = (raterName == null || raterName.isEmpty) ? 'KFlex user' : raterName;
 
     return Card(
       child: Padding(

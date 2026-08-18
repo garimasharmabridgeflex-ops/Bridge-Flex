@@ -169,6 +169,6 @@ jobs:
         if: always() && steps.secrets_check.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: BridgeFlex_iOS_IPA
+          name: KFlex_iOS_IPA
           path: frontend/ios/build/ipa/*.ipa
           if-no-files-found: warn

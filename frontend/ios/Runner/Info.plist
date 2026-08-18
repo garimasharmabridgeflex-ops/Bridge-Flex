@@ -7,7 +7,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
-		<string>Bridge Flex</string>
+		<string>KFlex</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -40,18 +40,18 @@
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>NSCameraUsageDescription</key>
-		<string>Bridge Flex uses your camera to take photos for your profile and for document uploads.</string>
+		<string>KFlex uses your camera to take photos for your profile and for document uploads.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
-		<string>Bridge Flex needs access to your photo library to attach a profile photo or documents.</string>
+		<string>KFlex needs access to your photo library to attach a profile photo or documents.</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
-		<string>Bridge Flex uses your location to show and match nearby shifts.</string>
+		<string>KFlex uses your location to show and match nearby shifts.</string>
 		<!-- Required even though the app only ever requests when-in-use access:
 		     the geolocator plugin references the always-authorization API, and
 		     Apple rejects the upload (ITMS-90683) if the matching purpose
 		     string is absent, regardless of whether the app calls it. The
 		     wording says plainly that there is no background tracking. -->
 		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-		<string>Bridge Flex uses your location only while you are using the app, to show and match nearby shifts. It does not track your location in the background.</string>
+		<string>KFlex uses your location only while you are using the app, to show and match nearby shifts. It does not track your location in the background.</string>
 		<key>UIBackgroundModes</key>
 		<array>
 			<string>remote-notification</string>

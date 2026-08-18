@@ -89,7 +89,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 .rotate(begin: -0.02, end: 0.02),
             const SizedBox(height: AppSpacing.md),
             Text(
-              'Bridge Flex',
+              'KFlex',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,

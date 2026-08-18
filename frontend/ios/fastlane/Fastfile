@@ -144,7 +144,7 @@ platform :ios do
       configuration: "Release",
       export_method: "app-store",
       output_directory: "./build/ipa",
-      output_name: "BridgeFlex.ipa",
+      output_name: "KFlex.ipa",
       export_options: {
         signingStyle: "manual",
         provisioningProfiles: { APP_IDENTIFIER => profile_name }

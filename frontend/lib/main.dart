@@ -25,6 +25,6 @@ Future<void> main() async {
     await FirebaseStorage.instance.useStorageEmulator(host, Env.storageEmulatorPort);
   }
 
-  runApp(const ProviderScope(child: BridgeFlexApp()));
+  runApp(const ProviderScope(child: KFlexApp()));
 }
 

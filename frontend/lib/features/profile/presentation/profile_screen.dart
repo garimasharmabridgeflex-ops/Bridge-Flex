@@ -7,6 +7,7 @@ import '../../../app/providers.dart';
 import '../../../app/theme.dart';
 import '../../../shared/services/uk_geocoding.dart';
 import '../../../shared/widgets/status_badge.dart';
+import '../../settings/presentation/delete_account_flow.dart';
 import '../domain/profile.dart';
 import 'public_profile_screen.dart';
 
@@ -188,6 +189,21 @@ class ProfileScreen extends ConsumerWidget {
                         label: 'DBS Certificate & Compliance',
                         onTap: () => context.push('/profile/dbs'),
                       ),
+                    _ActionTile(
+                      icon: Icons.shield_outlined,
+                      label: 'Settings, Legal & Support',
+                      onTap: () => context.push('/settings'),
+                    ),
+                    // App Store Review guideline 5.1.1(v) requires account
+                    // deletion to be findable, not merely present. Build 21
+                    // was rejected over it while the flow already existed —
+                    // reachable only behind the unlabelled gear icon above.
+                    _ActionTile(
+                      icon: Icons.delete_forever_rounded,
+                      label: 'Delete Account',
+                      destructive: true,
+                      onTap: () => confirmAndDeleteAccount(context, ref),
+                    ),
                     const SizedBox(height: AppSpacing.lg),
                     if (profile.role == UserRole.nursery)
                       NurseryDetails(profile: profile.toPublicView(uid))
@@ -331,19 +347,28 @@ class _ActionTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.destructive = false,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
 
+  /// Tints the tile with the error colour and swaps the "+" affordance for a
+  /// chevron, so an irreversible action doesn't read like the additive ones
+  /// stacked above it.
+  final bool destructive;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final accent = destructive ? scheme.error : scheme.primary;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        color: destructive
+            ? scheme.error.withValues(alpha: 0.07)
+            : scheme.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Material(
@@ -356,7 +381,7 @@ class _ActionTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
-                Icon(icon, color: scheme.primary, size: 22),
+                Icon(icon, color: accent, size: 22),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text(
@@ -364,7 +389,7 @@ class _ActionTile extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
-                      color: scheme.onSurface,
+                      color: destructive ? accent : scheme.onSurface,
                     ),
                   ),
                 ),
@@ -372,12 +397,12 @@ class _ActionTile extends StatelessWidget {
                   height: 24,
                   width: 24,
                   decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.12),
+                    color: accent.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    Icons.add_rounded,
-                    color: scheme.primary,
+                    destructive ? Icons.chevron_right_rounded : Icons.add_rounded,
+                    color: accent,
                     size: 16,
                   ),
                 ),

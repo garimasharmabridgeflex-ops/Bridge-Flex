@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme.dart';
-import '../../../core/api/api_exception.dart';
+import '../../../shared/constants/legal_links.dart';
+import 'delete_account_flow.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -17,40 +19,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _deleting = false;
 
   Future<void> _confirmDelete() async {
-    final scheme = Theme.of(context).colorScheme;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete your account?'),
-        content: const Text(
-          'This permanently deletes your profile, uploaded documents and login. '
-          "It can't be undone.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: TextButton.styleFrom(foregroundColor: scheme.error),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
     setState(() => _deleting = true);
     try {
-      await ref.read(profileRepositoryProvider).deleteAccount();
-      await ref.read(authRepositoryProvider).signOut();
-      // Router redirects to /sign-in on its own once authStateProvider sees
-      // the signed-out state — no manual navigation needed here.
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-      }
+      await confirmAndDeleteAccount(context, ref);
+      // On success the router redirects to /sign-in once auth state clears;
+      // on cancellation or failure the flow has already told the user why.
     } finally {
       if (mounted) setState(() => _deleting = false);
     }
@@ -90,12 +63,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ] else ...[
                     const Divider(height: 1),
-                    const ListTile(
-                      leading: Icon(Icons.g_mobiledata_rounded),
-                      title: Text('Signed in with Google'),
-                      subtitle: Text('Manage your password from your Google account.'),
+                    ListTile(
+                      leading: const Icon(Icons.verified_user_outlined),
+                      title: Text('Signed in with ${authRepo.hasAppleProvider ? 'Apple' : 'Google'}'),
+                      subtitle: Text(
+                        'Manage this login from your '
+                        '${authRepo.hasAppleProvider ? 'Apple ID' : 'Google account'}.',
+                      ),
                     ),
                   ],
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            _SectionLabel('LEGAL & SUPPORT'),
+            const SizedBox(height: 8),
+            Card(
+              margin: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  _LinkTile(
+                    icon: Icons.help_outline_rounded,
+                    title: 'Help & support',
+                    url: LegalLinks.support,
+                  ),
+                  const Divider(height: 1),
+                  _LinkTile(
+                    icon: Icons.description_outlined,
+                    title: 'Terms of Service',
+                    url: LegalLinks.terms,
+                  ),
+                  const Divider(height: 1),
+                  _LinkTile(
+                    icon: Icons.privacy_tip_outlined,
+                    title: 'Privacy Policy',
+                    url: LegalLinks.privacy,
+                  ),
                 ],
               ),
             ),
@@ -108,7 +111,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: ListTile(
                 leading: Icon(Icons.delete_forever_rounded, color: scheme.error),
                 title: Text('Delete account', style: TextStyle(color: scheme.error, fontWeight: FontWeight.w700)),
-                subtitle: const Text('Permanently erase your profile and documents.'),
+                subtitle: const Text('Permanently erase your profile, documents and login.'),
                 trailing: _deleting
                     ? const SizedBox(
                         width: 18,
@@ -138,5 +141,21 @@ class _SectionLabel extends StatelessWidget {
               letterSpacing: 1.1,
               fontWeight: FontWeight.w700,
             ),
+      );
+}
+
+class _LinkTile extends StatelessWidget {
+  const _LinkTile({required this.icon, required this.title, required this.url});
+
+  final IconData icon;
+  final String title;
+  final String url;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        leading: Icon(icon),
+        title: Text(title),
+        trailing: const Icon(Icons.open_in_new_rounded, size: 18),
+        onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
       );
 }

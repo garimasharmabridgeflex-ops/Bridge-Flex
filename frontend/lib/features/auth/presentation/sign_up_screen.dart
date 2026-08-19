@@ -8,6 +8,7 @@ import '../../../app/theme.dart';
 import '../../../shared/widgets/app_brand_mark.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/primary_button.dart';
+import 'widgets/auth_provider_buttons.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
@@ -22,7 +23,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _loading = false;
-  bool _googleLoading = false;
   String? _error;
 
   @override
@@ -50,23 +50,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
       setState(() => _error = _friendlyAuthError(e.code));
     } finally {
       if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _submitGoogle() async {
-    setState(() {
-      _googleLoading = true;
-      _error = null;
-    });
-    try {
-      await ref.read(authRepositoryProvider).signInWithGoogle();
-      // Router redirect takes the new user to role selection automatically.
-    } on FirebaseAuthException catch (e) {
-      setState(() => _error = _friendlyAuthError(e.code));
-    } catch (_) {
-      // User closed the provider popup/sheet — not an error worth surfacing.
-    } finally {
-      if (mounted) setState(() => _googleLoading = false);
     }
   }
 
@@ -152,31 +135,13 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                       onPressed: _submit,
                     ).animate().fadeIn(delay: 250.ms, duration: 300.ms),
                     const SizedBox(height: AppSpacing.md),
-                    Row(
-                      children: [
-                        Expanded(child: Divider(color: Theme.of(context).colorScheme.outlineVariant)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            'or',
-                            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),
-                          ),
-                        ),
-                        Expanded(child: Divider(color: Theme.of(context).colorScheme.outlineVariant)),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    OutlinedButton.icon(
-                      onPressed: _googleLoading ? null : _submitGoogle,
-                      icon: _googleLoading
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Image.asset('assets/branding/google_logo.png', width: 18, height: 18),
-                      label: const Text('Continue with Google'),
+                    AuthProviderButtons(
+                      onError: (message) => setState(() => _error = message),
                     ).animate().fadeIn(delay: 280.ms, duration: 300.ms),
+                    const SizedBox(height: AppSpacing.lg),
+                    const LegalConsentText(action: 'creating an account')
+                        .animate()
+                        .fadeIn(delay: 320.ms, duration: 300.ms),
                     const SizedBox(height: AppSpacing.lg),
                   ],
                 ),

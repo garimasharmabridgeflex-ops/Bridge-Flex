@@ -10,5 +10,15 @@
 	     because Xcode substitutes the value at build time. -->
 	<key>aps-environment</key>
 	<string>production</string>
+	<!-- Sign in with Apple. App Store Review guideline 4.8 requires this
+	     alongside the Google login we already offer. The matching
+	     capability must also be enabled on the App ID in the Apple
+	     Developer portal, otherwise the provisioning profile sigh
+	     generates will not carry the entitlement and the archive is
+	     rejected at signing time. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 </dict>
 </plist>

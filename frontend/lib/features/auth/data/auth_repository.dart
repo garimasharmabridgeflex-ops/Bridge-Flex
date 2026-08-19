@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../../core/config/env.dart';
 
@@ -66,6 +71,102 @@ class AuthRepository {
       await _ensureProfileDocument(user.uid, user.displayName ?? '');
       unawaited(_syncGooglePhotoIfUnset(user.uid, user.photoURL));
     }
+  }
+
+  /// True on platforms where "Sign in with Apple" can actually run natively.
+  ///
+  /// App Store Review guideline 4.8 requires an Apple-equivalent login
+  /// wherever a third-party login is offered *on Apple platforms* — it says
+  /// nothing about Android. Offering it on Android as well would mean
+  /// registering a Services ID and driving Apple's web redirect flow through
+  /// a Custom Tab, so the button is simply hidden there instead.
+  bool get appleSignInSupported => !kIsWeb && Platform.isIOS;
+
+  /// "Sign in with Apple".
+  ///
+  /// Firebase verifies the identity token Apple returns by checking that the
+  /// SHA-256 hash embedded in it matches the raw nonce we hand to
+  /// [OAuthProvider.credential] — so Apple gets the *hash* and Firebase gets
+  /// the *raw* value. Skipping the nonce entirely would let a stolen identity
+  /// token be replayed.
+  ///
+  /// Returns false when the user dismisses the sheet.
+  Future<bool> signInWithApple() async {
+    final rawNonce = generateNonce();
+    final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+    final AuthorizationCredentialAppleID appleCredential;
+    try {
+      appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: const [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: hashedNonce,
+      );
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) return false;
+      rethrow;
+    }
+
+    final credential = OAuthProvider('apple.com').credential(
+      idToken: appleCredential.identityToken,
+      rawNonce: rawNonce,
+      accessToken: appleCredential.authorizationCode,
+    );
+    final userCredential = await _auth.signInWithCredential(credential);
+    final user = userCredential.user;
+    if (user == null) return false;
+
+    // Apple sends givenName/familyName on the *first* authorization only —
+    // every later sign-in returns nulls, and there is no API to ask again
+    // short of the user revoking the app in iOS Settings. If it isn't
+    // captured here it is gone for good, which is why this runs before
+    // anything else that might fail.
+    final appleName = [appleCredential.givenName, appleCredential.familyName]
+        .whereType<String>()
+        .where((part) => part.trim().isNotEmpty)
+        .join(' ')
+        .trim();
+    if (appleName.isNotEmpty && (user.displayName ?? '').trim().isEmpty) {
+      await user.updateDisplayName(appleName);
+    }
+
+    final profileName = appleName.isNotEmpty ? appleName : (user.displayName ?? '');
+    await _ensureProfileDocument(user.uid, profileName);
+    return true;
+  }
+
+  /// True for an account that signed in through Apple. Account deletion has
+  /// an extra obligation for these users — see [revokeAppleToken].
+  bool get hasAppleProvider =>
+      _auth.currentUser?.providerData.any((p) => p.providerId == 'apple.com') ?? false;
+
+  /// Revokes KFlex's access to the user's Apple ID, which Apple requires an
+  /// app to do when the user deletes their account (App Store Review
+  /// guideline 5.1.1(v)); deleting the Firebase user alone is not enough.
+  ///
+  /// The authorization code Apple issues is single-use and short-lived, so
+  /// the one from the original sign-in is useless days later. Instead this
+  /// re-runs the Apple authorization sheet purely to mint a fresh code —
+  /// which doubles as the re-authentication step a destructive action should
+  /// have anyway.
+  ///
+  /// Returns false if the user dismisses the sheet, so the caller can abandon
+  /// the deletion rather than delete the account while Apple still believes
+  /// KFlex is authorized.
+  Future<bool> revokeAppleToken() async {
+    final AuthorizationCredentialAppleID appleCredential;
+    try {
+      appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: const [AppleIDAuthorizationScopes.email],
+      );
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) return false;
+      rethrow;
+    }
+    await _auth.revokeTokenWithAuthorizationCode(appleCredential.authorizationCode);
+    return true;
   }
 
   Future<User?> _signInWithGoogleNative() async {

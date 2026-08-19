@@ -55,7 +55,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       if (isStaff) const BrowseShiftsScreen(),
       const MyShiftsScreen(),
       const ChatListScreen(),
-      const TrainingScreen(),
+      // Training modules are staff professional development — a nursery has
+      // nothing to complete there, and the tab is the only way in.
+      if (isStaff) const TrainingScreen(),
       const ProfileScreen(),
     ];
     final items = [
@@ -71,11 +73,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         selectedIcon: Icons.chat_bubble_rounded,
         label: 'Messages',
       ),
-      const NavItem(
-        icon: Icons.school_outlined,
-        selectedIcon: Icons.school_rounded,
-        label: 'Training',
-      ),
+      if (isStaff)
+        const NavItem(
+          icon: Icons.school_outlined,
+          selectedIcon: Icons.school_rounded,
+          label: 'Training',
+        ),
       const NavItem(icon: Icons.person_outline_rounded, selectedIcon: Icons.person_rounded, label: 'Profile'),
     ];
 

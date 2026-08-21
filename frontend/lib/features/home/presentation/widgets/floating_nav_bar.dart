@@ -68,27 +68,59 @@ class FloatingNavBar extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Row(
-                  children: [
-                    for (var i = 0; i < leftItems.length; i++)
-                      Expanded(
-                        child: _NavTile(
-                          item: leftItems[i],
-                          selected: i == selectedIndex,
-                          onTap: () => onDestinationSelected(i),
-                        ),
+                // Without a center action the tiles just share the bar evenly.
+                // With one, each side gets its OWN equal half (both Expanded)
+                // separated by the fixed 56px button gap, so the FAB stays dead
+                // centered no matter how many tiles land on each side. A flat
+                // row of equal tiles + a fixed gap does not: an odd split (e.g.
+                // a nursery's 3 tabs → 2 left / 1 right) pushes the FAB half a
+                // tile off-centre.
+                child: centerAction == null
+                    ? Row(
+                        children: [
+                          for (var i = 0; i < leftItems.length; i++)
+                            Expanded(
+                              child: _NavTile(
+                                item: leftItems[i],
+                                selected: i == selectedIndex,
+                                onTap: () => onDestinationSelected(i),
+                              ),
+                            ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                for (var i = 0; i < leftItems.length; i++)
+                                  Expanded(
+                                    child: _NavTile(
+                                      item: leftItems[i],
+                                      selected: i == selectedIndex,
+                                      onTap: () => onDestinationSelected(i),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 56),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                for (var i = 0; i < rightItems.length; i++)
+                                  Expanded(
+                                    child: _NavTile(
+                                      item: rightItems[i],
+                                      selected: (half + i) == selectedIndex,
+                                      onTap: () => onDestinationSelected(half + i),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    if (centerAction != null) const SizedBox(width: 56),
-                    for (var i = 0; i < rightItems.length; i++)
-                      Expanded(
-                        child: _NavTile(
-                          item: rightItems[i],
-                          selected: (half + i) == selectedIndex,
-                          onTap: () => onDestinationSelected(half + i),
-                        ),
-                      ),
-                  ],
-                ),
               ),
               if (centerAction != null)
                 Positioned(

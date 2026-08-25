@@ -55,6 +55,7 @@ const (
 	module3Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-3-choking-safety.mp4?alt=media&token=b63fe601-98bf-426f-a33b-6d337de2e78f"
 	module4Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-4-mealtime-routines.mp4?alt=media&token=4860b73c-bf53-4ca2-8db2-d6aa4aaad861"
 	module5Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-5-play-activity-time.mp4?alt=media&token=bd97f8fc-5949-4588-a240-1bd0b23556d9"
+	module6Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-6-eyfs-overview.mp4?alt=media&token=f7b97c13-6238-4e7d-bc51-81df166c675c"
 )
 
 type question struct {
@@ -724,7 +725,8 @@ func modules() []module {
 				},
 			},
 			VideoStoragePath:     module6Video,
-			VideoDurationSeconds: 75,
+			VideoURL:             module6Url,
+			VideoDurationSeconds: 40,
 			PassMark:             4,
 			Questions: []question{
 				{

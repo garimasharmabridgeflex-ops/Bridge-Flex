@@ -50,12 +50,12 @@ const (
 	module8Video = "training-videos/module-8-nursery-rhymes-songs.mp4"
 	module9Video = "training-videos/module-9-diverse-family-backgrounds.mp4"
 
-	module1Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-1-uk-nursery.mp4?alt=media&token=5406be00-7da8-4bad-9b53-74662f26a1da"
-	module2Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-2-daily-routine.mp4?alt=media&token=58462d71-2f22-4b02-bffb-f9a406c80110"
-	module3Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-3-choking-safety.mp4?alt=media&token=b63fe601-98bf-426f-a33b-6d337de2e78f"
-	module4Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-4-mealtime-routines.mp4?alt=media&token=4860b73c-bf53-4ca2-8db2-d6aa4aaad861"
-	module5Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-5-play-activity-time.mp4?alt=media&token=bd97f8fc-5949-4588-a240-1bd0b23556d9"
-	module6Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-6-eyfs-overview.mp4?alt=media&token=f7b97c13-6238-4e7d-bc51-81df166c675c"
+	module1Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-1-uk-nursery.mp4?alt=media&token=c55e2b7d-8e5d-441d-8ff5-7753b8171bdc"
+	module2Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-2-daily-routine.mp4?alt=media&token=fed975a4-95b6-4efc-83bc-13103ef805af"
+	module3Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-3-choking-safety.mp4?alt=media&token=66685d02-015a-41ca-b94c-40a1a7b026fd"
+	module4Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-4-mealtime-routines.mp4?alt=media&token=cf4e03da-9e1d-4658-a543-0229b3d84fd3"
+	module5Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-5-play-activity-time.mp4?alt=media&token=8d5b3712-c548-4f19-85cd-7f4c0383d860"
+	module6Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-6-eyfs-overview.mp4?alt=media&token=3b3c16d6-5a19-4c99-bcf4-30e82e4c70ac"
 )
 
 type question struct {

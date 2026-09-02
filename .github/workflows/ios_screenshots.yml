@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       device:
-        description: 'Simulator device type to match (substring, e.g. "16 Pro Max")'
+        description: 'Simulator device type to match (e.g. "14 Plus", "11 Pro Max", "14", "16 Pro Max")'
         required: false
-        default: '16 Pro Max'
+        default: '14 Plus'
   push:
     tags:
       - 'screenshots*'
@@ -42,10 +42,22 @@ jobs:
           set -euo pipefail
           WANT="${{ inputs.device }}"
           if [ -z "$WANT" ]; then
-            WANT='16 Pro Max'
+            # Search candidate 6.5" devices in preferred order (iPhone 14 Plus, 11 Pro Max)
+            for candidate in "14 Plus" "11 Pro Max" "13 Pro Max" "12 Pro Max" "14"; do
+              MATCH=$(xcrun simctl list devicetypes | grep -i "iPhone" | grep -i -- "$candidate" | tail -1 || true)
+              if [ -n "$MATCH" ]; then
+                WANT="$candidate"
+                echo "Selected 6.5\" device candidate: $candidate"
+                break
+              fi
+            done
           fi
 
-          echo "Available iPhone device types:"
+          if [ -z "$WANT" ]; then
+            WANT="14 Plus"
+          fi
+
+          echo "Available iPhone device types on this runner:"
           xcrun simctl list devicetypes | grep iPhone || true
 
           DEVICE_TYPE=$(xcrun simctl list devicetypes \
@@ -55,7 +67,16 @@ jobs:
             | sed -E 's/^.*\((.*)\)$/\1/')
 
           if [ -z "$DEVICE_TYPE" ]; then
-            echo "::error::no simulator device type matching '$WANT'"
+            echo "::warning::'$WANT' not found, searching fallback Plus/Pro Max..."
+            DEVICE_TYPE=$(xcrun simctl list devicetypes \
+              | grep iPhone \
+              | grep -iE '14 Plus|11 Pro Max|13 Pro Max|Plus|Pro Max' \
+              | tail -1 \
+              | sed -E 's/^.*\((.*)\)$/\1/')
+          fi
+
+          if [ -z "$DEVICE_TYPE" ]; then
+            echo "::error::no suitable iPhone device type found"
             exit 1
           fi
           echo "Using device type: $DEVICE_TYPE"
@@ -76,34 +97,47 @@ jobs:
             --dart-define=USE_LOCAL_BACKEND=false \
             --dart-define=PROJECT_ID=kvision-503115
 
-      - name: Generate App Store compliant size classes (6.5", 6.7", 6.9")
+      - name: Strip Alpha Channels and Generate 6.5" App Store Screenshots
         if: always()
         run: |
           cd frontend
           if [ ! -d screenshots ]; then echo "::warning::no screenshots directory produced"; exit 0; fi
 
-          # Prepare output directories
-          mkdir -p screenshots/6.5-inch-1284x2778
-          mkdir -p screenshots/6.5-inch-1242x2688
-          mkdir -p screenshots/6.7-inch-1290x2796
-          mkdir -p screenshots/6.9-inch-1320x2868
+          # Install pillow to guarantee 24-bit Truecolor RGB (Apple strictly forbids alpha channel in screenshots)
+          python3 -m pip install --break-system-packages pillow || pip3 install pillow
 
-          for f in screenshots/*.png; do
-            [ -f "$f" ] || continue
-            fname=$(basename "$f")
+          mkdir -p screenshots/iPhone-14-Plus-1284x2778
+          mkdir -p screenshots/iPhone-11-ProMax-1242x2688
 
-            # 1) App Store 6.5" Display (1284 x 2778 px) - iPhone 12/13/14 Pro Max, 14 Plus
-            sips -z 2778 1284 "$f" --out "screenshots/6.5-inch-1284x2778/$fname"
+          python3 - << 'EOF'
+          import os, glob
+          from PIL import Image
 
-            # 2) App Store 6.5" Display (1242 x 2688 px) - iPhone XS Max, 11 Pro Max
-            sips -z 2688 1242 "$f" --out "screenshots/6.5-inch-1242x2688/$fname"
+          raw_files = [f for f in glob.glob("screenshots/*.png") if os.path.isfile(f)]
+          print(f"Processing {len(raw_files)} screenshots for App Store compliance...")
 
-            # 3) App Store 6.7" Display (1290 x 2796 px) - iPhone 14/15 Pro Max
-            sips -z 2796 1290 "$f" --out "screenshots/6.7-inch-1290x2796/$fname"
+          for f in sorted(raw_files):
+              fname = os.path.basename(f)
+              with Image.open(f) as img:
+                  # 1. Convert to RGB (STRICT REQUIREMENT: completely strips alpha channel)
+                  rgb_img = img.convert("RGB")
+                  
+                  # Overwrite original with RGB (no alpha)
+                  rgb_img.save(f, "PNG", optimize=True)
 
-            # 4) App Store 6.9" Display (1320 x 2868 px) - iPhone 16 Pro Max native
-            sips -z 2868 1320 "$f" --out "screenshots/6.9-inch-1320x2868/$fname"
-          done
+                  # 2. Resample to 1284x2778 (iPhone 14 Plus / 13 Pro Max standard 6.5" display)
+                  img_14plus = rgb_img.resize((1284, 2778), Image.Resampling.LANCZOS)
+                  out_14plus = os.path.join("screenshots/iPhone-14-Plus-1284x2778", fname)
+                  img_14plus.save(out_14plus, "PNG", optimize=True)
+
+                  # 3. Resample to 1242x2688 (iPhone 11 Pro Max / XS Max standard 6.5" display)
+                  img_11promax = rgb_img.resize((1242, 2688), Image.Resampling.LANCZOS)
+                  out_11promax = os.path.join("screenshots/iPhone-11-ProMax-1242x2688", fname)
+                  img_11promax.save(out_11promax, "PNG", optimize=True)
+
+                  print(f"  {fname}: native {rgb_img.size} -> 1284x2778 & 1242x2688 (RGB 24-bit, NO alpha)")
+
+          EOF
 
       - name: Report captured and resized sizes
         if: always()
@@ -111,28 +145,36 @@ jobs:
           cd frontend
           if [ ! -d screenshots ]; then echo "::warning::no screenshots directory produced"; exit 0; fi
 
-          echo "=== 6.5\" Display (1284x2778 px) ==="
-          for f in screenshots/6.5-inch-1284x2778/*.png; do
+          echo "=== iPhone 14 Plus 6.5\" Display (1284x2778 px) ==="
+          for f in screenshots/iPhone-14-Plus-1284x2778/*.png; do
             [ -f "$f" ] || continue
             W=$(sips -g pixelWidth "$f" | awk '/pixelWidth/{print $2}')
             H=$(sips -g pixelHeight "$f" | awk '/pixelHeight/{print $2}')
             echo "  $(basename "$f"): ${W}x${H} px"
           done
 
-          echo "=== 6.5\" Display (1242x2688 px) ==="
-          for f in screenshots/6.5-inch-1242x2688/*.png; do
+          echo "=== iPhone 11 Pro Max 6.5\" Display (1242x2688 px) ==="
+          for f in screenshots/iPhone-11-ProMax-1242x2688/*.png; do
             [ -f "$f" ] || continue
             W=$(sips -g pixelWidth "$f" | awk '/pixelWidth/{print $2}')
             H=$(sips -g pixelHeight "$f" | awk '/pixelHeight/{print $2}')
             echo "  $(basename "$f"): ${W}x${H} px"
           done
 
-      - name: Upload 6.5-inch screenshots (App Store Connect 1284x2778)
+      - name: Upload iPhone 14 Plus Screenshots (1284x2778)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: app-store-screenshots-6.5-inch
-          path: frontend/screenshots/6.5-inch-1284x2778/*.png
+          name: app-store-screenshots-iPhone14Plus-1284x2778
+          path: frontend/screenshots/iPhone-14-Plus-1284x2778/*.png
+          if-no-files-found: warn
+
+      - name: Upload iPhone 11 Pro Max Screenshots (1242x2688)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-store-screenshots-iPhone11ProMax-1242x2688
+          path: frontend/screenshots/iPhone-11-ProMax-1242x2688/*.png
           if-no-files-found: warn
 
       - name: Upload all screenshot sizes

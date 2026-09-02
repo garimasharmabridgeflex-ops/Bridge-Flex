@@ -9,11 +9,10 @@ on:
       device:
         description: 'Simulator device type to match (substring, e.g. "16 Pro Max")'
         required: false
-        # Specific model, not just "Pro Max": picking the last alphabetical
-        # match landed on iPhone XS Max ("X" sorts after digits), which renders
-        # at 1242x2688 — the older 6.5" class. A 16 Pro Max gives 1320x2868,
-        # the size Apple currently prefers.
         default: '16 Pro Max'
+  push:
+    tags:
+      - 'screenshots*'
 
 jobs:
   screenshots:
@@ -39,20 +38,16 @@ jobs:
 
       - name: Boot a simulator
         id: sim
-        # App Store screenshots must match an accepted size class exactly, and
-        # the accepted iPhone size is the largest display Apple currently lists
-        # (6.9" = 1320x2868; a Pro Max simulator renders at exactly that).
-        # The device type is resolved at runtime rather than hardcoded, because
-        # which iPhone models ship with the runner's Xcode changes over time.
         run: |
           set -euo pipefail
-          WANT='${{ inputs.device }}'
+          WANT="${{ inputs.device }}"
+          if [ -z "$WANT" ]; then
+            WANT='16 Pro Max'
+          fi
 
           echo "Available iPhone device types:"
           xcrun simctl list devicetypes | grep iPhone || true
 
-          # simctl prints "iPhone 16 Pro Max (com.apple.…SimDeviceType.iPhone-16-Pro-Max)";
-          # take the identifier from the parentheses of the last match.
           DEVICE_TYPE=$(xcrun simctl list devicetypes \
             | grep iPhone \
             | grep -i -- "$WANT" \
@@ -65,9 +60,6 @@ jobs:
           fi
           echo "Using device type: $DEVICE_TYPE"
 
-          # No runtime argument: simctl then picks the newest runtime that
-          # supports this device, which avoids hardcoding an iOS version that
-          # stops existing whenever the runner's Xcode moves on.
           UDID=$(xcrun simctl create screenshot-device "$DEVICE_TYPE")
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
@@ -75,9 +67,6 @@ jobs:
           xcrun simctl list devices | grep "$UDID" || true
 
       - name: Capture screenshots
-        # Points at the production backend so the seeded demo accounts exist —
-        # the test signs in as the demo staff member, otherwise every screen
-        # would be an empty state and useless for a store listing.
         run: |
           cd frontend
           flutter drive \
@@ -87,28 +76,71 @@ jobs:
             --dart-define=USE_LOCAL_BACKEND=false \
             --dart-define=PROJECT_ID=kvision-503115
 
-      - name: Report captured sizes
-        # Surfaces the pixel dimensions in the log so it's immediately obvious
-        # whether they match an App Store size class, rather than finding out
-        # at upload time.
+      - name: Generate App Store compliant size classes (6.5", 6.7", 6.9")
         if: always()
         run: |
           cd frontend
           if [ ! -d screenshots ]; then echo "::warning::no screenshots directory produced"; exit 0; fi
+
+          # Prepare output directories
+          mkdir -p screenshots/6.5-inch-1284x2778
+          mkdir -p screenshots/6.5-inch-1242x2688
+          mkdir -p screenshots/6.7-inch-1290x2796
+          mkdir -p screenshots/6.9-inch-1320x2868
+
           for f in screenshots/*.png; do
+            [ -f "$f" ] || continue
+            fname=$(basename "$f")
+
+            # 1) App Store 6.5" Display (1284 x 2778 px) - iPhone 12/13/14 Pro Max, 14 Plus
+            sips -z 2778 1284 "$f" --out "screenshots/6.5-inch-1284x2778/$fname"
+
+            # 2) App Store 6.5" Display (1242 x 2688 px) - iPhone XS Max, 11 Pro Max
+            sips -z 2688 1242 "$f" --out "screenshots/6.5-inch-1242x2688/$fname"
+
+            # 3) App Store 6.7" Display (1290 x 2796 px) - iPhone 14/15 Pro Max
+            sips -z 2796 1290 "$f" --out "screenshots/6.7-inch-1290x2796/$fname"
+
+            # 4) App Store 6.9" Display (1320 x 2868 px) - iPhone 16 Pro Max native
+            sips -z 2868 1320 "$f" --out "screenshots/6.9-inch-1320x2868/$fname"
+          done
+
+      - name: Report captured and resized sizes
+        if: always()
+        run: |
+          cd frontend
+          if [ ! -d screenshots ]; then echo "::warning::no screenshots directory produced"; exit 0; fi
+
+          echo "=== 6.5\" Display (1284x2778 px) ==="
+          for f in screenshots/6.5-inch-1284x2778/*.png; do
             [ -f "$f" ] || continue
             W=$(sips -g pixelWidth "$f" | awk '/pixelWidth/{print $2}')
             H=$(sips -g pixelHeight "$f" | awk '/pixelHeight/{print $2}')
-            echo "$f — ${W}x${H}"
+            echo "  $(basename "$f"): ${W}x${H} px"
           done
-          echo "App Store accepts 1320x2868, 1290x2796 or 1260x2736 for the 6.9\" class."
 
-      - name: Upload screenshots
+          echo "=== 6.5\" Display (1242x2688 px) ==="
+          for f in screenshots/6.5-inch-1242x2688/*.png; do
+            [ -f "$f" ] || continue
+            W=$(sips -g pixelWidth "$f" | awk '/pixelWidth/{print $2}')
+            H=$(sips -g pixelHeight "$f" | awk '/pixelHeight/{print $2}')
+            echo "  $(basename "$f"): ${W}x${H} px"
+          done
+
+      - name: Upload 6.5-inch screenshots (App Store Connect 1284x2778)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: app-store-screenshots
-          path: frontend/screenshots/*.png
+          name: app-store-screenshots-6.5-inch
+          path: frontend/screenshots/6.5-inch-1284x2778/*.png
+          if-no-files-found: warn
+
+      - name: Upload all screenshot sizes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-store-screenshots-all-sizes
+          path: frontend/screenshots/
           if-no-files-found: warn
 
       - name: Shut down simulator

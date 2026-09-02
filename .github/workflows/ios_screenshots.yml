@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       device:
-        description: 'Simulator device type to match (e.g. "14 Plus", "11 Pro Max", "14", "16 Pro Max")'
+        description: 'Simulator device type to match (e.g. "11 Pro Max", "XS Max", "14 Plus")'
         required: false
-        default: '14 Plus'
+        default: '11 Pro Max'
   push:
     tags:
       - 'screenshots*'
@@ -42,8 +42,8 @@ jobs:
           set -euo pipefail
           WANT="${{ inputs.device }}"
           if [ -z "$WANT" ]; then
-            # Search candidate 6.5" devices in preferred order (iPhone 14 Plus, 11 Pro Max)
-            for candidate in "14 Plus" "11 Pro Max" "13 Pro Max" "12 Pro Max" "14"; do
+            # Prioritize iPhone 11 Pro Max and iPhone XS Max for native 1242x2688 6.5" display
+            for candidate in "11 Pro Max" "XS Max" "14 Plus" "13 Pro Max" "12 Pro Max"; do
               MATCH=$(xcrun simctl list devicetypes | grep -i "iPhone" | grep -i -- "$candidate" | tail -1 || true)
               if [ -n "$MATCH" ]; then
                 WANT="$candidate"
@@ -54,7 +54,7 @@ jobs:
           fi
 
           if [ -z "$WANT" ]; then
-            WANT="14 Plus"
+            WANT="11 Pro Max"
           fi
 
           echo "Available iPhone device types on this runner:"

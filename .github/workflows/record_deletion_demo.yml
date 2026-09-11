@@ -1,0 +1,157 @@
+name: Record Account Deletion Demo
+
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: 'Simulator device to record (substring, e.g. "15", "16", "11 Pro Max")'
+        required: false
+        default: '15'
+      email:
+        description: 'Demo user email to sign in and delete'
+        required: false
+        default: 'afrilexkenya+demo.staff@gmail.com'
+      password:
+        description: 'Demo user password'
+        required: false
+        default: 'BridgeFlexDemo2026!'
+  push:
+    tags:
+      - 'record-demo*'
+
+jobs:
+  record-demo:
+    name: Record Video on iOS Simulator
+    runs-on: macos-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: |
+          cd frontend
+          flutter pub get
+
+      - name: Boot Simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          WANT="${{ inputs.device }}"
+          if [ -z "$WANT" ]; then
+            for candidate in "15" "16" "14" "11 Pro Max"; do
+              MATCH=$(xcrun simctl list devicetypes | grep -i "iPhone" | grep -i -- "$candidate" | tail -1 || true)
+              if [ -n "$MATCH" ]; then
+                WANT="$candidate"
+                echo "Selected simulator candidate: $candidate"
+                break
+              fi
+            done
+          fi
+          if [ -z "$WANT" ]; then
+            WANT="iPhone"
+          fi
+
+          echo "Available iPhone device types:"
+          xcrun simctl list devicetypes | grep iPhone || true
+
+          DEVICE_TYPE=$(xcrun simctl list devicetypes \
+            | grep iPhone \
+            | grep -i -- "$WANT" \
+            | tail -1 \
+            | sed -E 's/^.*\((.*)\)$/\1/')
+
+          if [ -z "$DEVICE_TYPE" ]; then
+            echo "Fallback to any iPhone..."
+            DEVICE_TYPE=$(xcrun simctl list devicetypes | grep iPhone | tail -1 | sed -E 's/^.*\((.*)\)$/\1/')
+          fi
+          echo "Using device type: $DEVICE_TYPE"
+
+          UDID=$(xcrun simctl create demo-device "$DEVICE_TYPE")
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl list devices | grep "$UDID" || true
+
+      - name: Start Video Recording
+        id: recorder
+        run: |
+          mkdir -p demo_output
+          echo "Starting screen recording for UDID: ${{ steps.sim.outputs.udid }}..."
+          # Start simctl recordVideo in the background using H.264
+          xcrun simctl io "${{ steps.sim.outputs.udid }}" recordVideo --codec=h264 demo_output/account_deletion_demo.mp4 &
+          REC_PID=$!
+          echo "rec_pid=$REC_PID" >> "$GITHUB_OUTPUT"
+          echo "Recording PID: $REC_PID"
+          sleep 3
+
+      - name: Run Account Deletion Demo Test
+        id: test
+        run: |
+          cd frontend
+          DEMO_EMAIL="${{ inputs.email || 'afrilexkenya+demo.staff@gmail.com' }}"
+          DEMO_PASSWORD="${{ inputs.password || 'BridgeFlexDemo2026!' }}"
+          
+          flutter drive \
+            --driver=test_driver/screenshot_driver.dart \
+            --target=integration_test/account_deletion_demo_test.dart \
+            -d ${{ steps.sim.outputs.udid }} \
+            --dart-define=USE_LOCAL_BACKEND=false \
+            --dart-define=PROJECT_ID=kvision-503115 \
+            --dart-define=DEMO_EMAIL="$DEMO_EMAIL" \
+            --dart-define=DEMO_PASSWORD="$DEMO_PASSWORD"
+
+      - name: Stop Video Recording
+        if: always()
+        run: |
+          echo "Stopping recording..."
+          REC_PID="${{ steps.recorder.outputs.rec_pid }}"
+          if [ -n "$REC_PID" ]; then
+            kill -INT "$REC_PID" 2>/dev/null || true
+            wait "$REC_PID" 2>/dev/null || true
+          fi
+          # Fallback: kill any lingering simctl recordVideo processes
+          killall -INT "simctl" 2>/dev/null || true
+          sleep 4
+
+      - name: Optimize Demo Video for Apple Review
+        if: always()
+        run: |
+          if [ -f demo_output/account_deletion_demo.mp4 ]; then
+            ls -lh demo_output/account_deletion_demo.mp4
+            # Ensure faststart is enabled so Apple reviewers can stream it directly
+            ffmpeg -y -i demo_output/account_deletion_demo.mp4 -movflags +faststart -c:v copy demo_output/KFlex_Account_Deletion_Demo.mp4 || cp demo_output/account_deletion_demo.mp4 demo_output/KFlex_Account_Deletion_Demo.mp4
+            ls -lh demo_output/KFlex_Account_Deletion_Demo.mp4
+          else
+            echo "::error::No video recorded!"
+          fi
+
+      - name: Re-seed Demo Account (Safety Net)
+        if: always()
+        # Since the test deleted the account to demo deletion to Apple,
+        # re-seed the demo accounts so other tests & reviews continue working.
+        run: |
+          cd backend/seed
+          go run ./demo -project kvision-503115 || echo "Could not re-seed demo account, continuing..."
+
+      - name: Upload Video Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: KFlex-Account-Deletion-Demo-Video
+          path: demo_output/KFlex_Account_Deletion_Demo.mp4
+          if-no-files-found: error
+
+      - name: Shut down simulator
+        if: always()
+        run: |
+          xcrun simctl shutdown ${{ steps.sim.outputs.udid }} || true
+          xcrun simctl delete ${{ steps.sim.outputs.udid }} || true

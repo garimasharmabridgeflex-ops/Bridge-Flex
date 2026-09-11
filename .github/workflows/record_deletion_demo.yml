@@ -84,12 +84,6 @@ jobs:
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
           xcrun simctl list devices | grep "$UDID" || true
 
-          # Pre-grant notification permission so the native iOS alert
-          # never appears during the demo recording.
-          echo "Granting notification permission..."
-          xcrun simctl privacy "$UDID" grant notifications com.bridgeflex.bridgeflexApp || true
-          echo "Notification permission granted."
-
       - name: Pre-build iOS App
         id: prebuild
         run: |
@@ -102,6 +96,7 @@ jobs:
           flutter build ios --simulator \
             --dart-define=USE_LOCAL_BACKEND=false \
             --dart-define=PROJECT_ID=kvision-503115 \
+            --dart-define=SKIP_FCM=true \
             --dart-define=DEMO_EMAIL="$DEMO_EMAIL" \
             --dart-define=DEMO_PASSWORD="$DEMO_PASSWORD"
           echo "Xcode build done. App is ready."
@@ -132,6 +127,7 @@ jobs:
             -d "$UDID" \
             --dart-define=USE_LOCAL_BACKEND=false \
             --dart-define=PROJECT_ID=kvision-503115 \
+            --dart-define=SKIP_FCM=true \
             --dart-define=DEMO_EMAIL="$DEMO_EMAIL" \
             --dart-define=DEMO_PASSWORD="$DEMO_PASSWORD" \
             --no-build || true

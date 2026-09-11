@@ -30,7 +30,15 @@ class FcmService {
 
   /// Call once after the user is fully signed in. Requests permission, then
   /// registers/refreshes the FCM token with the backend.
+  /// Set via `--dart-define=SKIP_FCM=true` to skip notification permission
+  /// requests during integration tests / automated demo recordings.
+  static const _skipFcm = bool.fromEnvironment('SKIP_FCM');
+
   Future<void> init() async {
+    if (_skipFcm) {
+      debugPrint('FCM init skipped (SKIP_FCM=true)');
+      return;
+    }
     try {
       final messaging = FirebaseMessaging.instance;
 

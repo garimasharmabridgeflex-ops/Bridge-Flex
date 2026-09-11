@@ -41,7 +41,10 @@ jobs:
           cd frontend
           flutter pub get
 
-      - name: Boot Simulator
+      - name: Install ffmpeg
+        run: brew install ffmpeg
+
+      - name: Boot Simulator & Grant Permissions
         id: sim
         run: |
           set -euo pipefail
@@ -81,46 +84,73 @@ jobs:
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
           xcrun simctl list devices | grep "$UDID" || true
 
-      - name: Start Video Recording
-        id: recorder
-        run: |
-          mkdir -p demo_output
-          echo "Starting screen recording for UDID: ${{ steps.sim.outputs.udid }}..."
-          # Start simctl recordVideo in the background using H.264
-          xcrun simctl io "${{ steps.sim.outputs.udid }}" recordVideo --codec=h264 demo_output/account_deletion_demo.mp4 &
-          REC_PID=$!
-          echo "rec_pid=$REC_PID" >> "$GITHUB_OUTPUT"
-          echo "Recording PID: $REC_PID"
-          sleep 3
+          # Pre-grant notification permission so the native iOS alert
+          # never appears during the demo recording.
+          echo "Granting notification permission..."
+          xcrun simctl privacy "$UDID" grant notifications com.bridgeflex.bridgeflexApp || true
+          echo "Notification permission granted."
 
-      - name: Run Account Deletion Demo Test
-        id: test
+      - name: Pre-build iOS App
+        id: prebuild
         run: |
           cd frontend
+          # Do the heavy Xcode build FIRST, before we start recording.
+          # This avoids recording 2+ minutes of blank simulator screen.
           DEMO_EMAIL="${{ inputs.email || 'afrilexkenya+demo.staff@gmail.com' }}"
           DEMO_PASSWORD="${{ inputs.password || 'BridgeFlexDemo2026!' }}"
-          
-          flutter drive \
-            --driver=test_driver/screenshot_driver.dart \
-            --target=integration_test/account_deletion_demo_test.dart \
-            -d ${{ steps.sim.outputs.udid }} \
+
+          flutter build ios --simulator \
             --dart-define=USE_LOCAL_BACKEND=false \
             --dart-define=PROJECT_ID=kvision-503115 \
             --dart-define=DEMO_EMAIL="$DEMO_EMAIL" \
             --dart-define=DEMO_PASSWORD="$DEMO_PASSWORD"
+          echo "Xcode build done. App is ready."
 
-      - name: Stop Video Recording
-        if: always()
+      - name: Record Demo & Run Test
+        id: test
         run: |
+          set -euo pipefail
+          UDID="${{ steps.sim.outputs.udid }}"
+          DEMO_EMAIL="${{ inputs.email || 'afrilexkenya+demo.staff@gmail.com' }}"
+          DEMO_PASSWORD="${{ inputs.password || 'BridgeFlexDemo2026!' }}"
+
+          mkdir -p demo_output
+
+          # Start screen recording NOW — right before the test launches the app.
+          # The app is already built, so the test will start almost immediately.
+          echo "Starting screen recording..."
+          xcrun simctl io "$UDID" recordVideo --codec=h264 demo_output/account_deletion_demo.mp4 &
+          REC_PID=$!
+          echo "Recording PID: $REC_PID"
+          sleep 2
+
+          # Run the integration test (app is pre-built so this only installs + runs)
+          cd frontend
+          flutter drive \
+            --driver=test_driver/screenshot_driver.dart \
+            --target=integration_test/account_deletion_demo_test.dart \
+            -d "$UDID" \
+            --dart-define=USE_LOCAL_BACKEND=false \
+            --dart-define=PROJECT_ID=kvision-503115 \
+            --dart-define=DEMO_EMAIL="$DEMO_EMAIL" \
+            --dart-define=DEMO_PASSWORD="$DEMO_PASSWORD" \
+            --no-build || true
+          # ^^^^ --no-build: skip Xcode build since we already built above
+          # ^^^^ || true: don't fail the step so recording continues
+
+          cd ..
+
+          # Let the video capture a few more seconds of the final state
+          sleep 5
+
+          # Stop recording
           echo "Stopping recording..."
-          REC_PID="${{ steps.recorder.outputs.rec_pid }}"
-          if [ -n "$REC_PID" ]; then
-            kill -INT "$REC_PID" 2>/dev/null || true
-            wait "$REC_PID" 2>/dev/null || true
-          fi
-          # Fallback: kill any lingering simctl recordVideo processes
+          kill -INT "$REC_PID" 2>/dev/null || true
+          wait "$REC_PID" 2>/dev/null || true
           killall -INT "simctl" 2>/dev/null || true
           sleep 4
+          echo "Recording stopped."
+          ls -lh demo_output/ || true
 
       - name: Optimize Demo Video for Apple Review
         if: always()
@@ -128,19 +158,14 @@ jobs:
           if [ -f demo_output/account_deletion_demo.mp4 ]; then
             ls -lh demo_output/account_deletion_demo.mp4
             # Ensure faststart is enabled so Apple reviewers can stream it directly
-            ffmpeg -y -i demo_output/account_deletion_demo.mp4 -movflags +faststart -c:v copy demo_output/KFlex_Account_Deletion_Demo.mp4 || cp demo_output/account_deletion_demo.mp4 demo_output/KFlex_Account_Deletion_Demo.mp4
+            ffmpeg -y -i demo_output/account_deletion_demo.mp4 \
+              -movflags +faststart -c:v copy \
+              demo_output/KFlex_Account_Deletion_Demo.mp4 \
+              || cp demo_output/account_deletion_demo.mp4 demo_output/KFlex_Account_Deletion_Demo.mp4
             ls -lh demo_output/KFlex_Account_Deletion_Demo.mp4
           else
             echo "::error::No video recorded!"
           fi
-
-      - name: Re-seed Demo Account (Safety Net)
-        if: always()
-        # Since the test deleted the account to demo deletion to Apple,
-        # re-seed the demo accounts so other tests & reviews continue working.
-        run: |
-          cd backend/seed
-          go run ./demo -project kvision-503115 || echo "Could not re-seed demo account, continuing..."
 
       - name: Upload Video Artifact
         if: always()

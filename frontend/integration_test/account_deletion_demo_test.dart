@@ -80,17 +80,15 @@ void main() {
 
     // ---- STEP 4: Navigate to Profile Tab ----
     debugPrint('STEP 4: Navigate to Profile Tab');
+    // NOTE: person_outline_rounded icon appears in shift cards too.
+    // The FloatingNavBar is at the BOTTOM of the widget tree, so use .last
+    // to tap the nav bar icon, not a shift card icon near the top.
     final profileIconFinder = find.byIcon(_profileIcon);
     if (tester.any(profileIconFinder)) {
-      await tester.tap(profileIconFinder.first, warnIfMissed: false);
+      await tester.tap(profileIconFinder.last, warnIfMissed: false);
       await _settle(tester, seconds: 6);
     } else {
-      debugPrint('  ⚠ WARN: Profile icon not found — trying last nav bar item');
-      // Try tapping the last item in the bottom nav
-      final navBar = find.byType(BottomNavigationBar);
-      if (tester.any(navBar)) {
-        debugPrint('  → Found BottomNavigationBar, tapping rightmost icon');
-      }
+      debugPrint('  ⚠ WARN: Profile icon not found anywhere');
       await _settle(tester, seconds: 6);
     }
 

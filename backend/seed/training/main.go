@@ -56,6 +56,9 @@ const (
 	module4Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-4-mealtime-routines.mp4?alt=media&token=cf4e03da-9e1d-4658-a543-0229b3d84fd3"
 	module5Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-5-play-activity-time.mp4?alt=media&token=8d5b3712-c548-4f19-85cd-7f4c0383d860"
 	module6Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-6-eyfs-overview.mp4?alt=media&token=3b3c16d6-5a19-4c99-bcf4-30e82e4c70ac"
+	module7Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-7-early-communication-language.mp4?alt=media&token=3f417464-22ae-41fe-ab32-1a512164295c"
+	module8Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-8-nursery-rhymes-songs.mp4?alt=media&token=c08c5890-e34c-4a12-bca6-289429469289"
+	module9Url = "https://firebasestorage.googleapis.com/v0/b/kvision-503115.firebasestorage.app/o/training-videos%2Fmodule-9-diverse-family-backgrounds.mp4?alt=media&token=81e5ac86-6a84-46a6-a4eb-0c16c281804c"
 )
 
 type question struct {
@@ -836,7 +839,8 @@ func modules() []module {
 				},
 			},
 			VideoStoragePath:     module7Video,
-			VideoDurationSeconds: 70,
+			VideoURL:             module7Url,
+			VideoDurationSeconds: 56,
 			PassMark:             4,
 			Questions: []question{
 				{
@@ -942,7 +946,8 @@ func modules() []module {
 				},
 			},
 			VideoStoragePath:     module8Video,
-			VideoDurationSeconds: 75,
+			VideoURL:             module8Url,
+			VideoDurationSeconds: 48,
 			PassMark:             4,
 			Questions: []question{
 				{
@@ -1050,7 +1055,8 @@ func modules() []module {
 				},
 			},
 			VideoStoragePath:     module9Video,
-			VideoDurationSeconds: 75,
+			VideoURL:             module9Url,
+			VideoDurationSeconds: 48,
 			PassMark:             4,
 			Questions: []question{
 				{

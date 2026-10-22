@@ -66,6 +66,10 @@ declare -A FUNCS=(
   [DeleteBranch]=8170
   [ApproveNurseryRegistration]=8171
   [RejectNurseryRegistration]=8172
+  [GetActiveRateCard]=8173
+  [ListRateCards]=8174
+  [UpsertRateCard]=8175
+  [CancelShiftStructured]=8176
 )
 
 pids=()

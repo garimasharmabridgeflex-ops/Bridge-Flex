@@ -280,11 +280,35 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                 ),
                 _InfoTile(
                   icon: Icons.payments_rounded,
-                  label: 'Pay',
+                  label: 'Pay & Earnings',
                   value:
-                      '£${shift.payRate.toStringAsFixed(2)}/hr · est. total £${shift.totalPay.toStringAsFixed(2)}',
+                      '£${shift.payRate.toStringAsFixed(2)}/hr · Est. Gross £${shift.effectiveGrossPay.toStringAsFixed(2)}',
                   valueColor: AppColors.coral,
                 ),
+                if (shift.unpaidBreakMinutes > 0)
+                  _InfoTile(
+                    icon: Icons.coffee_outlined,
+                    label: 'Unpaid break',
+                    value: '${shift.unpaidBreakMinutes} minutes',
+                  ),
+                if (shift.requiredQualification.isNotEmpty)
+                  _InfoTile(
+                    icon: Icons.school_outlined,
+                    label: 'Required qualification',
+                    value: shift.requiredQualification,
+                  ),
+                if (shift.safeguardingNotes.isNotEmpty)
+                  _InfoTile(
+                    icon: Icons.security_rounded,
+                    label: 'Safeguarding notes',
+                    value: shift.safeguardingNotes,
+                  ),
+                if (shift.healthAndSafetyNotes.isNotEmpty)
+                  _InfoTile(
+                    icon: Icons.health_and_safety_outlined,
+                    label: 'Health & Safety notes',
+                    value: shift.healthAndSafetyNotes,
+                  ),
                 if (shift.capacity > 1)
                   _InfoTile(
                     icon: Icons.group_outlined,

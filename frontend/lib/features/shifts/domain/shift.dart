@@ -43,6 +43,14 @@ class Shift {
     this.pendingStaffIds = const [],
     this.rejectedStaffIds = const [],
     this.nurseryArea,
+    this.branchId = '',
+    this.branchName = '',
+    this.requiredQualification = '',
+    this.unpaidBreakMinutes = 0,
+    this.safeguardingNotes = '',
+    this.healthAndSafetyNotes = '',
+    this.estimatedGrossPayPence = 0,
+    this.estimatedNurseryChargePence = 0,
   });
 
   final String id;
@@ -87,9 +95,27 @@ class Shift {
   /// the shift filled up.
   final List<String> rejectedStaffIds;
 
+  // Phase 5 & 6 extensions
+  final String branchId;
+  final String branchName;
+  final String requiredQualification;
+  final int unpaidBreakMinutes;
+  final String safeguardingNotes;
+  final String healthAndSafetyNotes;
+  final int estimatedGrossPayPence;
+  final int estimatedNurseryChargePence;
+
   Duration get duration => endTime.difference(startTime);
 
   double get totalPay => duration.inMinutes / 60 * payRate;
+
+  double get effectiveGrossPay {
+    if (estimatedGrossPayPence > 0) {
+      return estimatedGrossPayPence / 100.0;
+    }
+    final billableMinutes = (duration.inMinutes - unpaidBreakMinutes).clamp(0, duration.inMinutes);
+    return billableMinutes / 60 * payRate;
+  }
 
   int get spotsFilled => bookedStaffIds.length;
 
@@ -141,6 +167,14 @@ class Shift {
       pendingStaffIds: (json['pendingStaffIds'] as List?)?.cast<String>() ?? const [],
       rejectedStaffIds: (json['rejectedStaffIds'] as List?)?.cast<String>() ?? const [],
       nurseryArea: json['nurseryArea'] as String?,
+      branchId: json['branchId'] as String? ?? '',
+      branchName: json['branchName'] as String? ?? '',
+      requiredQualification: json['requiredQualification'] as String? ?? '',
+      unpaidBreakMinutes: (json['unpaidBreakMinutes'] as num?)?.toInt() ?? 0,
+      safeguardingNotes: json['safeguardingNotes'] as String? ?? '',
+      healthAndSafetyNotes: json['healthAndSafetyNotes'] as String? ?? '',
+      estimatedGrossPayPence: (json['financials'] is Map ? (json['financials']['estimatedGrossPayPence'] as num?)?.toInt() : null) ?? 0,
+      estimatedNurseryChargePence: (json['financials'] is Map ? (json['financials']['estimatedNurseryChargePence'] as num?)?.toInt() : null) ?? 0,
     );
   }
 
@@ -171,6 +205,14 @@ class Shift {
       noShowStaffIds: (data['noShowStaffIds'] as List?)?.cast<String>() ?? const [],
       pendingStaffIds: (data['pendingStaffIds'] as List?)?.cast<String>() ?? const [],
       rejectedStaffIds: (data['rejectedStaffIds'] as List?)?.cast<String>() ?? const [],
+      branchId: data['branchId'] as String? ?? '',
+      branchName: data['branchName'] as String? ?? '',
+      requiredQualification: data['requiredQualification'] as String? ?? '',
+      unpaidBreakMinutes: (data['unpaidBreakMinutes'] as num?)?.toInt() ?? 0,
+      safeguardingNotes: data['safeguardingNotes'] as String? ?? '',
+      healthAndSafetyNotes: data['healthAndSafetyNotes'] as String? ?? '',
+      estimatedGrossPayPence: (data['financials'] is Map ? (data['financials']['estimatedGrossPayPence'] as num?)?.toInt() : null) ?? 0,
+      estimatedNurseryChargePence: (data['financials'] is Map ? (data['financials']['estimatedNurseryChargePence'] as num?)?.toInt() : null) ?? 0,
     );
   }
 
@@ -198,5 +240,14 @@ class Shift {
         noShowStaffIds: noShowStaffIds,
         pendingStaffIds: pendingStaffIds,
         rejectedStaffIds: rejectedStaffIds,
+        nurseryArea: nurseryArea,
+        branchId: branchId,
+        branchName: branchName,
+        requiredQualification: requiredQualification,
+        unpaidBreakMinutes: unpaidBreakMinutes,
+        safeguardingNotes: safeguardingNotes,
+        healthAndSafetyNotes: healthAndSafetyNotes,
+        estimatedGrossPayPence: estimatedGrossPayPence,
+        estimatedNurseryChargePence: estimatedNurseryChargePence,
       );
 }

@@ -274,6 +274,17 @@ class _ShiftCardState extends State<ShiftCard> {
                             color: AppColors.primary,
                           ),
                         ),
+                        if (widget.shift.effectiveGrossPay > 0) ...[
+                          const SizedBox(width: 4),
+                          Text(
+                            '(Est. £${widget.shift.effectiveGrossPay.toStringAsFixed(0)})',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],

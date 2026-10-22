@@ -186,6 +186,24 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------------
+    // rateCards/{cardId} and cancellations/{cancelId} (Phase 6)
+    // Rate cards are read-only for authenticated clients; managed by admin.
+    // Cancellations audit documents are server-written only.
+    // ---------------------------------------------------------------------
+    match /rateCards/{cardId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    match /cancellations/{cancelId} {
+      allow read: if isSignedIn() && (
+        resource.data.actorId == request.auth.uid ||
+        resource.data.shiftId != null
+      );
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------------
     // ratings/{ratingId} — create-only from clients, immutable after that.
     // ---------------------------------------------------------------------
     match /ratings/{ratingId} {

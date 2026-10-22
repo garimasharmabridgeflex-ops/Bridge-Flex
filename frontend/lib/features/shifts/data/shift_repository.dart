@@ -49,6 +49,11 @@ class ShiftRepository {
     int numberOfChildren = 0,
     List<String> expectedDuties = const [],
     List<String> requirements = const [],
+    String branchId = '',
+    String requiredQualification = '',
+    int unpaidBreakMinutes = 0,
+    String safeguardingNotes = '',
+    String healthAndSafetyNotes = '',
   }) async {
     final res = await _api.post(ApiFunction.createShift, body: {
       'title': title,
@@ -63,6 +68,11 @@ class ShiftRepository {
       'numberOfChildren': numberOfChildren,
       'expectedDuties': expectedDuties,
       'requirements': requirements,
+      if (branchId.isNotEmpty) 'branchId': branchId,
+      if (requiredQualification.isNotEmpty) 'requiredQualification': requiredQualification,
+      if (unpaidBreakMinutes > 0) 'unpaidBreakMinutes': unpaidBreakMinutes,
+      if (safeguardingNotes.isNotEmpty) 'safeguardingNotes': safeguardingNotes,
+      if (healthAndSafetyNotes.isNotEmpty) 'healthAndSafetyNotes': healthAndSafetyNotes,
     });
     return res['shiftId'] as String;
   }

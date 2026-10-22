@@ -216,4 +216,24 @@ describe("ratings / chat / documents / notifications / transactions rules", () =
     await assertFails(setDoc(doc(asNurseryB, "nurseries/nurseryA/branches/branch3"), { name: "Hijacked" }));
     await assertFails(updateDoc(doc(asStaffA, "nurseries/nurseryA/branches/branch1"), { name: "Hacked" }));
   });
+
+  it("Phase 6: rateCards are readable by clients but immutable from clients", async () => {
+    await seed(testEnv, async (db) => {
+      await setDoc(doc(db, "rateCards/card1"), { version: 1, active: true });
+    });
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertSucceeds(getDoc(doc(asStaffA, "rateCards/card1")));
+    await assertFails(setDoc(doc(asStaffA, "rateCards/card2"), { version: 2 }));
+    await assertFails(updateDoc(doc(asStaffA, "rateCards/card1"), { active: false }));
+  });
+
+  it("Phase 6: cancellations documents cannot be written by clients", async () => {
+    await seed(testEnv, async (db) => {
+      await setDoc(doc(db, "cancellations/cancel1"), { actorId: "staffA", shiftId: "shift1", chargePence: 0 });
+    });
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertSucceeds(getDoc(doc(asStaffA, "cancellations/cancel1")));
+    await assertFails(setDoc(doc(asStaffA, "cancellations/cancel2"), { actorId: "staffA" }));
+    await assertFails(updateDoc(doc(asStaffA, "cancellations/cancel1"), { chargePence: 100 }));
+  });
 });

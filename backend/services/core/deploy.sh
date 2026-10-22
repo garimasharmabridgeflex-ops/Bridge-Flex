@@ -115,6 +115,12 @@ deploy_http DeleteBranch
 deploy_http ApproveNurseryRegistration
 deploy_http RejectNurseryRegistration
 
+# Rates, cards and structured cancellations (Phase 6)
+deploy_http GetActiveRateCard
+deploy_http ListRateCards
+deploy_http UpsertRateCard
+deploy_http CancelShiftStructured
+
 # Training modules (Bridge Flex Training & Onboarding Modules spec). The three
 # admin endpoints are gated by the admin custom claim inside the handler, same
 # as the admin dashboard functions above.

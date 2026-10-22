@@ -45,6 +45,12 @@ type createShiftRequest struct {
 	ExpectedDuties   []string `json:"expectedDuties,omitempty"`
 	Requirements     []string `json:"requirements,omitempty"`
 	BranchID         string   `json:"branchId,omitempty"`
+
+	// Extended shift fields (Phase 6)
+	RequiredQualification string `json:"requiredQualification,omitempty"`
+	UnpaidBreakMinutes    int64  `json:"unpaidBreakMinutes,omitempty"`
+	SafeguardingNotes     string `json:"safeguardingNotes,omitempty"`
+	HealthAndSafetyNotes  string `json:"healthAndSafetyNotes,omitempty"`
 }
 
 // createShift — POST /createShift. Nursery-only; status/bookedStaffId/
@@ -136,6 +142,20 @@ func createShift(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Compute financial snapshot from active rate card (Phase 6)
+	fin, defaultPayRate := ResolveShiftFinancials(
+		ctx,
+		db,
+		QualificationLevel(req.RequiredQualification),
+		startTime,
+		endTime,
+		req.UnpaidBreakMinutes,
+	)
+	payRate := req.PayRate
+	if payRate <= 0 {
+		payRate = defaultPayRate
+	}
+
 	shift := Shift{
 		NurseryID:     uid,
 		Title:         req.Title,
@@ -144,7 +164,7 @@ func createShift(w http.ResponseWriter, r *http.Request) {
 		Date:          req.Date,
 		StartTime:     startTime,
 		EndTime:       endTime,
-		PayRate:       req.PayRate,
+		PayRate:       payRate,
 		Status:        ShiftOpen,
 		BookedStaffID: nil,
 		PaymentStatus: PaymentNotRequired,
@@ -160,6 +180,12 @@ func createShift(w http.ResponseWriter, r *http.Request) {
 		BranchName:     branchName,
 		BranchAddress:  branchAddress,
 		BranchPostcode: branchPostcode,
+
+		Financials:            fin,
+		RequiredQualification: QualificationLevel(req.RequiredQualification),
+		UnpaidBreakMinutes:    req.UnpaidBreakMinutes,
+		SafeguardingNotes:     req.SafeguardingNotes,
+		HealthAndSafetyNotes:  req.HealthAndSafetyNotes,
 	}
 	ref, _, err := db.Collection("shifts").Add(ctx, shift)
 	if err != nil {
@@ -504,11 +530,8 @@ type shiftMatchedMessage struct {
 
 // matchNewShift is bound at deploy time to a Firestore-create Eventarc
 // trigger filtered to shifts/{shiftId} (§1a table). It's a core-backend
-// concern because matching needs shifts+profiles together (§6). Phase 1
-// implements a placeholder match (publish to every staff profile) since the
-// real radius-matching algorithm is an open product question (§8 item 4) —
-// the point of this trigger existing now is to prove the shift-matched
-// fan-out contract, not to ship real matching logic.
+// concern because matching needs shifts+profiles together (§6).
+// In Phase 6 (R4), replaces unbounded collection scans with filtered, capped queries.
 func matchNewShift(ctx context.Context, e event.Event) error {
 	var data firestoredata.DocumentEventData
 	if err := proto.Unmarshal(e.Data(), &data); err != nil {
@@ -523,13 +546,29 @@ func matchNewShift(ctx context.Context, e event.Event) error {
 		return err
 	}
 	nurseryID := fieldString(doc.GetFields(), "nurseryId")
+	reqQual := fieldString(doc.GetFields(), "requiredQualification")
 
 	db, err := fsDB(ctx)
 	if err != nil {
 		return err
 	}
-	iter := db.Collection("profiles").Where("role", "==", string(RoleStaff)).Documents(ctx)
+
+	const maxMatches = 25
+	q := db.Collection("profiles").
+		Where("role", "==", string(RoleStaff)).
+		Where("suspended", "==", false).
+		Limit(maxMatches)
+
+	// Filter by vetting approval if gate is on
+	gate := GetGateMode(ctx, db, "practitionerApprovalRequired")
+	if gate == GateEnforce {
+		q = q.Where("vettingStatus", "==", string(VettingApproved))
+	}
+
+	iter := q.Documents(ctx)
 	defer iter.Stop()
+
+	matchedCount := 0
 	for {
 		staffDoc, err := iter.Next()
 		if err == iterator.Done {
@@ -538,6 +577,17 @@ func matchNewShift(ctx context.Context, e event.Event) error {
 		if err != nil {
 			return err
 		}
+
+		var p Profile
+		if err := staffDoc.DataTo(&p); err == nil {
+			// If a specific qualification level is required, check practitioner eligibility
+			if reqQual != "" && reqQual != string(QualNone) {
+				if !isQualificationSufficient(p.QualificationLevel, QualificationLevel(reqQual)) {
+					continue
+				}
+			}
+		}
+
 		if err := publish(ctx, topicShiftMatched, shiftMatchedMessage{
 			ShiftID:   shiftID,
 			NurseryID: nurseryID,
@@ -545,8 +595,29 @@ func matchNewShift(ctx context.Context, e event.Event) error {
 		}); err != nil {
 			return err
 		}
+		matchedCount++
+		if matchedCount >= maxMatches {
+			break
+		}
 	}
 	return nil
+}
+
+// isQualificationSufficient ranks qualifications: Level 4+ >= Level 3 >= Level 2 >= None.
+func isQualificationSufficient(actual, required QualificationLevel) bool {
+	rank := func(q QualificationLevel) int {
+		switch q {
+		case QualLevel4Plus:
+			return 3
+		case QualLevel3:
+			return 2
+		case QualLevel2:
+			return 1
+		default:
+			return 0
+		}
+	}
+	return rank(actual) >= rank(required)
 }
 
 var (

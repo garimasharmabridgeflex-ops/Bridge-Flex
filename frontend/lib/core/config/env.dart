@@ -77,7 +77,13 @@ enum ApiFunction {
   updateBranch(8169),
   deleteBranch(8170),
   approveNurseryRegistration(8171),
-  rejectNurseryRegistration(8172);
+  rejectNurseryRegistration(8172),
+
+  // Phase 6: Rates & Structured Cancellations
+  getActiveRateCard(8173),
+  listRateCards(8174),
+  upsertRateCard(8175),
+  cancelShiftStructured(8176);
 
   const ApiFunction(this.localPort);
   final int localPort;

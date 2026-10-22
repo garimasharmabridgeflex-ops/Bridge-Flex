@@ -434,6 +434,56 @@ type Shift struct {
 	BranchName     string `firestore:"branchName,omitempty" json:"branchName,omitempty"`
 	BranchAddress  string `firestore:"branchAddress,omitempty" json:"branchAddress,omitempty"`
 	BranchPostcode string `firestore:"branchPostcode,omitempty" json:"branchPostcode,omitempty"`
+
+	// Extended shift fields & financials (Phase 6).
+	Financials            *ShiftFinancials   `firestore:"financials,omitempty" json:"financials,omitempty"`
+	RequiredQualification QualificationLevel `firestore:"requiredQualification,omitempty" json:"requiredQualification,omitempty"`
+	UnpaidBreakMinutes    int64              `firestore:"unpaidBreakMinutes,omitempty" json:"unpaidBreakMinutes,omitempty"`
+	SafeguardingNotes     string             `firestore:"safeguardingNotes,omitempty" json:"safeguardingNotes,omitempty"`
+	HealthAndSafetyNotes  string             `firestore:"healthAndSafetyNotes,omitempty" json:"healthAndSafetyNotes,omitempty"`
+}
+
+// RateCard represents the platform pricing card (Phase 6).
+type RateCard struct {
+	ID        string                        `firestore:"-" json:"id,omitempty"`
+	Version   int                           `firestore:"version" json:"version"`
+	Active    bool                          `firestore:"active" json:"active"`
+	CreatedAt time.Time                     `firestore:"createdAt" json:"createdAt"`
+	CreatedBy string                        `firestore:"createdBy" json:"createdBy"`
+	Rates     map[string]QualificationRates `firestore:"rates" json:"rates"`
+}
+
+type QualificationRates struct {
+	PractitionerPayPencePerHour int64 `firestore:"practitionerPayPencePerHour" json:"practitionerPayPencePerHour"`
+	NurseryChargePencePerHour   int64 `firestore:"nurseryChargePencePerHour" json:"nurseryChargePencePerHour"`
+}
+
+// ShiftFinancials snapshots rates and gross pay calculations in pence (Phase 6).
+type ShiftFinancials struct {
+	RateCardID                  string `firestore:"rateCardId,omitempty" json:"rateCardId,omitempty"`
+	RateCardVersion             int    `firestore:"rateCardVersion,omitempty" json:"rateCardVersion,omitempty"`
+	PractitionerPayPencePerHour int64  `firestore:"practitionerPayPencePerHour" json:"practitionerPayPencePerHour"`
+	NurseryChargePencePerHour   int64  `firestore:"nurseryChargePencePerHour" json:"nurseryChargePencePerHour"`
+	DurationMinutes             int64  `firestore:"durationMinutes" json:"durationMinutes"`
+	UnpaidBreakMinutes          int64  `firestore:"unpaidBreakMinutes" json:"unpaidBreakMinutes"`
+	BillableMinutes             int64  `firestore:"billableMinutes" json:"billableMinutes"`
+	EstimatedGrossPayPence      int64  `firestore:"estimatedGrossPayPence" json:"estimatedGrossPayPence"`
+	EstimatedNurseryChargePence int64  `firestore:"estimatedNurseryChargePence" json:"estimatedNurseryChargePence"`
+	PlatformFeePence            int64  `firestore:"platformFeePence" json:"platformFeePence"`
+}
+
+// CancellationDoc is recorded under cancellations/{id} (Phase 6).
+type CancellationDoc struct {
+	ID                string    `firestore:"-" json:"id,omitempty"`
+	ShiftID           string    `firestore:"shiftId" json:"shiftId"`
+	ActorID           string    `firestore:"actorId" json:"actorId"`
+	ActorRole         Role      `firestore:"actorRole" json:"actorRole"`
+	Reason            string    `firestore:"reason" json:"reason"`
+	Category          string    `firestore:"category" json:"category"`
+	Timestamp         time.Time `firestore:"timestamp" json:"timestamp"`
+	ChargePence       int64     `firestore:"chargePence" json:"chargePence"`
+	CompensationPence int64     `firestore:"compensationPence" json:"compensationPence"`
+	PolicyVersion     int       `firestore:"policyVersion" json:"policyVersion"`
 }
 
 // RatingDoc is ratings/{ratingId}. Immutable once created (§3).

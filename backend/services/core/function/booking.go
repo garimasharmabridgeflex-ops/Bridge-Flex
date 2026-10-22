@@ -9,6 +9,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -38,6 +39,7 @@ var (
 	errApplicationRejected = errors.New("APPLICATION_REJECTED")
 	errNotApplicant        = errors.New("NOT_APPLICANT")
 	errShiftFull           = errors.New("SHIFT_FULL")
+	errShiftOverlap        = errors.New("SHIFT_OVERLAP")
 	// errNotShiftOwner is declared further down alongside markNoShow's
 	// errors — approval reuses it rather than introducing a second spelling
 	// of the same condition.
@@ -166,6 +168,11 @@ func acceptShift(w http.ResponseWriter, r *http.Request) {
 			return errShiftFull
 		}
 
+		// Check overlap with existing booked shifts or pending applications (Phase 6, R5)
+		if err := checkShiftOverlap(ctx, db, uid, req.ShiftID, shift.StartTime, shift.EndTime); err != nil {
+			return err
+		}
+
 		nurseryID = shift.NurseryID
 		spotsRemaining = capacity - int64(len(bookedList))
 
@@ -193,6 +200,8 @@ func acceptShift(w http.ResponseWriter, r *http.Request) {
 			httpjson.WriteError(w, http.StatusConflict, "SHIFT_FULL", "This shift is no longer available")
 		case errCannotBookOwnShift:
 			httpjson.WriteError(w, http.StatusConflict, "CANNOT_BOOK_OWN_SHIFT", "You cannot apply for your own shift")
+		case errShiftOverlap:
+			httpjson.WriteError(w, http.StatusConflict, "SHIFT_OVERLAP", "Schedule conflict: you have an overlapping booked shift or pending application")
 		default:
 			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 		}
@@ -646,6 +655,12 @@ func decideApplicant(w http.ResponseWriter, r *http.Request, approve bool) {
 			if int64(len(booked)) >= capacity {
 				return errShiftFull
 			}
+
+			// Check overlap for applicant before approving (Phase 6, R5)
+			if err := checkShiftOverlap(ctx, db, req.StaffID, req.ShiftID, shift.StartTime, shift.EndTime); err != nil {
+				return err
+			}
+
 			booked = append(booked, req.StaffID)
 
 			// Once the last place is filled, everyone still waiting is
@@ -703,6 +718,8 @@ func decideApplicant(w http.ResponseWriter, r *http.Request, approve bool) {
 			httpjson.WriteError(w, http.StatusConflict, "NOT_APPLICANT", "That person is not waiting on a decision for this shift")
 		case errShiftFull:
 			httpjson.WriteError(w, http.StatusConflict, "SHIFT_FULL", "This shift already has all the staff it needs")
+		case errShiftOverlap:
+			httpjson.WriteError(w, http.StatusConflict, "SHIFT_OVERLAP", "Schedule conflict: practitioner has an overlapping booked shift or pending application")
 		default:
 			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 		}
@@ -773,5 +790,69 @@ func checkPractitionerVetting(ctx context.Context, db *firestore.Client, staffID
 		}
 		return errors.New("VERIFICATION_REQUIRED")
 	}
+	return nil
+}
+
+// checkShiftOverlap prevents double-booking a practitioner across overlapping time windows (Phase 6, R5).
+func checkShiftOverlap(
+	ctx context.Context,
+	db *firestore.Client,
+	practitionerID string,
+	currentShiftID string,
+	start, end time.Time,
+) error {
+	// Query 1: Shifts where practitioner is booked
+	bookedIter := db.Collection("shifts").
+		Where("status", "==", string(ShiftBooked)).
+		Where("bookedStaffIds", "array-contains", practitionerID).
+		Documents(ctx)
+	defer bookedIter.Stop()
+
+	for {
+		doc, err := bookedIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if doc.Ref.ID == currentShiftID {
+			continue
+		}
+		var s Shift
+		if err := doc.DataTo(&s); err == nil {
+			// Check overlap: s.StartTime < end && s.EndTime > start
+			if s.StartTime.Before(end) && s.EndTime.After(start) {
+				return errShiftOverlap
+			}
+		}
+	}
+
+	// Query 2: Open shifts where practitioner has a pending application
+	pendingIter := db.Collection("shifts").
+		Where("status", "==", string(ShiftOpen)).
+		Where("pendingStaffIds", "array-contains", practitionerID).
+		Documents(ctx)
+	defer pendingIter.Stop()
+
+	for {
+		doc, err := pendingIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if doc.Ref.ID == currentShiftID {
+			continue
+		}
+		var s Shift
+		if err := doc.DataTo(&s); err == nil {
+			if s.StartTime.Before(end) && s.EndTime.After(start) {
+				return errShiftOverlap
+			}
+		}
+	}
+
 	return nil
 }

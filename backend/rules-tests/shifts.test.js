@@ -38,6 +38,16 @@ describe("shifts rules", () => {
         payRate: 15,
         paymentStatus: "not_required",
       });
+      await setDoc(doc(db, "shifts/applied1"), {
+        nurseryId: "nurseryA",
+        title: "Weekend cover",
+        date: "2026-07-24",
+        status: "open",
+        bookedStaffId: null,
+        pendingStaffIds: ["staffB"],
+        payRate: 16,
+        paymentStatus: "not_required",
+      });
     });
   });
 
@@ -72,9 +82,26 @@ describe("shifts rules", () => {
     );
   });
 
-  it("the owning nursery can edit an open shift's editable fields", async () => {
+  it("S3: a client cannot create a shift directly in Firestore", async () => {
     const asNursery = testEnv.authenticatedContext("nurseryA").firestore();
-    await assertSucceeds(updateDoc(doc(asNursery, "shifts/open1"), { title: "Updated title" }));
+    await assertFails(
+      setDoc(doc(asNursery, "shifts/open2"), {
+        nurseryId: "nurseryA",
+        title: "New direct shift",
+        date: "2026-07-25",
+        status: "open",
+      })
+    );
+  });
+
+  it("S3: the owning nursery cannot edit an open shift directly in Firestore", async () => {
+    const asNursery = testEnv.authenticatedContext("nurseryA").firestore();
+    await assertFails(updateDoc(doc(asNursery, "shifts/open1"), { title: "Updated title" }));
+  });
+
+  it("a practitioner in pendingStaffIds can read the shift", async () => {
+    const asStaffB = testEnv.authenticatedContext("staffB").firestore();
+    await assertSucceeds(getDoc(doc(asStaffB, "shifts/applied1")));
   });
 
   it("the owning nursery cannot edit a shift once it's booked", async () => {

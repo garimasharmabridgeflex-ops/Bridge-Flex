@@ -1,0 +1,102 @@
+name: Backend & Quality CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/backend.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/backend.yml'
+
+jobs:
+  check-source-drift:
+    name: Check Duplicate Tree Drift (R1)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Verify Root vs function/ Parity
+        run: ./backend/scripts/check-drift.sh
+
+  backend-verification:
+    name: Go Verification & Security Rules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache-dependency-path: |
+            backend/services/core/go.sum
+            backend/services/communication/go.sum
+            backend/services/payments/go.sum
+
+      - name: Go Vet & Build Services
+        run: |
+          echo "Vetting shared module..."
+          cd backend/shared && go vet ./... && cd ../..
+
+          echo "Vetting and building services/core..."
+          cd backend/services/core && go vet ./... && go build ./... && cd ../..
+
+          echo "Vetting and building services/communication..."
+          cd backend/services/communication && go vet ./... && go build ./... && cd ../..
+
+          echo "Vetting and building services/payments..."
+          cd backend/services/payments && go vet ./... && go build ./... && cd ../..
+
+      - name: Setup Node.js & Java (for Firebase Emulators)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Firebase CLI & Rules Test Dependencies
+        run: |
+          cd backend
+          npm install
+          npm --prefix rules-tests install
+
+      - name: Run Firestore & Storage Security Rules Tests
+        run: |
+          cd backend
+          npm run rules:test
+
+  frontend-verification:
+    name: Flutter Analyze
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: |
+          cd frontend
+          flutter pub get
+
+      - name: Analyze Code
+        run: |
+          cd frontend
+          flutter analyze

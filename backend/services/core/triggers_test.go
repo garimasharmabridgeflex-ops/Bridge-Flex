@@ -367,3 +367,58 @@ func TestMatchNewShift(t *testing.T) {
 		t.Fatalf("matchNewShift: %v", err)
 	}
 }
+
+func TestBuildPublicFromProfileParity(t *testing.T) {
+	dbsExpiry := time.Now().AddDate(1, 0, 0)
+	staffProfile := Profile{
+		Role:                       RoleStaff,
+		Name:                       "Jane Doe",
+		DBSStatus:                  DBSVerified,
+		Rating:                     Rating{Average: 4.8, Count: 12},
+		PhotoURL:                   "https://example.com/photo.jpg",
+		YearsExperience:            5,
+		QualificationLevel:         QualLevel3,
+		Bio:                        "Experienced practitioner",
+		PreviousRoles:              []PreviousRole{{SettingName: "Sunflower Nursery", RoleTitle: "Room Leader", Duration: "2 years"}},
+		Age:                        int64Ptr(28),
+		City:                       "London",
+		TravelDistanceMiles:        10,
+		Languages:                  []string{"English", "Spanish"},
+		ProfessionalSummary:        "Dedicated childcare professional",
+		Qualifications:             []string{"NVQ Level 3"},
+		Skills:                     []string{"First Aid", "Safeguarding"},
+		AvailabilityDays:           []string{"Monday", "Tuesday"},
+		AvailabilityShifts:         []string{"Morning", "Afternoon"},
+		DBSExpiryDate:              &dbsExpiry,
+		Nationality:                "British",
+		VisaStatus:                 "Citizen",
+		RightToWorkStatus:          "Verified",
+		RightToWorkVerified:        true,
+		TrainingCompletedModuleIDs: []string{"module-safeguarding", "module-eyfs"},
+	}
+
+	pub := buildPublicFromProfile(staffProfile)
+
+	if pub.Role != staffProfile.Role {
+		t.Errorf("Role = %v, want %v", pub.Role, staffProfile.Role)
+	}
+	if pub.Name != staffProfile.Name {
+		t.Errorf("Name = %v, want %v", pub.Name, staffProfile.Name)
+	}
+	if pub.RightToWorkVerified != staffProfile.RightToWorkVerified {
+		t.Errorf("RightToWorkVerified = %v, want %v", pub.RightToWorkVerified, staffProfile.RightToWorkVerified)
+	}
+	// B2 regression check: TrainingCompletedModuleIDs MUST NOT be omitted
+	if len(pub.TrainingCompletedModuleIDs) != len(staffProfile.TrainingCompletedModuleIDs) {
+		t.Fatalf("TrainingCompletedModuleIDs len = %d, want %d", len(pub.TrainingCompletedModuleIDs), len(staffProfile.TrainingCompletedModuleIDs))
+	}
+	for i, id := range staffProfile.TrainingCompletedModuleIDs {
+		if pub.TrainingCompletedModuleIDs[i] != id {
+			t.Errorf("TrainingCompletedModuleIDs[%d] = %s, want %s", i, pub.TrainingCompletedModuleIDs[i], id)
+		}
+	}
+}
+
+func int64Ptr(i int64) *int64 {
+	return &i
+}

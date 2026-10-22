@@ -319,8 +319,9 @@ const (
 // Shift is shifts/{shiftId}. No separate bookings collection — see
 // ARCHITECTURE.md v2 §2 for why booking is fields on this doc.
 type Shift struct {
-	NurseryID string `firestore:"nurseryId" json:"nurseryId"`
-	Title     string `firestore:"title" json:"title"`
+	NurseryID   string `firestore:"nurseryId" json:"nurseryId"`
+	NurseryArea string `firestore:"nurseryArea,omitempty" json:"nurseryArea,omitempty"`
+	Title       string `firestore:"title" json:"title"`
 	// Description is a short free-text field (kept for backward
 	// compatibility with existing shifts); ExpectedDuties is the
 	// structured, repeatable version requested for the shift-detail screen.

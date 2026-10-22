@@ -246,6 +246,7 @@ func listOpenShifts(w http.ResponseWriter, r *http.Request) {
 	defer iter.Stop()
 
 	shifts := make([]map[string]any, 0)
+	nurseryAreas := make(map[string]string)
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {
@@ -260,7 +261,23 @@ func listOpenShifts(w http.ResponseWriter, r *http.Request) {
 			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 			return
 		}
-		shifts = append(shifts, map[string]any{"shiftId": doc.Ref.ID, "shift": s})
+		if s.NurseryArea == "" && s.NurseryID != "" {
+			if area, ok := nurseryAreas[s.NurseryID]; ok {
+				s.NurseryArea = area
+			} else {
+				if npSnap, err := db.Collection("profilesPublic").Doc(s.NurseryID).Get(ctx); err == nil {
+					if a, ok := npSnap.Data()["locationArea"].(string); ok {
+						s.NurseryArea = a
+						nurseryAreas[s.NurseryID] = a
+					}
+				}
+			}
+		}
+		shifts = append(shifts, map[string]any{
+			"shiftId":     doc.Ref.ID,
+			"shift":       s,
+			"nurseryArea": s.NurseryArea,
+		})
 	}
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"shifts": shifts})
 }
@@ -323,7 +340,8 @@ func listMyShifts(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			if err != nil {
-				break
+				httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+				return
 			}
 			var s Shift
 			if err := doc.DataTo(&s); err == nil {
@@ -338,7 +356,25 @@ func listMyShifts(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			if err != nil {
+				httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+				return
+			}
+			var s Shift
+			if err := doc.DataTo(&s); err == nil {
+				shiftsMap[doc.Ref.ID] = map[string]any{"shiftId": doc.Ref.ID, "shift": s}
+			}
+		}
+		// B4: Include shifts where the practitioner has applied and is pending approval
+		iter3 := db.Collection("shifts").Where("pendingStaffIds", "array-contains", uid).Documents(ctx)
+		defer iter3.Stop()
+		for {
+			doc, err := iter3.Next()
+			if err == iterator.Done {
 				break
+			}
+			if err != nil {
+				httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+				return
 			}
 			var s Shift
 			if err := doc.DataTo(&s); err == nil {

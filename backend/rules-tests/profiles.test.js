@@ -84,4 +84,118 @@ describe("profiles / profilesPublic rules", () => {
       updateDoc(doc(asStaffA, "profilesPublic/staffA"), { name: "Hacked" })
     );
   });
+
+  it("owner cannot change their own role after creation", async () => {
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertFails(
+      updateDoc(doc(asStaffA, "profiles/staffA"), { role: "nursery" })
+    );
+  });
+
+  it("owner cannot change identityVerified", async () => {
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertFails(
+      updateDoc(doc(asStaffA, "profiles/staffA"), { identityVerified: true })
+    );
+  });
+
+  it("owner cannot change ofstedVerified", async () => {
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertFails(
+      updateDoc(doc(asStaffA, "profiles/staffA"), { ofstedVerified: true })
+    );
+  });
+
+  it("owner cannot change rightToWorkVerified", async () => {
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertFails(
+      updateDoc(doc(asStaffA, "profiles/staffA"), { rightToWorkVerified: true })
+    );
+  });
+
+  it("owner cannot change suspended", async () => {
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertFails(
+      updateDoc(doc(asStaffA, "profiles/staffA"), { suspended: true })
+    );
+  });
+
+  it("owner cannot change rating", async () => {
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertFails(
+      updateDoc(doc(asStaffA, "profiles/staffA"), { rating: { average: 5, count: 10 } })
+    );
+  });
+
+  it("owner cannot change trainingCompletedModuleIds", async () => {
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertFails(
+      updateDoc(doc(asStaffA, "profiles/staffA"), { trainingCompletedModuleIds: ["module1"] })
+    );
+  });
+
+  it("owner can update permitted fields", async () => {
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertSucceeds(
+      updateDoc(doc(asStaffA, "profiles/staffA"), {
+        bio: "Experienced practitioner",
+        phone: "+441234567890",
+        city: "London"
+      })
+    );
+  });
+
+  it("user can create profile with legal initial fields", async () => {
+    const asNew = testEnv.authenticatedContext("newbie").firestore();
+    await assertSucceeds(
+      setDoc(doc(asNew, "profiles/newbie"), {
+        role: "",
+        name: "New Practitioner",
+        dbsStatus: "unverified",
+        rating: { average: 0, count: 0 },
+        createdAt: new Date(),
+      })
+    );
+  });
+
+  it("user cannot create profile with verified dbsStatus", async () => {
+    const asNew = testEnv.authenticatedContext("hacker1").firestore();
+    await assertFails(
+      setDoc(doc(asNew, "profiles/hacker1"), {
+        role: "staff",
+        name: "Hacker One",
+        dbsStatus: "verified",
+        rating: { average: 0, count: 0 },
+        createdAt: new Date(),
+      })
+    );
+  });
+
+  it("user cannot create profile with suspended: true", async () => {
+    const asNew = testEnv.authenticatedContext("hacker2").firestore();
+    await assertFails(
+      setDoc(doc(asNew, "profiles/hacker2"), {
+        role: "staff",
+        name: "Hacker Two",
+        dbsStatus: "unverified",
+        rating: { average: 0, count: 0 },
+        createdAt: new Date(),
+        suspended: true,
+      })
+    );
+  });
+
+  it("user cannot create profile with trust fields present", async () => {
+    const asNew = testEnv.authenticatedContext("hacker3").firestore();
+    await assertFails(
+      setDoc(doc(asNew, "profiles/hacker3"), {
+        role: "staff",
+        name: "Hacker Three",
+        dbsStatus: "unverified",
+        rating: { average: 0, count: 0 },
+        createdAt: new Date(),
+        identityVerified: true,
+      })
+    );
+  });
 });

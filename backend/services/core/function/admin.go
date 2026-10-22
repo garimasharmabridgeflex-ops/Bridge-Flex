@@ -9,6 +9,7 @@ import (
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"google.golang.org/api/iterator"
 
+	"kvision.internal/shared/auth"
 	"kvision.internal/shared/httpjson"
 )
 
@@ -335,14 +336,13 @@ func setUserSuspended(w http.ResponseWriter, r *http.Request) {
 
 type setVerificationBadgeRequest struct {
 	UID      string `json:"uid"`
-	Badge    string `json:"badge"` // "identity" | "ofsted"
+	Badge    string `json:"badge"` // "identity" | "ofsted" | "dbs" | "right_to_work"
 	Verified bool   `json:"verified"`
 }
 
 // setVerificationBadge — POST /setVerificationBadge. Admin-only. The
-// out-of-band write path for identityVerified/ofstedVerified — both fields
-// were defined on Profile from the start (§ full app spec verification
-// badges) but had no endpoint to actually set them until now.
+// out-of-band write path for identityVerified/ofstedVerified/dbsStatus/rightToWorkVerified.
+// Records an audit log entry for every admin verification update.
 func setVerificationBadge(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if !isAdmin(ctx) {
@@ -354,13 +354,26 @@ func setVerificationBadge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var field string
+	var val any
 	switch req.Badge {
 	case "identity":
 		field = "identityVerified"
+		val = req.Verified
 	case "ofsted":
 		field = "ofstedVerified"
+		val = req.Verified
+	case "right_to_work":
+		field = "rightToWorkVerified"
+		val = req.Verified
+	case "dbs":
+		field = "dbsStatus"
+		if req.Verified {
+			val = string(DBSVerified)
+		} else {
+			val = string(DBSUnverified)
+		}
 	default:
-		httpjson.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "badge must be 'identity' or 'ofsted'")
+		httpjson.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "badge must be 'identity', 'ofsted', 'dbs', or 'right_to_work'")
 		return
 	}
 	if req.UID == "" {
@@ -373,12 +386,35 @@ func setVerificationBadge(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "firestore client unavailable")
 		return
 	}
+	now := time.Now()
 	if _, err := db.Collection("profiles").Doc(req.UID).Set(ctx, map[string]any{
-		field: req.Verified,
+		field: val,
 	}, firestore.MergeAll); err != nil {
 		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 		return
 	}
+
+	// Mirror to profilesPublic so client sees updated verification badge immediately
+	pubField := field
+	if field == "dbsStatus" {
+		pubField = "dbsBadge"
+	}
+	_, _ = db.Collection("profilesPublic").Doc(req.UID).Set(ctx, map[string]any{
+		pubField:    val,
+		"updatedAt": now,
+	}, firestore.MergeAll)
+
+	// Write audit log entry
+	adminUID := auth.UID(ctx)
+	_, _, _ = db.Collection("auditLogs").Add(ctx, map[string]any{
+		"action":    "setVerificationBadge",
+		"adminUid":  adminUID,
+		"targetUid": req.UID,
+		"badge":     req.Badge,
+		"verified":  req.Verified,
+		"value":     val,
+		"timestamp": now,
+	})
 
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"uid": req.UID, "badge": req.Badge, "verified": req.Verified})
 }

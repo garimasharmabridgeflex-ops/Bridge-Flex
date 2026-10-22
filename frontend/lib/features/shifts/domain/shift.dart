@@ -42,6 +42,7 @@ class Shift {
     this.noShowStaffIds = const [],
     this.pendingStaffIds = const [],
     this.rejectedStaffIds = const [],
+    this.nurseryArea,
   });
 
   final String id;
@@ -66,6 +67,9 @@ class Shift {
   /// Denormalized client-side by joining profilesPublic; not part of the
   /// shifts doc itself.
   final String? nurseryName;
+
+  /// Denormalized or joined nursery locationArea prefix (additive for Near me filter)
+  final String? nurseryArea;
 
   final String ageGroup;
   final String room;
@@ -136,6 +140,7 @@ class Shift {
       noShowStaffIds: (json['noShowStaffIds'] as List?)?.cast<String>() ?? const [],
       pendingStaffIds: (json['pendingStaffIds'] as List?)?.cast<String>() ?? const [],
       rejectedStaffIds: (json['rejectedStaffIds'] as List?)?.cast<String>() ?? const [],
+      nurseryArea: json['nurseryArea'] as String?,
     );
   }
 

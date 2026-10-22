@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install dev dev-persist dev-with-triggers emulators seed rules-test test build prod clean
+.PHONY: help install dev dev-persist dev-with-triggers emulators seed rules-test test build prod clean check-drift
 
 PROJECT_ID ?= demo-bridgeflex
 REGION     ?= europe-west2
@@ -54,3 +54,6 @@ prod: ## Deploy rules + all 26 Cloud Functions to a real Firebase project — us
 
 clean: ## Remove emulator debug logs
 	rm -f firestore-debug.log pubsub-debug.log ui-debug.log firebase-debug.log storage-debug.log
+
+check-drift: ## Verify source trees between service roots and function/ are identical (Finding R1)
+	@./scripts/check-drift.sh

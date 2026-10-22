@@ -629,6 +629,7 @@ func buildPublicFromProfile(p Profile) ProfilePublic {
 		pub.VisaStatus = p.VisaStatus
 		pub.RightToWorkStatus = p.RightToWorkStatus
 		pub.RightToWorkVerified = p.RightToWorkVerified
+		pub.TrainingCompletedModuleIDs = p.TrainingCompletedModuleIDs
 	case RoleNursery:
 		pub.Description = p.Description
 		pub.OpeningHours = p.OpeningHours

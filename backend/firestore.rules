@@ -22,20 +22,35 @@ service cloud.firestore {
     // ---------------------------------------------------------------------
     match /profiles/{uid} {
       allow read: if isOwner(uid);
-      // trainingCompletedModuleIds must be absent on create for the same
-      // reason it is frozen on update below.
+
+      // S2: On create, allow only the fields auth_repository.dart writes today:
+      // role, name, dbsStatus: unverified, rating, createdAt, and later photoUrl.
+      // Require dbsStatus == 'unverified', suspended absent or false, and every trust field absent.
       allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['role', 'name', 'dbsStatus', 'rating', 'createdAt', 'photoUrl'])
+        && request.resource.data.dbsStatus == 'unverified'
+        && (!('suspended' in request.resource.data) || request.resource.data.suspended == false)
+        && !('identityVerified' in request.resource.data)
+        && !('ofstedVerified' in request.resource.data)
+        && !('rightToWorkVerified' in request.resource.data)
         && !('trainingCompletedModuleIds' in request.resource.data);
+
+      // S2: Replace update rule with an explicit allowlist of client-writable fields.
+      // Every trust/admin field (dbsStatus, rating, trainingCompletedModuleIds,
+      // identityVerified, ofstedVerified, rightToWorkVerified, suspended, role)
+      // is frozen from client writes.
       allow update: if isOwner(uid)
-        && request.resource.data.dbsStatus == resource.data.dbsStatus
-        && request.resource.data.rating == resource.data.rating
-        // Frozen client-side: completion is awarded only by
-        // submitTrainingQuiz, which scores the attempt server-side. Without
-        // this a practitioner could mark their own training complete with a
-        // direct profile write, and training completion is what a nursery
-        // relies on when approving someone for paid work.
-        && request.resource.data.get('trainingCompletedModuleIds', [])
-             == resource.data.get('trainingCompletedModuleIds', []);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+             'name', 'phone', 'photoUrl', 'description', 'bio', 'city', 'postcode',
+             'address', 'openingHours', 'website', 'email', 'shortDescription',
+             'yearsExperience', 'qualificationLevel', 'previousRoles', 'age',
+             'travelDistanceMiles', 'languages', 'professionalSummary', 'qualifications',
+             'skills', 'availabilityDays', 'availabilityShifts', 'dbsCertificateNumber',
+             'dbsExpiryDate', 'nationality', 'visaStatus', 'rightToWorkStatus',
+             'photos', 'logoUrl', 'registeredCompanyName', 'ofstedRegNumber',
+             'yearEstablished', 'nurseryType', 'facilities', 'location', 'ofstedRating'
+           ]);
+
       allow delete: if false;
 
       // Write-only from the client's perspective; only server functions read
@@ -91,27 +106,17 @@ service cloud.firestore {
     // shifts/{shiftId}
     // ---------------------------------------------------------------------
     match /shifts/{shiftId} {
-      allow create: if isSignedIn()
-        && request.auth.uid == request.resource.data.nurseryId
-        && request.resource.data.status == 'open'
-        && request.resource.data.bookedStaffId == null;
+      // S3: Direct client create and update are forbidden; shifts are managed
+      // solely through Cloud Functions endpoints.
+      allow create, update, delete: if false;
 
       allow read: if isSignedIn() && (
         resource.data.status == 'open' ||
         request.auth.uid == resource.data.nurseryId ||
-        request.auth.uid == resource.data.bookedStaffId
+        request.auth.uid == resource.data.bookedStaffId ||
+        ('bookedStaffIds' in resource.data && request.auth.uid in resource.data.bookedStaffIds) ||
+        ('pendingStaffIds' in resource.data && request.auth.uid in resource.data.pendingStaffIds)
       );
-
-      // Nursery may edit their own OPEN shift's fields, but status/bookedStaffId
-      // are frozen from the client no matter what — only the acceptShift /
-      // cancelShift server endpoints (Admin SDK) may change those.
-      allow update: if isSignedIn()
-        && request.auth.uid == resource.data.nurseryId
-        && resource.data.status == 'open'
-        && request.resource.data.status == resource.data.status
-        && request.resource.data.bookedStaffId == resource.data.bookedStaffId;
-
-      allow delete: if false;
     }
 
     // ---------------------------------------------------------------------

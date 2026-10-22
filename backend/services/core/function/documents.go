@@ -315,27 +315,9 @@ func reviewDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Only dbs_certificate and right_to_work reviews drive a profile badge;
-	// the other document types (CV, id, qualification, first_aid) are
-	// informational uploads with no corresponding verified/unverified field.
-	var profileUpdates []firestore.Update
-	switch docMeta.Type {
-	case "dbs_certificate":
-		dbsStatus := DBSUnverified
-		if req.Approve {
-			dbsStatus = DBSVerified
-		}
-		profileUpdates = append(profileUpdates, firestore.Update{Path: "dbsStatus", Value: string(dbsStatus)})
-	case "right_to_work":
-		profileUpdates = append(profileUpdates, firestore.Update{Path: "rightToWorkVerified", Value: req.Approve})
-	}
-	if len(profileUpdates) > 0 {
-		_, err = db.Collection("profiles").Doc(docMeta.UID).Update(ctx, profileUpdates)
-		if err != nil {
-			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
-			return
-		}
-	}
+	// S1: Document approval records only the document status and does NOT
+	// automatically modify dbsStatus or rightToWorkVerified on the user's profile.
+	// Profile verification is driven strictly through the vetting checklist / admin flow.
 
 	httpjson.WriteJSON(w, http.StatusOK, map[string]string{"docId": req.DocID, "status": string(newStatus)})
 }

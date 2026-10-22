@@ -21,11 +21,13 @@ class ShiftCard extends StatefulWidget {
     required this.shift,
     required this.onTap,
     this.trailingLabel,
+    this.isPendingApproval = false,
   });
 
   final Shift shift;
   final VoidCallback onTap;
   final String? trailingLabel;
+  final bool isPendingApproval;
 
   @override
   State<ShiftCard> createState() => _ShiftCardState();
@@ -161,7 +163,31 @@ class _ShiftCardState extends State<ShiftCard> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    ShiftStatusBadge(status: widget.shift.status),
+                    if (widget.isPendingApproval)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.amber.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.hourglass_top_rounded, size: 12, color: AppColors.amber),
+                            SizedBox(width: 4),
+                            Text(
+                              'Applied, awaiting approval',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.amber,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      ShiftStatusBadge(status: widget.shift.status),
                   ],
                 ),
                 if (widget.shift.capacity > 1) ...[

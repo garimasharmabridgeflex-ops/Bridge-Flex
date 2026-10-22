@@ -15,6 +15,8 @@ import '../../../shared/widgets/status_badge.dart';
 import '../../profile/domain/profile.dart';
 import '../../ratings/presentation/rate_shift_sheet.dart';
 import '../domain/shift.dart';
+import 'browse_shifts_screen.dart';
+import 'my_shifts_screen.dart';
 
 final shiftDetailProvider = FutureProvider.autoDispose.family<Shift?, String>((ref, shiftId) {
   return ref.watch(shiftRepositoryProvider).fetchShift(shiftId);
@@ -56,6 +58,8 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
     try {
       await ref.read(shiftRepositoryProvider).applyForShift(shift.id);
       ref.invalidate(shiftDetailProvider(shift.id));
+      ref.invalidate(openShiftsProvider);
+      ref.invalidate(myShiftsProvider);
       if (mounted) {
         // Deliberately not "booked": the nursery still has to approve this,
         // and telling someone they have a shift they might not get would be

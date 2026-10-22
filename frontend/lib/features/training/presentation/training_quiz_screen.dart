@@ -78,6 +78,7 @@ class _QuizFormState extends ConsumerState<_QuizForm> {
           .read(trainingRepositoryProvider)
           .submitQuiz(widget.module.moduleId, _answers);
       ref.invalidate(trainingOverviewProvider);
+      ref.invalidate(ownProfileProvider);
       if (!mounted) return;
       setState(() {
         _result = result;

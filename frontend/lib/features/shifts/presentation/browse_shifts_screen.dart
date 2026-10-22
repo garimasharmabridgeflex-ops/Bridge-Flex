@@ -170,6 +170,12 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
       // Min pay rate
       if (_minPayRate > 0 && s.payRate < _minPayRate) return false;
 
+      // Near me filter (B1 fix: filter in _applyFilters so filtered.isEmpty is accurate)
+      if (_nearMeOnly) {
+        if (ownArea == null || ownArea.isEmpty) return false;
+        if (s.nurseryArea != null && s.nurseryArea != ownArea) return false;
+      }
+
       return true;
     }).toList();
 
@@ -389,9 +395,15 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
                         minPayRate: _minPayRate,
                         sortOrder: _sortOrder,
                         hasActiveFilters: _hasActiveFilters,
-                        onNearMeToggle: ownAreaAsync.valueOrNull == null
-                            ? null
-                            : (v) => setState(() => _nearMeOnly = v),
+                        onNearMeToggle: (v) {
+                          if (v && ownAreaAsync.valueOrNull == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please set your location in your profile to use the "Near me" filter.')),
+                            );
+                            return;
+                          }
+                          setState(() => _nearMeOnly = v);
+                        },
                         onDateFilter: (f) async {
                           if (f == _DateFilter.pickDate) {
                             await _pickDate();
@@ -890,16 +902,9 @@ class _NearMeAwareCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!nearMeOnly || ownArea == null) {
-      return _card(context, null);
-    }
-    final areaAsync = ref.watch(_nurseryLocationAreaProvider(shift.nurseryId));
-    return areaAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
-      data: (area) =>
-          area == ownArea ? _card(context, area) : const SizedBox.shrink(),
-    );
+    // B1 fix: Near me filtering is evaluated in _applyFilters, eliminating
+    // SizedBox.shrink() separator gaps and empty-state bugs.
+    return _card(context, null);
   }
 
   Widget _card(BuildContext context, String? area) {

@@ -154,7 +154,7 @@ func listTrainingModules(w http.ResponseWriter, r *http.Request) {
 
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
 		"modules":        out,
-		"completedCount": completedCount(progress),
+		"completedCount": completedCount(modules, progress),
 		"totalCount":     len(out),
 	})
 }
@@ -345,6 +345,11 @@ func submitTrainingQuiz(w http.ResponseWriter, r *http.Request) {
 			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "quiz recorded but profile summary update failed: "+err.Error())
 			return
 		}
+		// Synchronously mirror to profilesPublic to prevent race with syncProfilePublic trigger
+		_, _ = db.Collection("profilesPublic").Doc(uid).Set(ctx, map[string]any{
+			"trainingCompletedModuleIds": firestore.ArrayUnion(req.ModuleID),
+			"updatedAt":                  now,
+		}, firestore.MergeAll)
 	}
 
 	// Correct answers are revealed only once the module is passed, so a
@@ -645,10 +650,13 @@ func loadProgress(ctx context.Context, db *firestore.Client, uid string) (map[st
 	return out, nil
 }
 
-func completedCount(progress map[string]*TrainingProgress) int {
+func completedCount(modules []moduleWithID, progress map[string]*TrainingProgress) int {
+	if progress == nil {
+		return 0
+	}
 	n := 0
-	for _, p := range progress {
-		if p != nil && p.Status == TrainingCompleted {
+	for _, m := range modules {
+		if p := progress[m.ID]; p != nil && p.Status == TrainingCompleted {
 			n++
 		}
 	}

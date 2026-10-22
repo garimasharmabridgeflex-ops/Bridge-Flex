@@ -98,6 +98,17 @@ func acceptShift(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Practitioner vetting gate (Phase 4):
+	if err := checkPractitionerVetting(ctx, db, uid); err != nil {
+		if err.Error() == "VERIFICATION_REQUIRED" {
+			httpjson.WriteError(w, http.StatusForbidden, "VERIFICATION_REQUIRED",
+				"Admin vetting approval is required before applying for shifts")
+			return
+		}
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+
 	ref := db.Collection("shifts").Doc(req.ShiftID)
 	var nurseryID string
 	var resultStatus string
@@ -535,6 +546,19 @@ func decideApplicant(w http.ResponseWriter, r *http.Request, approve bool) {
 		return
 	}
 
+	// Practitioner vetting gate (Phase 4):
+	if approve {
+		if err := checkPractitionerVetting(ctx, db, req.StaffID); err != nil {
+			if err.Error() == "VERIFICATION_REQUIRED" {
+				httpjson.WriteError(w, http.StatusForbidden, "VERIFICATION_REQUIRED",
+					"Practitioner vetting approval is required before booking")
+				return
+			}
+			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+			return
+		}
+	}
+
 	ref := db.Collection("shifts").Doc(req.ShiftID)
 	var (
 		resultStatus   string
@@ -693,4 +717,37 @@ func decideApplicant(w http.ResponseWriter, r *http.Request, approve bool) {
 		"spotsRemaining": spotsRemaining,
 		"autoRejected":   autoRejected,
 	})
+}
+
+// checkPractitionerVetting verifies whether a practitioner meets the vetting gate.
+// Governed by feature gate "practitionerApprovalRequired":
+// - "off": gate bypassed (default)
+// - "warn": log warning and proceed
+// - "enforce": require VettingStatus == VettingApproved
+func checkPractitionerVetting(ctx context.Context, db *firestore.Client, staffID string) error {
+	gate := GetGateMode(ctx, db, "practitionerApprovalRequired")
+	if gate == GateOff {
+		return nil
+	}
+
+	snap, err := db.Collection("profiles").Doc(staffID).Get(ctx)
+	if status.Code(err) == codes.NotFound {
+		return errProfileNotFound
+	}
+	if err != nil {
+		return err
+	}
+	var p Profile
+	if err := snap.DataTo(&p); err != nil {
+		return err
+	}
+
+	if p.VettingStatus != VettingApproved {
+		if gate == GateWarn {
+			log.Printf("[GATE_WARN] practitioner %s has vetting status %q, proceeding under warn mode", staffID, p.VettingStatus)
+			return nil
+		}
+		return errors.New("VERIFICATION_REQUIRED")
+	}
+	return nil
 }

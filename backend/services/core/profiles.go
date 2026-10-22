@@ -137,6 +137,9 @@ func syncProfilePublic(ctx context.Context, e event.Event) error {
 		// approving an applicant needs to know what they've completed, not how
 		// many attempts it took or what they scored.
 		pub.TrainingCompletedModuleIDs = fieldStringArray(fields, "trainingCompletedModuleIds")
+		pub.VettingStatus = VettingStatus(fieldString(fields, "vettingStatus"))
+		pub.DBSCheckedByKFlex = fieldBool(fields, "dbsCheckedByKFlex")
+		pub.DBSRecheckDue = fieldTimestamp(fields, "dbsRecheckDue")
 	case RoleNursery:
 		pub.Description = fieldString(fields, "description")
 		pub.OpeningHours = fieldString(fields, "openingHours")
@@ -630,6 +633,9 @@ func buildPublicFromProfile(p Profile) ProfilePublic {
 		pub.RightToWorkStatus = p.RightToWorkStatus
 		pub.RightToWorkVerified = p.RightToWorkVerified
 		pub.TrainingCompletedModuleIDs = p.TrainingCompletedModuleIDs
+		pub.VettingStatus = p.VettingStatus
+		pub.DBSCheckedByKFlex = p.DBSCheckedByKFlex
+		pub.DBSRecheckDue = p.DBSRecheckDue
 	case RoleNursery:
 		pub.Description = p.Description
 		pub.OpeningHours = p.OpeningHours

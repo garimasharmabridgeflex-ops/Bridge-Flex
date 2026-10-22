@@ -60,7 +60,16 @@ enum ApiFunction {
   acceptPolicies(8156),
   getCompanyInfo(8157),
   updateCompanyInfo(8158),
-  schedulerHeartbeat(8159);
+  schedulerHeartbeat(8159),
+
+  // Phase 4: Vetting & Sensitive Store
+  getVettingChecklist(8160),
+  recordVettingCheck(8161),
+  requestMoreDocuments(8162),
+  approvePractitionerVetting(8163),
+  rejectPractitionerVetting(8164),
+  updateSensitiveProfile(8165),
+  getSensitiveProfile(8166);
 
   const ApiFunction(this.localPort);
   final int localPort;

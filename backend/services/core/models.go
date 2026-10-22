@@ -152,6 +152,15 @@ type Profile struct {
 	// never by updateProfile.
 	TrainingCompletedModuleIDs []string   `firestore:"trainingCompletedModuleIds,omitempty" json:"trainingCompletedModuleIds,omitempty"`
 	TrainingUpdatedAt          *time.Time `firestore:"trainingUpdatedAt,omitempty" json:"trainingUpdatedAt,omitempty"`
+
+	// Vetting status and DBS verification fields (Phase 4).
+	VettingStatus          VettingStatus `firestore:"vettingStatus,omitempty" json:"vettingStatus,omitempty"`
+	DBSCheckedByKFlex      bool          `firestore:"dbsCheckedByKFlex,omitempty" json:"dbsCheckedByKFlex,omitempty"`
+	DBSVerifiedAt          *time.Time    `firestore:"dbsVerifiedAt,omitempty" json:"dbsVerifiedAt,omitempty"`
+	DBSRecheckDue          *time.Time    `firestore:"dbsRecheckDue,omitempty" json:"dbsRecheckDue,omitempty"`
+	DBSWorkforce           string        `firestore:"dbsWorkforce,omitempty" json:"dbsWorkforce,omitempty"`
+	DBSUpdateServiceStatus string        `firestore:"dbsUpdateServiceStatus,omitempty" json:"dbsUpdateServiceStatus,omitempty"`
+	DBSConsentGiven        bool          `firestore:"dbsConsentGiven,omitempty" json:"dbsConsentGiven,omitempty"`
 }
 
 // TrainingQuestion is one multiple-choice item on a module's knowledge check.
@@ -277,6 +286,9 @@ type ProfilePublic struct {
 	// training a shift applicant has completed before approving them. Only
 	// the module ids are exposed — scores and attempt counts stay private.
 	TrainingCompletedModuleIDs []string `firestore:"trainingCompletedModuleIds,omitempty" json:"trainingCompletedModuleIds,omitempty"`
+	VettingStatus              VettingStatus `firestore:"vettingStatus,omitempty" json:"vettingStatus,omitempty"`
+	DBSCheckedByKFlex          bool          `firestore:"dbsCheckedByKFlex,omitempty" json:"dbsCheckedByKFlex,omitempty"`
+	DBSRecheckDue              *time.Time    `firestore:"dbsRecheckDue,omitempty" json:"dbsRecheckDue,omitempty"`
 
 	// Nursery only.
 	Description  string       `firestore:"description,omitempty" json:"description,omitempty"`
@@ -413,4 +425,65 @@ type DocumentMeta struct {
 	// so a rejected upload isn't a dead end (full app spec §4.1). Never set
 	// on approval; empty string means "no note".
 	ReviewNote string `firestore:"reviewNote,omitempty" json:"reviewNote,omitempty"`
+}
+
+type VettingStatus string
+
+const (
+	VettingUnverified          VettingStatus = "unverified"
+	VettingPendingVerification VettingStatus = "pending_verification"
+	VettingApproved            VettingStatus = "approved"
+	VettingRejectedFurtherInfo VettingStatus = "rejected_further_info"
+)
+
+type CheckResult string
+
+const (
+	CheckPending CheckResult = "pending"
+	CheckPassed  CheckResult = "passed"
+	CheckFailed  CheckResult = "failed"
+)
+
+type VettingCheckItem struct {
+	Result     CheckResult `firestore:"result" json:"result"`
+	CheckerUID string      `firestore:"checkerUid,omitempty" json:"checkerUid,omitempty"`
+	CheckedAt  *time.Time  `firestore:"checkedAt,omitempty" json:"checkedAt,omitempty"`
+	Note       string      `firestore:"note,omitempty" json:"note,omitempty"`
+}
+
+type VettingChecklist struct {
+	UID                 string           `firestore:"uid" json:"uid"`
+	Identity            VettingCheckItem `firestore:"identity" json:"identity"`
+	OriginalCertificate VettingCheckItem `firestore:"originalCertificate" json:"originalCertificate"`
+	Suitability         VettingCheckItem `firestore:"suitability" json:"suitability"`
+	Workforce           VettingCheckItem `firestore:"workforce" json:"workforce"`
+	BarredList          VettingCheckItem `firestore:"barredList" json:"barredList"`
+	UpdateService       VettingCheckItem `firestore:"updateService" json:"updateService"`
+	RightToWork         VettingCheckItem `firestore:"rightToWork" json:"rightToWork"`
+	Qualification       VettingCheckItem `firestore:"qualification" json:"qualification"`
+	References          VettingCheckItem `firestore:"references" json:"references"`
+	Safeguarding        VettingCheckItem `firestore:"safeguarding" json:"safeguarding"`
+	FirstAid            VettingCheckItem `firestore:"firstAid" json:"firstAid"`
+	UpdatedAt           time.Time        `firestore:"updatedAt" json:"updatedAt"`
+}
+
+type DocumentRequest struct {
+	ID          string    `firestore:"id" json:"id"`
+	UID         string    `firestore:"uid" json:"uid"`
+	RequestedBy string    `firestore:"requestedBy" json:"requestedBy"`
+	Message     string    `firestore:"message" json:"message"`
+	DocTypes    []string  `firestore:"docTypes" json:"docTypes"`
+	CreatedAt   time.Time `firestore:"createdAt" json:"createdAt"`
+	Resolved    bool      `firestore:"resolved" json:"resolved"`
+}
+
+type SensitiveProfile struct {
+	UID                  string    `firestore:"uid" json:"uid"`
+	DateOfBirthEnc       string    `firestore:"dateOfBirthEnc,omitempty" json:"dateOfBirthEnc,omitempty"`
+	NationalInsuranceEnc string    `firestore:"nationalInsuranceEnc,omitempty" json:"nationalInsuranceEnc,omitempty"`
+	BankAccountEnc       string    `firestore:"bankAccountEnc,omitempty" json:"bankAccountEnc,omitempty"`
+	SortCodeEnc          string    `firestore:"sortCodeEnc,omitempty" json:"sortCodeEnc,omitempty"`
+	FullAddressEnc       string    `firestore:"fullAddressEnc,omitempty" json:"fullAddressEnc,omitempty"`
+	DBSCertificateEnc    string    `firestore:"dbsCertificateEnc,omitempty" json:"dbsCertificateEnc,omitempty"`
+	UpdatedAt            time.Time `firestore:"updatedAt" json:"updatedAt"`
 }

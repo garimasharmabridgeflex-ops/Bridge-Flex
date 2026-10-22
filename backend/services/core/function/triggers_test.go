@@ -395,9 +395,18 @@ func TestBuildPublicFromProfileParity(t *testing.T) {
 		RightToWorkStatus:          "Verified",
 		RightToWorkVerified:        true,
 		TrainingCompletedModuleIDs: []string{"module-safeguarding", "module-eyfs"},
+		VettingStatus:              VettingApproved,
+		DBSCheckedByKFlex:          true,
+		DBSRecheckDue:              &dbsExpiry,
 	}
 
 	pub := buildPublicFromProfile(staffProfile)
+	if pub.VettingStatus != staffProfile.VettingStatus {
+		t.Errorf("VettingStatus = %v, want %v", pub.VettingStatus, staffProfile.VettingStatus)
+	}
+	if pub.DBSCheckedByKFlex != staffProfile.DBSCheckedByKFlex {
+		t.Errorf("DBSCheckedByKFlex = %v, want %v", pub.DBSCheckedByKFlex, staffProfile.DBSCheckedByKFlex)
+	}
 
 	if pub.Role != staffProfile.Role {
 		t.Errorf("Role = %v, want %v", pub.Role, staffProfile.Role)

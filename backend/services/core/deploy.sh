@@ -98,6 +98,15 @@ deploy_http GetCompanyInfo
 deploy_http UpdateCompanyInfo
 deploy_http SchedulerHeartbeat
 
+# Vetting and sensitive data (Phase 4)
+deploy_http GetVettingChecklist
+deploy_http RecordVettingCheck
+deploy_http RequestMoreDocuments
+deploy_http ApprovePractitionerVetting
+deploy_http RejectPractitionerVetting
+deploy_http UpdateSensitiveProfile
+deploy_http GetSensitiveProfile
+
 # Training modules (Bridge Flex Training & Onboarding Modules spec). The three
 # admin endpoints are gated by the admin custom claim inside the handler, same
 # as the admin dashboard functions above.

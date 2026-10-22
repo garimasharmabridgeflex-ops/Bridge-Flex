@@ -173,4 +173,27 @@ describe("ratings / chat / documents / notifications / transactions rules", () =
     await assertFails(getDoc(doc(asStaffB, "policyAcceptances/staffA_privacy_1")));
     await assertFails(setDoc(doc(asStaffA, "policyAcceptances/staffA_privacy_2"), { uid: "staffA", version: 2 }));
   });
+
+  it("Phase 4: sensitive collection is completely forbidden from client reads and writes", async () => {
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertFails(getDoc(doc(asStaffA, "sensitive/staffA")));
+    await assertFails(setDoc(doc(asStaffA, "sensitive/staffA"), { dob: "1990-01-01" }));
+  });
+
+  it("Phase 4: vetting collection is completely forbidden from client reads and writes", async () => {
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertFails(getDoc(doc(asStaffA, "vetting/staffA")));
+    await assertFails(setDoc(doc(asStaffA, "vetting/staffA"), { dbsStatus: "valid" }));
+  });
+
+  it("Phase 4: vetting requests can be read by the practitioner owner but cannot be written by clients", async () => {
+    await seed(testEnv, async (db) => {
+      await setDoc(doc(db, "vetting/staffA/requests/req1"), { docType: "dbs_certificate", message: "Please re-upload" });
+    });
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    const asStaffB = testEnv.authenticatedContext("staffB").firestore();
+    await assertSucceeds(getDoc(doc(asStaffA, "vetting/staffA/requests/req1")));
+    await assertFails(getDoc(doc(asStaffB, "vetting/staffA/requests/req1")));
+    await assertFails(setDoc(doc(asStaffA, "vetting/staffA/requests/req2"), { docType: "id" }));
+  });
 });

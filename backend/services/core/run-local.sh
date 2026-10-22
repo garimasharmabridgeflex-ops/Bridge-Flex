@@ -53,6 +53,13 @@ declare -A FUNCS=(
   [GetCompanyInfo]=8157
   [UpdateCompanyInfo]=8158
   [SchedulerHeartbeat]=8159
+  [GetVettingChecklist]=8160
+  [RecordVettingCheck]=8161
+  [RequestMoreDocuments]=8162
+  [ApprovePractitionerVetting]=8163
+  [RejectPractitionerVetting]=8164
+  [UpdateSensitiveProfile]=8165
+  [GetSensitiveProfile]=8166
 )
 
 pids=()

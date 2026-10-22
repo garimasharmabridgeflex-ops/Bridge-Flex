@@ -116,6 +116,25 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------------
+    // sensitive/{uid} and vetting/{uid} (Phase 4)
+    // sensitive profile is KMS envelope encrypted and accessible only via server functions.
+    // vetting checklist is maintained strictly server-side.
+    // vetting requests subcollection allows read by the practitioner owner.
+    // ---------------------------------------------------------------------
+    match /sensitive/{uid} {
+      allow read, write: if false;
+    }
+
+    match /vetting/{uid} {
+      allow read, write: if false;
+
+      match /requests/{requestId} {
+        allow read: if isSignedIn() && request.auth.uid == uid;
+        allow write: if false;
+      }
+    }
+
+    // ---------------------------------------------------------------------
     // auditLogs, outbox, idempotency, sentEmails — SERVER ONLY.
     // ---------------------------------------------------------------------
     match /auditLogs/{logId} {

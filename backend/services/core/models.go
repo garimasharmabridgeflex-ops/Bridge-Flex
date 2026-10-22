@@ -583,3 +583,41 @@ type SensitiveProfile struct {
 	DBSCertificateEnc    string    `firestore:"dbsCertificateEnc,omitempty" json:"dbsCertificateEnc,omitempty"`
 	UpdatedAt            time.Time `firestore:"updatedAt" json:"updatedAt"`
 }
+
+// TimesheetStatus represents the lifecycle of a timesheet (Phase 7).
+type TimesheetStatus string
+
+const (
+	TimesheetSubmitted           TimesheetStatus = "submitted"
+	TimesheetApproved            TimesheetStatus = "approved"
+	TimesheetCorrectionRequested TimesheetStatus = "correction_requested"
+	TimesheetDisputed            TimesheetStatus = "disputed"
+	TimesheetAdminApproved       TimesheetStatus = "admin_approved"
+)
+
+// Timesheet records hours and pay approval for a completed shift (Phase 7).
+type Timesheet struct {
+	ID                      string          `firestore:"-" json:"id,omitempty"`
+	ShiftID                 string          `firestore:"shiftId" json:"shiftId"`
+	NurseryID               string          `firestore:"nurseryId" json:"nurseryId"`
+	StaffID                 string          `firestore:"staffId" json:"staffId"`
+	ScheduledStartTime      time.Time       `firestore:"scheduledStartTime" json:"scheduledStartTime"`
+	ScheduledEndTime        time.Time       `firestore:"scheduledEndTime" json:"scheduledEndTime"`
+	ActualStartTime         time.Time       `firestore:"actualStartTime" json:"actualStartTime"`
+	ActualEndTime           time.Time       `firestore:"actualEndTime" json:"actualEndTime"`
+	UnpaidBreakMinutes      int64           `firestore:"unpaidBreakMinutes" json:"unpaidBreakMinutes"`
+	BillableMinutes         int64           `firestore:"billableMinutes" json:"billableMinutes"`
+	HourlyRatePence         int64           `firestore:"hourlyRatePence" json:"hourlyRatePence"`
+	NurseryHourlyRatePence  int64           `firestore:"nurseryHourlyRatePence" json:"nurseryHourlyRatePence"`
+	TotalGrossPayPence      int64           `firestore:"totalGrossPayPence" json:"totalGrossPayPence"`
+	TotalNurseryChargePence int64           `firestore:"totalNurseryChargePence" json:"totalNurseryChargePence"`
+	Status                  TimesheetStatus `firestore:"status" json:"status"`
+	NurseryFeedback         string          `firestore:"nurseryFeedback,omitempty" json:"nurseryFeedback,omitempty"`
+	DisputeReason           string          `firestore:"disputeReason,omitempty" json:"disputeReason,omitempty"`
+	AdminNotes              string          `firestore:"adminNotes,omitempty" json:"adminNotes,omitempty"`
+	SubmittedAt             time.Time       `firestore:"submittedAt" json:"submittedAt"`
+	DecidedAt               *time.Time      `firestore:"decidedAt,omitempty" json:"decidedAt,omitempty"`
+	EscalatedAt             *time.Time      `firestore:"escalatedAt,omitempty" json:"escalatedAt,omitempty"`
+	CreatedAt               time.Time       `firestore:"createdAt" json:"createdAt"`
+	UpdatedAt               time.Time       `firestore:"updatedAt" json:"updatedAt"`
+}

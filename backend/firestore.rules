@@ -204,6 +204,20 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------------
+    // timesheets/{timesheetId} (Phase 7)
+    // Recorded hours and lifecycle states (submitted, approved, correction_requested,
+    // disputed, admin_approved). Read allowed for participants or admin. Direct client write forbidden.
+    // ---------------------------------------------------------------------
+    match /timesheets/{timesheetId} {
+      allow read: if isSignedIn() && (
+        resource.data.staffId == request.auth.uid ||
+        resource.data.nurseryId == request.auth.uid ||
+        request.auth.token.role in ['admin', 'superadmin', 'finance']
+      );
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------------
     // ratings/{ratingId} — create-only from clients, immutable after that.
     // ---------------------------------------------------------------------
     match /ratings/{ratingId} {

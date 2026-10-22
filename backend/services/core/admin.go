@@ -34,9 +34,10 @@ type platformStats struct {
 	TotalShifts      int64 `json:"totalShifts"`
 	OpenShifts       int64 `json:"openShifts"`
 	BookedShifts     int64 `json:"bookedShifts"`
-	CompletedShifts  int64 `json:"completedShifts"`
-	CancelledShifts  int64 `json:"cancelledShifts"`
-	PendingDocuments int64 `json:"pendingDocuments"`
+	CompletedShifts   int64 `json:"completedShifts"`
+	CancelledShifts   int64 `json:"cancelledShifts"`
+	PendingTimesheets int64 `json:"pendingTimesheets,omitempty"`
+	PendingDocuments  int64 `json:"pendingDocuments"`
 	TotalRatings     int64 `json:"totalRatings"`
 }
 
@@ -88,8 +89,12 @@ func getPlatformStats(w http.ResponseWriter, r *http.Request) {
 	out.OpenShifts, _ = getQueryCount(ctx, db.Collection("shifts").Where("status", "==", string(ShiftOpen)))
 	out.CancelledShifts, _ = getQueryCount(ctx, db.Collection("shifts").Where("status", "==", string(ShiftCancelled)))
 	out.BookedShifts, _ = getQueryCount(ctx, db.Collection("shifts").Where("status", "==", string(ShiftBooked)))
-	now := time.Now().UTC()
-	out.CompletedShifts, _ = getQueryCount(ctx, db.Collection("shifts").Where("endTime", "<=", now))
+
+	// Phase 7 R5: Completed shifts come from timesheets (approved or admin_approved), not derived check.
+	approvedTs, _ := getQueryCount(ctx, db.Collection("timesheets").Where("status", "==", string(TimesheetApproved)))
+	adminApprovedTs, _ := getQueryCount(ctx, db.Collection("timesheets").Where("status", "==", string(TimesheetAdminApproved)))
+	out.CompletedShifts = approvedTs + adminApprovedTs
+	out.PendingTimesheets, _ = getQueryCount(ctx, db.Collection("timesheets").Where("status", "==", string(TimesheetSubmitted)))
 
 	out.PendingDocuments, _ = getQueryCount(ctx, db.Collection("documents").Where("status", "==", string(DocPendingReview)))
 	out.TotalRatings, _ = getQueryCount(ctx, db.Collection("ratings").Query)

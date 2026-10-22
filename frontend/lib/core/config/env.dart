@@ -83,7 +83,17 @@ enum ApiFunction {
   getActiveRateCard(8173),
   listRateCards(8174),
   upsertRateCard(8175),
-  cancelShiftStructured(8176);
+  cancelShiftStructured(8176),
+
+  // Phase 7: Timesheets
+  submitTimesheet(8185),
+  getTimesheet(8186),
+  listTimesheets(8187),
+  approveTimesheet(8188),
+  requestTimesheetCorrection(8189),
+  disputeTimesheet(8190),
+  adminApproveTimesheet(8191),
+  escalateUnresponsiveTimesheets(8192);
 
   const ApiFunction(this.localPort);
   final int localPort;

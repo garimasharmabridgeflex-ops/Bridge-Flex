@@ -121,6 +121,16 @@ deploy_http ListRateCards
 deploy_http UpsertRateCard
 deploy_http CancelShiftStructured
 
+# Timesheets (Phase 7)
+deploy_http SubmitTimesheet
+deploy_http GetTimesheet
+deploy_http ListTimesheets
+deploy_http ApproveTimesheet
+deploy_http RequestTimesheetCorrection
+deploy_http DisputeTimesheet
+deploy_http AdminApproveTimesheet
+deploy_http EscalateUnresponsiveTimesheets
+
 # Training modules (Bridge Flex Training & Onboarding Modules spec). The three
 # admin endpoints are gated by the admin custom claim inside the handler, same
 # as the admin dashboard functions above.

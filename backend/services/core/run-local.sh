@@ -70,6 +70,14 @@ declare -A FUNCS=(
   [ListRateCards]=8174
   [UpsertRateCard]=8175
   [CancelShiftStructured]=8176
+  [SubmitTimesheet]=8185
+  [GetTimesheet]=8186
+  [ListTimesheets]=8187
+  [ApproveTimesheet]=8188
+  [RequestTimesheetCorrection]=8189
+  [DisputeTimesheet]=8190
+  [AdminApproveTimesheet]=8191
+  [EscalateUnresponsiveTimesheets]=8192
 )
 
 pids=()

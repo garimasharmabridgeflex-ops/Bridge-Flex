@@ -236,4 +236,34 @@ describe("ratings / chat / documents / notifications / transactions rules", () =
     await assertFails(setDoc(doc(asStaffA, "cancellations/cancel2"), { actorId: "staffA" }));
     await assertFails(updateDoc(doc(asStaffA, "cancellations/cancel1"), { chargePence: 100 }));
   });
+
+  it("Phase 7: timesheets can be read by shift participants or admins, but clients cannot write", async () => {
+    await seed(testEnv, async (db) => {
+      await setDoc(doc(db, "timesheets/ts1"), {
+        shiftId: "shift1",
+        staffId: "staffA",
+        nurseryId: "nurseryA",
+        status: "submitted",
+        billableMinutes: 450,
+      });
+    });
+
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    const asNurseryA = testEnv.authenticatedContext("nurseryA").firestore();
+    const asStaffB = testEnv.authenticatedContext("staffB").firestore();
+    const asAdmin = testEnv.authenticatedContext("adminUser", { role: "admin" }).firestore();
+
+    // Staff participant can read
+    await assertSucceeds(getDoc(doc(asStaffA, "timesheets/ts1")));
+    // Nursery participant can read
+    await assertSucceeds(getDoc(doc(asNurseryA, "timesheets/ts1")));
+    // Admin can read
+    await assertSucceeds(getDoc(doc(asAdmin, "timesheets/ts1")));
+    // Unrelated staff cannot read
+    await assertFails(getDoc(doc(asStaffB, "timesheets/ts1")));
+
+    // Direct client writes are forbidden
+    await assertFails(setDoc(doc(asStaffA, "timesheets/ts2"), { shiftId: "shift2" }));
+    await assertFails(updateDoc(doc(asNurseryA, "timesheets/ts1"), { status: "approved" }));
+  });
 });

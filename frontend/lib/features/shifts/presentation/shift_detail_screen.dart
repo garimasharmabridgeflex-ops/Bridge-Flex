@@ -14,6 +14,7 @@ import '../../../shared/widgets/primary_button.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../profile/domain/profile.dart';
 import '../../ratings/presentation/rate_shift_sheet.dart';
+import '../../timesheets/presentation/timesheet_card.dart';
 import '../domain/shift.dart';
 import 'browse_shifts_screen.dart';
 import 'my_shifts_screen.dart';
@@ -391,6 +392,15 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                       icon: const Icon(Icons.chat_bubble_outline_rounded),
                       label: Text('Chat with ${isOwner ? 'Staff' : 'Nursery'}'),
                     ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  TimesheetCard(
+                    shift: shift,
+                    isOwner: isOwner,
+                    isBookedStaff: isBookedStaff,
+                    onTimesheetChanged: () {
+                      ref.invalidate(shiftDetailProvider(widget.shiftId));
+                    },
                   ),
                 ],
                 const SizedBox(height: AppSpacing.xl),

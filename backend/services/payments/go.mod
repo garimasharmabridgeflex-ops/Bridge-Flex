@@ -1,12 +1,12 @@
 module kvision.internal/payments
 
-go 1.25
+go 1.25.0
 
 replace kvision.internal/shared => ./shared
 
 require (
-	kvision.internal/shared v0.0.0-00010101000000-000000000000
 	github.com/GoogleCloudPlatform/functions-framework-go v1.9.2
+	kvision.internal/shared v0.0.0-00010101000000-000000000000
 )
 
 require (

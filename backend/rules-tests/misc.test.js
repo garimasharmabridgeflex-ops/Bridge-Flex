@@ -123,4 +123,32 @@ describe("ratings / chat / documents / notifications / transactions rules", () =
     await assertFails(getDoc(doc(asNursery, "transactions/tx1")));
     await assertFails(setDoc(doc(asNursery, "transactions/tx1"), { amount: 100 }));
   });
+
+  it("Phase 2: auditLogs collection is completely forbidden from client reads and writes", async () => {
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertFails(getDoc(doc(asStaffA, "auditLogs/log1")));
+    await assertFails(setDoc(doc(asStaffA, "auditLogs/log1"), { action: "hack" }));
+  });
+
+  it("Phase 2: outbox, idempotency, and sentEmails collections are completely forbidden from client reads and writes", async () => {
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertFails(getDoc(doc(asStaffA, "outbox/event1")));
+    await assertFails(setDoc(doc(asStaffA, "outbox/event1"), { topic: "send-email" }));
+    await assertFails(getDoc(doc(asStaffA, "idempotency/key1")));
+    await assertFails(setDoc(doc(asStaffA, "idempotency/key1"), { status: "pending" }));
+    await assertFails(getDoc(doc(asStaffA, "sentEmails/email1")));
+    await assertFails(setDoc(doc(asStaffA, "sentEmails/email1"), { sent: true }));
+  });
+
+  it("Phase 2: platformConfig/company is readable by signed-in users but cannot be written by clients", async () => {
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertSucceeds(getDoc(doc(asStaffA, "platformConfig/company")));
+    await assertFails(setDoc(doc(asStaffA, "platformConfig/company"), { companyName: "Fake Co" }));
+  });
+
+  it("Phase 2: other platformConfig docs are forbidden from client reads and writes", async () => {
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertFails(getDoc(doc(asStaffA, "platformConfig/secretKeys")));
+    await assertFails(setDoc(doc(asStaffA, "platformConfig/secretKeys"), { key: "bad" }));
+  });
 });

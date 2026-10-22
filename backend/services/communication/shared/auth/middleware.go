@@ -83,3 +83,45 @@ func CustomClaim(ctx context.Context, key string) any {
 	}
 	return claims[key]
 }
+
+// AdminRole represents the role claim of an administrative user.
+type AdminRole string
+
+const (
+	AdminRoleSuperAdmin AdminRole = "super_admin"
+	AdminRoleVerifier   AdminRole = "verifier"
+	AdminRoleFinance    AdminRole = "finance"
+	AdminRoleSupport    AdminRole = "support"
+	AdminRoleReadOnly   AdminRole = "read_only"
+)
+
+// GetAdminRole returns the caller's AdminRole.
+// If the caller has super_admin or legacy admin: true without adminRole, it returns AdminRoleSuperAdmin.
+func GetAdminRole(ctx context.Context) AdminRole {
+	roleClaim := CustomClaim(ctx, "adminRole")
+	if r, ok := roleClaim.(string); ok && r != "" {
+		return AdminRole(r)
+	}
+	if CustomClaim(ctx, "admin") == true {
+		return AdminRoleSuperAdmin
+	}
+	return ""
+}
+
+// HasRole checks whether the caller has any of the allowed admin roles.
+// A caller with AdminRoleSuperAdmin always satisfies the check.
+func HasRole(ctx context.Context, allowed ...AdminRole) bool {
+	callerRole := GetAdminRole(ctx)
+	if callerRole == "" {
+		return false
+	}
+	if callerRole == AdminRoleSuperAdmin {
+		return true
+	}
+	for _, a := range allowed {
+		if callerRole == a {
+			return true
+		}
+	}
+	return false
+}

@@ -1,6 +1,7 @@
 package function
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -39,10 +40,22 @@ type platformStats struct {
 	TotalRatings     int64 `json:"totalRatings"`
 }
 
-// getPlatformStats — GET /getPlatformStats. Admin-only. Full collection
-// scans across profiles/shifts/documents — same "fine at MVP scale, revisit
-// with real volume" tradeoff already accepted by stats.go and
-// listPendingDocuments.
+func getQueryCount(ctx context.Context, q firestore.Query) (int64, error) {
+	res, err := q.NewAggregationQuery().WithCount("count").Get(ctx)
+	if err != nil {
+		return 0, err
+	}
+	var target struct {
+		Count int64 `firestore:"count"`
+	}
+	if err := res.DataTo(&target); err != nil {
+		return 0, err
+	}
+	return target.Count, nil
+}
+
+// getPlatformStats — GET /getPlatformStats. Admin-only.
+// Uses Firestore aggregation count queries instead of full collection scans (R9).
 func getPlatformStats(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if !isAdmin(ctx) {
@@ -56,92 +69,30 @@ func getPlatformStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var out platformStats
+	var errCount error
 
-	profileIter := db.Collection("profiles").Documents(ctx)
-	defer profileIter.Stop()
-	for {
-		snap, err := profileIter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
-			return
-		}
-		var p Profile
-		if err := snap.DataTo(&p); err != nil {
-			continue
-		}
-		switch p.Role {
-		case RoleNursery:
-			out.TotalNurseries++
-		case RoleStaff:
-			out.TotalStaff++
-		}
-		if p.Suspended {
-			out.SuspendedUsers++
-		}
-		if p.DBSStatus == DBSPending {
-			out.PendingDBS++
-		}
+	out.TotalNurseries, errCount = getQueryCount(ctx, db.Collection("profiles").Where("role", "==", string(RoleNursery)))
+	if errCount != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", errCount.Error())
+		return
 	}
+	out.TotalStaff, errCount = getQueryCount(ctx, db.Collection("profiles").Where("role", "==", string(RoleStaff)))
+	if errCount != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", errCount.Error())
+		return
+	}
+	out.SuspendedUsers, _ = getQueryCount(ctx, db.Collection("profiles").Where("suspended", "==", true))
+	out.PendingDBS, _ = getQueryCount(ctx, db.Collection("profiles").Where("dbsStatus", "==", string(DBSPending)))
 
-	now := time.Now()
-	shiftIter := db.Collection("shifts").Documents(ctx)
-	defer shiftIter.Stop()
-	for {
-		snap, err := shiftIter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
-			return
-		}
-		var s Shift
-		if err := snap.DataTo(&s); err != nil {
-			continue
-		}
-		out.TotalShifts++
-		switch {
-		case s.Status == ShiftCancelled:
-			out.CancelledShifts++
-		case now.After(s.EndTime):
-			out.CompletedShifts++
-		case len(s.BookedStaffIDs) > 0 || s.BookedStaffID != nil:
-			out.BookedShifts++
-		default:
-			out.OpenShifts++
-		}
-	}
+	out.TotalShifts, _ = getQueryCount(ctx, db.Collection("shifts").Query)
+	out.OpenShifts, _ = getQueryCount(ctx, db.Collection("shifts").Where("status", "==", string(ShiftOpen)))
+	out.CancelledShifts, _ = getQueryCount(ctx, db.Collection("shifts").Where("status", "==", string(ShiftCancelled)))
+	out.BookedShifts, _ = getQueryCount(ctx, db.Collection("shifts").Where("status", "==", string(ShiftBooked)))
+	now := time.Now().UTC()
+	out.CompletedShifts, _ = getQueryCount(ctx, db.Collection("shifts").Where("endTime", "<=", now))
 
-	pendingDocsIter := db.Collection("documents").Where("status", "==", string(DocPendingReview)).Documents(ctx)
-	defer pendingDocsIter.Stop()
-	for {
-		_, err := pendingDocsIter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
-			return
-		}
-		out.PendingDocuments++
-	}
-
-	ratingsIter := db.Collection("ratings").Documents(ctx)
-	defer ratingsIter.Stop()
-	for {
-		_, err := ratingsIter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
-			return
-		}
-		out.TotalRatings++
-	}
+	out.PendingDocuments, _ = getQueryCount(ctx, db.Collection("documents").Where("status", "==", string(DocPendingReview)))
+	out.TotalRatings, _ = getQueryCount(ctx, db.Collection("ratings").Query)
 
 	httpjson.WriteJSON(w, http.StatusOK, out)
 }

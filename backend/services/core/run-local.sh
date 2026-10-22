@@ -47,6 +47,12 @@ declare -A FUNCS=(
   [DeleteTrainingModule]=8151
   [ApproveShiftApplicant]=8152
   [RejectShiftApplicant]=8153
+  [GetRequiredPolicies]=8154
+  [GetPolicy]=8155
+  [AcceptPolicies]=8156
+  [GetCompanyInfo]=8157
+  [UpdateCompanyInfo]=8158
+  [SchedulerHeartbeat]=8159
 )
 
 pids=()

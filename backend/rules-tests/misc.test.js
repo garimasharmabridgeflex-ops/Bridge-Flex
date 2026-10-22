@@ -151,4 +151,26 @@ describe("ratings / chat / documents / notifications / transactions rules", () =
     await assertFails(getDoc(doc(asStaffA, "platformConfig/secretKeys")));
     await assertFails(setDoc(doc(asStaffA, "platformConfig/secretKeys"), { key: "bad" }));
   });
+
+  it("Phase 3: published policies can be read by clients, drafts cannot", async () => {
+    await seed(testEnv, async (db) => {
+      await setDoc(doc(db, "policies/published1"), { type: "privacy", status: "published", version: 1 });
+      await setDoc(doc(db, "policies/draft1"), { type: "privacy", status: "draft", version: 2 });
+    });
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertSucceeds(getDoc(doc(asStaffA, "policies/published1")));
+    await assertFails(getDoc(doc(asStaffA, "policies/draft1")));
+    await assertFails(setDoc(doc(asStaffA, "policies/published1"), { title: "hacked" }));
+  });
+
+  it("Phase 3: users can only read their own policyAcceptances, never write directly", async () => {
+    await seed(testEnv, async (db) => {
+      await setDoc(doc(db, "policyAcceptances/staffA_privacy_1"), { uid: "staffA", policyType: "privacy", version: 1 });
+    });
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    const asStaffB = testEnv.authenticatedContext("staffB").firestore();
+    await assertSucceeds(getDoc(doc(asStaffA, "policyAcceptances/staffA_privacy_1")));
+    await assertFails(getDoc(doc(asStaffB, "policyAcceptances/staffA_privacy_1")));
+    await assertFails(setDoc(doc(asStaffA, "policyAcceptances/staffA_privacy_2"), { uid: "staffA", version: 2 }));
+  });
 });

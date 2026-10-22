@@ -90,6 +90,14 @@ deploy_http SetUserSuspended
 deploy_http SetVerificationBadge
 deploy_http ListRatings
 
+# Policies, Company config and Scheduler Heartbeat (Phase 2 & 3)
+deploy_http GetRequiredPolicies
+deploy_http GetPolicy
+deploy_http AcceptPolicies
+deploy_http GetCompanyInfo
+deploy_http UpdateCompanyInfo
+deploy_http SchedulerHeartbeat
+
 # Training modules (Bridge Flex Training & Onboarding Modules spec). The three
 # admin endpoints are gated by the admin custom claim inside the handler, same
 # as the admin dashboard functions above.

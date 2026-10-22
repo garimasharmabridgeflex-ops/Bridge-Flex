@@ -103,6 +103,19 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------------
+    // policies / policyAcceptances (Phase 3)
+    // ---------------------------------------------------------------------
+    match /policies/{policyId} {
+      allow read: if resource.data.status == 'published';
+      allow write: if false;
+    }
+
+    match /policyAcceptances/{acceptanceId} {
+      allow read: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------------
     // auditLogs, outbox, idempotency, sentEmails — SERVER ONLY.
     // ---------------------------------------------------------------------
     match /auditLogs/{logId} {

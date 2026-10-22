@@ -52,7 +52,15 @@ enum ApiFunction {
 
   // Nursery approval of shift applicants.
   approveShiftApplicant(8152),
-  rejectShiftApplicant(8153);
+  rejectShiftApplicant(8153),
+
+  // Phase 2 & 3: Platform, Company and Legal policies.
+  getRequiredPolicies(8154),
+  getPolicy(8155),
+  acceptPolicies(8156),
+  getCompanyInfo(8157),
+  updateCompanyInfo(8158),
+  schedulerHeartbeat(8159);
 
   const ApiFunction(this.localPort);
   final int localPort;

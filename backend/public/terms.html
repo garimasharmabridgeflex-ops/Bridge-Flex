@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+<!DOC
+    <div id="policy-dynamic-content">TYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -208,9 +209,44 @@
     <h2>16. Contact</h2>
     <p>Questions about these terms: <a href="mailto:afrilexkenya@gmail.com">afrilexkenya@gmail.com</a>.</p>
 
-    <div class="footer">
+        </div>
+<div class="footer">
       KFlex Recruitment &nbsp;·&nbsp; Built by Afrilex Kenya
     </div>
   </div>
+
+  <script>
+    (async function loadDynamicPolicy() {
+      try {
+        const [policyRes, companyRes] = await Promise.all([
+          fetch('/getPolicy?type=nursery_terms'),
+          fetch('/getCompanyInfo')
+        ]);
+        if (policyRes.ok) {
+          const policy = await policyRes.json();
+          if (policy.content) {
+            const container = document.getElementById('policy-dynamic-content');
+            if (container) container.innerHTML = policy.content;
+            if (policy.title) {
+              const h1 = document.querySelector('h1');
+              if (h1) h1.innerText = policy.title;
+            }
+            if (policy.publishedAt) {
+              const d = new Date(policy.publishedAt);
+              const upd = document.querySelector('.updated');
+              if (upd) upd.innerText = 'Last updated: ' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+            }
+          }
+        }
+        if (companyRes.ok) {
+          const comp = await companyRes.json();
+          if (comp.company && comp.company.email) {
+            const emailLinks = document.querySelectorAll('a[href^="mailto:"]');
+            emailLinks.forEach(a => { a.href = 'mailto:' + comp.company.email; a.innerText = comp.company.email; });
+          }
+        }
+      } catch (_) {}
+    })();
+  </script>
 </body>
 </html>

@@ -158,6 +158,7 @@ func syncProfilePublic(ctx context.Context, e event.Event) error {
 		pub.Facilities = fieldStringArray(fields, "facilities")
 		pub.IdentityVerified = fieldBool(fields, "identityVerified")
 		pub.OfstedVerified = fieldBool(fields, "ofstedVerified")
+		pub.NurseryApprovalStatus = NurseryApprovalStatus(fieldString(fields, "nurseryApprovalStatus"))
 	}
 
 	db, err := fsDB(ctx)
@@ -227,6 +228,15 @@ type updateProfileRequest struct {
 	Email                 *string   `json:"email,omitempty"`
 	ShortDescription      *string   `json:"shortDescription,omitempty"`
 	Facilities            *[]string `json:"facilities,omitempty"`
+
+	// Nursery registration additions (Phase 5).
+	CompanyNumber          *string `json:"companyNumber,omitempty"`
+	BillingAddress         *string `json:"billingAddress,omitempty"`
+	BillingEmail           *string `json:"billingEmail,omitempty"`
+	BillingContactPerson   *string `json:"billingContactPerson,omitempty"`
+	PreferredPaymentMethod *string `json:"preferredPaymentMethod,omitempty"`
+	LocationCount          *int64  `json:"locationCount,omitempty"`
+	StaffingRequirements  *string `json:"staffingRequirements,omitempty"`
 }
 
 // updateProfile — POST /updateProfile. Owner-only (enforced by authed()
@@ -392,6 +402,27 @@ func updateProfile(w http.ResponseWriter, r *http.Request) {
 		if req.Facilities != nil {
 			updates = append(updates, firestore.Update{Path: "facilities", Value: *req.Facilities})
 		}
+		if req.CompanyNumber != nil {
+			updates = append(updates, firestore.Update{Path: "companyNumber", Value: *req.CompanyNumber})
+		}
+		if req.BillingAddress != nil {
+			updates = append(updates, firestore.Update{Path: "billingAddress", Value: *req.BillingAddress})
+		}
+		if req.BillingEmail != nil {
+			updates = append(updates, firestore.Update{Path: "billingEmail", Value: *req.BillingEmail})
+		}
+		if req.BillingContactPerson != nil {
+			updates = append(updates, firestore.Update{Path: "billingContactPerson", Value: *req.BillingContactPerson})
+		}
+		if req.PreferredPaymentMethod != nil {
+			updates = append(updates, firestore.Update{Path: "preferredPaymentMethod", Value: *req.PreferredPaymentMethod})
+		}
+		if req.LocationCount != nil {
+			updates = append(updates, firestore.Update{Path: "locationCount", Value: *req.LocationCount})
+		}
+		if req.StaffingRequirements != nil {
+			updates = append(updates, firestore.Update{Path: "staffingRequirements", Value: *req.StaffingRequirements})
+		}
 		if req.Role != nil {
 			if existing.Role != "" {
 				return errRoleAlreadySet
@@ -401,6 +432,9 @@ func updateProfile(w http.ResponseWriter, r *http.Request) {
 				return errInvalidRole
 			}
 			updates = append(updates, firestore.Update{Path: "role", Value: role})
+			if role == RoleNursery && existing.NurseryApprovalStatus == "" {
+				updates = append(updates, firestore.Update{Path: "nurseryApprovalStatus", Value: NurseryPendingApproval})
+			}
 		}
 		if !creating && len(updates) == 0 {
 			return nil
@@ -414,6 +448,9 @@ func updateProfile(w http.ResponseWriter, r *http.Request) {
 			"dbsStatus": DBSUnverified,
 			"rating":    Rating{},
 			"createdAt": time.Now(),
+		}
+		if req.Role != nil && Role(*req.Role) == RoleNursery {
+			fields["nurseryApprovalStatus"] = NurseryPendingApproval
 		}
 		for _, u := range updates {
 			fields[u.Path] = u.Value
@@ -654,6 +691,7 @@ func buildPublicFromProfile(p Profile) ProfilePublic {
 		pub.Facilities = p.Facilities
 		pub.IdentityVerified = p.IdentityVerified
 		pub.OfstedVerified = p.OfstedVerified
+		pub.NurseryApprovalStatus = p.NurseryApprovalStatus
 	}
 	return pub
 }

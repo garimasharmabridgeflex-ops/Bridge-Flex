@@ -69,7 +69,15 @@ enum ApiFunction {
   approvePractitionerVetting(8163),
   rejectPractitionerVetting(8164),
   updateSensitiveProfile(8165),
-  getSensitiveProfile(8166);
+  getSensitiveProfile(8166),
+
+  // Phase 5: Nursery & Multi-branch
+  createBranch(8167),
+  listBranches(8168),
+  updateBranch(8169),
+  deleteBranch(8170),
+  approveNurseryRegistration(8171),
+  rejectNurseryRegistration(8172);
 
   const ApiFunction(this.localPort);
   final int localPort;

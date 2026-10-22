@@ -134,6 +134,16 @@ describe("profiles / profilesPublic rules", () => {
     );
   });
 
+  it("owner cannot change nurseryApprovalStatus or activationDate", async () => {
+    const asNursery = testEnv.authenticatedContext("nurseryA").firestore();
+    await assertFails(
+      updateDoc(doc(asNursery, "profiles/nurseryA"), { nurseryApprovalStatus: "approved" })
+    );
+    await assertFails(
+      updateDoc(doc(asNursery, "profiles/nurseryA"), { activationDate: new Date() })
+    );
+  });
+
   it("owner can update permitted fields", async () => {
     const asStaffA = testEnv.authenticatedContext("staffA").firestore();
     await assertSucceeds(
@@ -141,6 +151,20 @@ describe("profiles / profilesPublic rules", () => {
         bio: "Experienced practitioner",
         phone: "+441234567890",
         city: "London"
+      })
+    );
+  });
+
+  it("nursery owner can update Phase 5 registration fields", async () => {
+    const asNursery = testEnv.authenticatedContext("nurseryA").firestore();
+    await assertSucceeds(
+      updateDoc(doc(asNursery, "profiles/nurseryA"), {
+        companyNumber: "12345678",
+        billingAddress: "123 Business Way",
+        billingEmail: "accounts@nursery.co.uk",
+        preferredPaymentMethod: "direct_debit",
+        locationCount: 2,
+        staffingRequirements: "Requires Level 3 practitioners for toddler room"
       })
     );
   });

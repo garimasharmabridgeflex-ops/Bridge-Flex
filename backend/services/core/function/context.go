@@ -37,6 +37,8 @@ const (
 	// approval) is what opens the chat session.
 	topicShiftApplied = "shift-applied"
 	topicShiftDecided = "shift-application-decided"
+	topicNurseryApproved = "nursery-approved"
+	topicNurseryRejected = "nursery-rejected"
 )
 
 var (

@@ -183,6 +183,12 @@ class ProfileScreen extends ConsumerWidget {
                       label: 'Edit Profile Information',
                       onTap: () => context.push('/profile/edit'),
                     ),
+                    if (profile.role == UserRole.nursery)
+                      _ActionTile(
+                        icon: Icons.account_tree_outlined,
+                        label: 'Manage Branches / Locations',
+                        onTap: () => context.push('/profile/branches'),
+                      ),
                     if (profile.role == UserRole.staff)
                       _ActionTile(
                         icon: Icons.description_outlined,

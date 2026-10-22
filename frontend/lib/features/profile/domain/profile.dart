@@ -262,6 +262,14 @@ class Profile {
     this.identityVerified = false,
     this.ofstedVerified = false,
     this.suspended = false,
+    this.companyNumber = '',
+    this.billingAddress = '',
+    this.billingEmail = '',
+    this.billingContactPerson = '',
+    this.preferredPaymentMethod = '',
+    this.locationCount = 1,
+    this.staffingRequirements = '',
+    this.nurseryApprovalStatus = 'approved',
     this.stats,
     this.ratingBreakdown,
   });
@@ -314,6 +322,16 @@ class Profile {
   final List<String> facilities;
   final bool identityVerified;
   final bool ofstedVerified;
+
+  // Nursery registration additions (Phase 5).
+  final String companyNumber;
+  final String billingAddress;
+  final String billingEmail;
+  final String billingContactPerson;
+  final String preferredPaymentMethod;
+  final int locationCount;
+  final String staffingRequirements;
+  final String nurseryApprovalStatus;
 
   // Admin-only (backend/services/core/function/admin.go setUserSuspended) —
   // only ever present on the admin user-detail fetch of someone else's
@@ -401,6 +419,14 @@ class Profile {
         identityVerified: json['identityVerified'] as bool? ?? false,
         ofstedVerified: json['ofstedVerified'] as bool? ?? false,
         suspended: json['suspended'] as bool? ?? false,
+        companyNumber: json['companyNumber'] as String? ?? '',
+        billingAddress: json['billingAddress'] as String? ?? '',
+        billingEmail: json['billingEmail'] as String? ?? '',
+        billingContactPerson: json['billingContactPerson'] as String? ?? '',
+        preferredPaymentMethod: json['preferredPaymentMethod'] as String? ?? '',
+        locationCount: (json['locationCount'] as num?)?.toInt() ?? 1,
+        staffingRequirements: json['staffingRequirements'] as String? ?? '',
+        nurseryApprovalStatus: json['nurseryApprovalStatus'] as String? ?? 'approved',
         stats: json['stats'] != null ? NurseryStats.fromJson(json['stats'] as Map<String, dynamic>) : null,
         ratingBreakdown: json['ratingBreakdown'] != null
             ? RatingBreakdown.fromJson(json['ratingBreakdown'] as Map<String, dynamic>)
@@ -507,6 +533,16 @@ class PublicProfile {
   final List<String> facilities;
   final bool identityVerified;
   final bool ofstedVerified;
+
+  // Nursery registration additions (Phase 5).
+  final String companyNumber;
+  final String billingAddress;
+  final String billingEmail;
+  final String billingContactPerson;
+  final String preferredPaymentMethod;
+  final int locationCount;
+  final String staffingRequirements;
+  final String nurseryApprovalStatus;
 
   final NurseryStats? stats;
   final RatingBreakdown? ratingBreakdown;

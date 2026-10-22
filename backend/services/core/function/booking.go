@@ -557,6 +557,30 @@ func decideApplicant(w http.ResponseWriter, r *http.Request, approve bool) {
 			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 			return
 		}
+
+		// Nursery approval gate (Phase 5):
+		gate := GetGateMode(ctx, db, "nurseryApprovalRequired")
+		if gate != GateOff {
+			pSnap, err := db.Collection("profiles").Doc(uid).Get(ctx)
+			if err == nil {
+				var p Profile
+				if err := pSnap.DataTo(&p); err == nil {
+					status := p.NurseryApprovalStatus
+					if status == "" {
+						status = NurseryApproved
+					}
+					if status != NurseryApproved {
+						if gate == GateWarn {
+							log.Printf("[GATE_WARN] Nursery %s is not approved (status: %q), proceeding under warn mode", uid, status)
+						} else {
+							httpjson.WriteError(w, http.StatusForbidden, "NURSERY_NOT_APPROVED",
+								"Nursery registration requires admin approval before booking applicants")
+							return
+						}
+					}
+				}
+			}
+		}
 	}
 
 	ref := db.Collection("shifts").Doc(req.ShiftID)

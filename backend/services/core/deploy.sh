@@ -107,6 +107,14 @@ deploy_http RejectPractitionerVetting
 deploy_http UpdateSensitiveProfile
 deploy_http GetSensitiveProfile
 
+# Nursery registration and multi-branch (Phase 5)
+deploy_http CreateBranch
+deploy_http ListBranches
+deploy_http UpdateBranch
+deploy_http DeleteBranch
+deploy_http ApproveNurseryRegistration
+deploy_http RejectNurseryRegistration
+
 # Training modules (Bridge Flex Training & Onboarding Modules spec). The three
 # admin endpoints are gated by the admin custom claim inside the handler, same
 # as the admin dashboard functions above.

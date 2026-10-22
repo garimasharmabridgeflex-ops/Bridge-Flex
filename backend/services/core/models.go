@@ -73,6 +73,31 @@ const (
 	NurseryTypeOther           NurseryType = "other"
 )
 
+// NurseryApprovalStatus tracks admin approval for nurseries (Phase 5).
+type NurseryApprovalStatus string
+
+const (
+	NurseryPendingApproval NurseryApprovalStatus = "pending_approval"
+	NurseryApproved        NurseryApprovalStatus = "approved"
+	NurseryRejected        NurseryApprovalStatus = "rejected"
+)
+
+// Branch represents a physical nursery location under a parent nursery account (Phase 5).
+type Branch struct {
+	ID              string    `firestore:"-" json:"id,omitempty"`
+	NurseryID       string    `firestore:"nurseryId" json:"nurseryId"`
+	Name            string    `firestore:"name" json:"name"`
+	Address         string    `firestore:"address" json:"address"`
+	Postcode        string    `firestore:"postcode" json:"postcode"`
+	City            string    `firestore:"city" json:"city"`
+	Phone           string    `firestore:"phone,omitempty" json:"phone,omitempty"`
+	ContactPerson   string    `firestore:"contactPerson,omitempty" json:"contactPerson,omitempty"`
+	OfstedRegNumber string    `firestore:"ofstedRegNumber,omitempty" json:"ofstedRegNumber,omitempty"`
+	IsPrimary       bool      `firestore:"isPrimary" json:"isPrimary"`
+	CreatedAt       time.Time `firestore:"createdAt" json:"createdAt"`
+	UpdatedAt       time.Time `firestore:"updatedAt" json:"updatedAt"`
+}
+
 // Profile is the PRIVATE profiles/{uid} document — owner-read-only, full stop.
 // Fields below the CreatedAt line are the full app spec §1.2/§1.3 wizard
 // additions; all optional at the storage layer (the wizard enforces which
@@ -152,6 +177,18 @@ type Profile struct {
 	// never by updateProfile.
 	TrainingCompletedModuleIDs []string   `firestore:"trainingCompletedModuleIds,omitempty" json:"trainingCompletedModuleIds,omitempty"`
 	TrainingUpdatedAt          *time.Time `firestore:"trainingUpdatedAt,omitempty" json:"trainingUpdatedAt,omitempty"`
+
+	// Nursery registration additions (Phase 5).
+	CompanyNumber          string                `firestore:"companyNumber,omitempty" json:"companyNumber,omitempty"`
+	BillingAddress         string                `firestore:"billingAddress,omitempty" json:"billingAddress,omitempty"`
+	BillingEmail           string                `firestore:"billingEmail,omitempty" json:"billingEmail,omitempty"`
+	BillingContactPerson   string                `firestore:"billingContactPerson,omitempty" json:"billingContactPerson,omitempty"`
+	PreferredPaymentMethod string                `firestore:"preferredPaymentMethod,omitempty" json:"preferredPaymentMethod,omitempty"`
+	LocationCount          int64                 `firestore:"locationCount,omitempty" json:"locationCount,omitempty"`
+	StaffingRequirements  string                `firestore:"staffingRequirements,omitempty" json:"staffingRequirements,omitempty"`
+	NurseryApprovalStatus  NurseryApprovalStatus `firestore:"nurseryApprovalStatus,omitempty" json:"nurseryApprovalStatus,omitempty"`
+	ActivationDate         *time.Time            `firestore:"activationDate,omitempty" json:"activationDate,omitempty"`
+	NurseryRejectionReason string                `firestore:"nurseryRejectionReason,omitempty" json:"nurseryRejectionReason,omitempty"`
 
 	// Vetting status and DBS verification fields (Phase 4).
 	VettingStatus          VettingStatus `firestore:"vettingStatus,omitempty" json:"vettingStatus,omitempty"`
@@ -310,6 +347,9 @@ type ProfilePublic struct {
 
 	IdentityVerified bool `firestore:"identityVerified,omitempty" json:"identityVerified,omitempty"`
 	OfstedVerified   bool `firestore:"ofstedVerified,omitempty" json:"ofstedVerified,omitempty"`
+
+	// Nursery approval status (Phase 5).
+	NurseryApprovalStatus NurseryApprovalStatus `firestore:"nurseryApprovalStatus,omitempty" json:"nurseryApprovalStatus,omitempty"`
 }
 
 type ShiftStatus string
@@ -388,6 +428,12 @@ type Shift struct {
 	// NoShowStaffIDs holds staff marked as not having shown up, via
 	// markNoShow (booking.go) — feeds the nursery "no-show rate" statistic.
 	NoShowStaffIDs []string `firestore:"noShowStaffIds,omitempty" json:"noShowStaffIds,omitempty"`
+
+	// Branch fields (Phase 5).
+	BranchID       string `firestore:"branchId,omitempty" json:"branchId,omitempty"`
+	BranchName     string `firestore:"branchName,omitempty" json:"branchName,omitempty"`
+	BranchAddress  string `firestore:"branchAddress,omitempty" json:"branchAddress,omitempty"`
+	BranchPostcode string `firestore:"branchPostcode,omitempty" json:"branchPostcode,omitempty"`
 }
 
 // RatingDoc is ratings/{ratingId}. Immutable once created (§3).

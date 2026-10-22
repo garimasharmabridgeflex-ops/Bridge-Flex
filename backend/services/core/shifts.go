@@ -3,6 +3,7 @@ package function
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"slices"
 	"time"
@@ -43,6 +44,7 @@ type createShiftRequest struct {
 	NumberOfChildren int64    `json:"numberOfChildren,omitempty"`
 	ExpectedDuties   []string `json:"expectedDuties,omitempty"`
 	Requirements     []string `json:"requirements,omitempty"`
+	BranchID         string   `json:"branchId,omitempty"`
 }
 
 // createShift — POST /createShift. Nursery-only; status/bookedStaffId/
@@ -81,9 +83,57 @@ func createShift(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Nursery approval gate (Phase 5).
+	gate := GetGateMode(ctx, db, "nurseryApprovalRequired")
+	if gate != GateOff {
+		pSnap, err := db.Collection("profiles").Doc(uid).Get(ctx)
+		if err == nil {
+			var p Profile
+			if err := pSnap.DataTo(&p); err == nil {
+				// Grandfather pre-existing nurseries where status is unset (Phase 5.4)
+				status := p.NurseryApprovalStatus
+				if status == "" {
+					status = NurseryApproved
+				}
+				if status != NurseryApproved {
+					if gate == GateWarn {
+						log.Printf("[GATE_WARN] Nursery %s is not approved (status: %q), proceeding under warn mode", uid, status)
+					} else {
+						httpjson.WriteError(w, http.StatusForbidden, "NURSERY_NOT_APPROVED",
+							"Nursery registration requires admin approval before creating shifts")
+						return
+					}
+				}
+			}
+		}
+	}
+
 	capacity := req.Capacity
 	if capacity <= 0 {
 		capacity = 1
+	}
+
+	// Resolve branch location details (Phase 5)
+	var branchID, branchName, branchAddress, branchPostcode string
+	if req.BranchID != "" {
+		bSnap, err := db.Collection("nurseries").Doc(uid).Collection("branches").Doc(req.BranchID).Get(ctx)
+		if err == nil {
+			var b Branch
+			if err := bSnap.DataTo(&b); err == nil {
+				branchID = bSnap.Ref.ID
+				branchName = b.Name
+				branchAddress = b.Address
+				branchPostcode = b.Postcode
+			}
+		}
+	} else {
+		// Attempt to use primary/default branch
+		if defBranch, err := ensureDefaultBranch(ctx, db, uid); err == nil && defBranch != nil {
+			branchID = defBranch.ID
+			branchName = defBranch.Name
+			branchAddress = defBranch.Address
+			branchPostcode = defBranch.Postcode
+		}
 	}
 
 	shift := Shift{
@@ -105,6 +155,11 @@ func createShift(w http.ResponseWriter, r *http.Request) {
 		NumberOfChildren: req.NumberOfChildren,
 		ExpectedDuties:   req.ExpectedDuties,
 		Requirements:     req.Requirements,
+
+		BranchID:       branchID,
+		BranchName:     branchName,
+		BranchAddress:  branchAddress,
+		BranchPostcode: branchPostcode,
 	}
 	ref, _, err := db.Collection("shifts").Add(ctx, shift)
 	if err != nil {

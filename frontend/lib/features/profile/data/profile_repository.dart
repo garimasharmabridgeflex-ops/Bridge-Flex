@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/config/env.dart';
+import '../domain/branch.dart';
 import '../domain/profile.dart';
 
 class ProfileRepository {
@@ -82,6 +83,13 @@ class ProfileRepository {
     String? email,
     String? shortDescription,
     List<String>? facilities,
+    String? companyNumber,
+    String? billingAddress,
+    String? billingEmail,
+    String? billingContactPerson,
+    String? preferredPaymentMethod,
+    int? locationCount,
+    String? staffingRequirements,
   }) {
     return _api.post(ApiFunction.updateProfile, body: {
       if (name != null) 'name': name,
@@ -123,7 +131,37 @@ class ProfileRepository {
       if (email != null) 'email': email,
       if (shortDescription != null) 'shortDescription': shortDescription,
       if (facilities != null) 'facilities': facilities,
+      if (companyNumber != null) 'companyNumber': companyNumber,
+      if (billingAddress != null) 'billingAddress': billingAddress,
+      if (billingEmail != null) 'billingEmail': billingEmail,
+      if (billingContactPerson != null) 'billingContactPerson': billingContactPerson,
+      if (preferredPaymentMethod != null) 'preferredPaymentMethod': preferredPaymentMethod,
+      if (locationCount != null) 'locationCount': locationCount,
+      if (staffingRequirements != null) 'staffingRequirements': staffingRequirements,
     });
+  }
+
+  Future<List<Branch>> listBranches([String? nurseryId]) async {
+    final query = nurseryId != null ? {'nurseryId': nurseryId} : <String, String>{};
+    final res = await _api.postWithQuery(ApiFunction.listBranches, query: query);
+    final list = res['branches'] as List<dynamic>? ?? [];
+    return list.map((e) => Branch.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<String> createBranch(Branch branch) async {
+    final res = await _api.post(ApiFunction.createBranch, body: branch.toJson());
+    return res['branchId'] as String? ?? '';
+  }
+
+  Future<void> updateBranch(Branch branch) async {
+    await _api.post(ApiFunction.updateBranch, body: {
+      'branchId': branch.id,
+      ...branch.toJson(),
+    });
+  }
+
+  Future<void> deleteBranch(String branchId) async {
+    await _api.post(ApiFunction.deleteBranch, body: {'branchId': branchId});
   }
 
   /// Deletes the caller's own profile/documents server-side, then their

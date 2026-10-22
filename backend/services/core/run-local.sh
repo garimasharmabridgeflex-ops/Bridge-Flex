@@ -60,6 +60,12 @@ declare -A FUNCS=(
   [RejectPractitionerVetting]=8164
   [UpdateSensitiveProfile]=8165
   [GetSensitiveProfile]=8166
+  [CreateBranch]=8167
+  [ListBranches]=8168
+  [UpdateBranch]=8169
+  [DeleteBranch]=8170
+  [ApproveNurseryRegistration]=8171
+  [RejectNurseryRegistration]=8172
 )
 
 pids=()

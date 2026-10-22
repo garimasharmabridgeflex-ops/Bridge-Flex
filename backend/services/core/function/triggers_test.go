@@ -426,6 +426,16 @@ func TestBuildPublicFromProfileParity(t *testing.T) {
 			t.Errorf("TrainingCompletedModuleIDs[%d] = %s, want %s", i, pub.TrainingCompletedModuleIDs[i], id)
 		}
 	}
+
+	nurseryProfile := Profile{
+		Role:                  RoleNursery,
+		Name:                  "Test Parity Nursery",
+		NurseryApprovalStatus: NurseryApproved,
+	}
+	pubNursery := buildPublicFromProfile(nurseryProfile)
+	if pubNursery.NurseryApprovalStatus != nurseryProfile.NurseryApprovalStatus {
+		t.Errorf("NurseryApprovalStatus = %v, want %v", pubNursery.NurseryApprovalStatus, nurseryProfile.NurseryApprovalStatus)
+	}
 }
 
 func int64Ptr(i int64) *int64 {

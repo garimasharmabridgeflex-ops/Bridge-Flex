@@ -48,7 +48,9 @@ service cloud.firestore {
              'skills', 'availabilityDays', 'availabilityShifts', 'dbsCertificateNumber',
              'dbsExpiryDate', 'nationality', 'visaStatus', 'rightToWorkStatus',
              'photos', 'logoUrl', 'registeredCompanyName', 'ofstedRegNumber',
-             'yearEstablished', 'nurseryType', 'facilities', 'location', 'ofstedRating'
+             'yearEstablished', 'nurseryType', 'facilities', 'location', 'ofstedRating',
+             'companyNumber', 'billingAddress', 'billingEmail', 'billingContactPerson',
+             'preferredPaymentMethod', 'locationCount', 'staffingRequirements'
            ]);
 
       allow delete: if false;
@@ -131,6 +133,22 @@ service cloud.firestore {
       match /requests/{requestId} {
         allow read: if isSignedIn() && request.auth.uid == uid;
         allow write: if false;
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // nurseries/{nurseryId}/branches/{branchId} (Phase 5)
+    // Physical branches of a nursery. Authenticated users can read branches
+    // (e.g. browsing shifts or nursery locations); only the owning nursery
+    // may create, update, or delete its branches.
+    // ---------------------------------------------------------------------
+    match /nurseries/{nurseryId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+
+      match /branches/{branchId} {
+        allow read: if isSignedIn();
+        allow create, update, delete: if isOwner(nurseryId);
       }
     }
 

@@ -196,4 +196,24 @@ describe("ratings / chat / documents / notifications / transactions rules", () =
     await assertFails(getDoc(doc(asStaffB, "vetting/staffA/requests/req1")));
     await assertFails(setDoc(doc(asStaffA, "vetting/staffA/requests/req2"), { docType: "id" }));
   });
+
+  it("Phase 5: nursery branches can be read by signed-in users and written only by the owner", async () => {
+    await seed(testEnv, async (db) => {
+      await setDoc(doc(db, "nurseries/nurseryA/branches/branch1"), { name: "Central", isPrimary: true });
+    });
+    const asNurseryA = testEnv.authenticatedContext("nurseryA").firestore();
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    const asNurseryB = testEnv.authenticatedContext("nurseryB").firestore();
+
+    // Authenticated users can read
+    await assertSucceeds(getDoc(doc(asStaffA, "nurseries/nurseryA/branches/branch1")));
+
+    // Owning nursery can create & update
+    await assertSucceeds(setDoc(doc(asNurseryA, "nurseries/nurseryA/branches/branch2"), { name: "North", address: "10 High St" }));
+    await assertSucceeds(updateDoc(doc(asNurseryA, "nurseries/nurseryA/branches/branch1"), { name: "Central Edited" }));
+
+    // Non-owner cannot write
+    await assertFails(setDoc(doc(asNurseryB, "nurseries/nurseryA/branches/branch3"), { name: "Hijacked" }));
+    await assertFails(updateDoc(doc(asStaffA, "nurseries/nurseryA/branches/branch1"), { name: "Hacked" }));
+  });
 });

@@ -38,6 +38,15 @@ class _NurseryOnboardingScreenState
   final _hoursController = TextEditingController();
   OfstedRating _ofsted = OfstedRating.notRated;
 
+  // Step 3: Registration & Compliance additions (Phase 5)
+  final _companyNumberController = TextEditingController();
+  final _locationCountController = TextEditingController(text: '1');
+  final _billingAddressController = TextEditingController();
+  final _billingEmailController = TextEditingController();
+  final _billingContactController = TextEditingController();
+  final _staffingReqController = TextEditingController();
+  String _paymentMethod = 'bank_transfer';
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +60,15 @@ class _NurseryOnboardingScreenState
       _descriptionController.text = profile.description;
       _hoursController.text = profile.openingHours;
       _ofsted = profile.ofstedRating;
+      _companyNumberController.text = profile.companyNumber;
+      _locationCountController.text = profile.locationCount > 0 ? profile.locationCount.toString() : '1';
+      _billingAddressController.text = profile.billingAddress;
+      _billingEmailController.text = profile.billingEmail;
+      _billingContactController.text = profile.billingContactPerson;
+      _staffingReqController.text = profile.staffingRequirements;
+      if (profile.preferredPaymentMethod.isNotEmpty) {
+        _paymentMethod = profile.preferredPaymentMethod;
+      }
     }
 
     // Listeners so canContinue re-evaluates on every keystroke.
@@ -72,6 +90,12 @@ class _NurseryOnboardingScreenState
     _phoneController.dispose();
     _descriptionController.dispose();
     _hoursController.dispose();
+    _companyNumberController.dispose();
+    _locationCountController.dispose();
+    _billingAddressController.dispose();
+    _billingEmailController.dispose();
+    _billingContactController.dispose();
+    _staffingReqController.dispose();
     super.dispose();
   }
 
@@ -144,6 +168,35 @@ class _NurseryOnboardingScreenState
             ofstedRating: _ofsted,
           );
       ref.invalidate(ownProfileProvider);
+      if (mounted) _goTo(2);
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _saveRegistration() async {
+    setState(() => _saving = true);
+    try {
+      final locCount = int.tryParse(_locationCountController.text.trim()) ?? 1;
+      await ref.read(profileRepositoryProvider).updateProfile(
+            companyNumber: _companyNumberController.text.trim(),
+            locationCount: locCount,
+            preferredPaymentMethod: _paymentMethod,
+            billingAddress: _billingAddressController.text.trim().isNotEmpty
+                ? _billingAddressController.text.trim()
+                : _addressController.text.trim(),
+            billingEmail: _billingEmailController.text.trim(),
+            billingContactPerson: _billingContactController.text.trim().isNotEmpty
+                ? _billingContactController.text.trim()
+                : _nameController.text.trim(),
+            staffingRequirements: _staffingReqController.text.trim(),
+          );
+      ref.invalidate(ownProfileProvider);
       if (mounted) context.go('/home');
     } on ApiException catch (e) {
       if (mounted) {
@@ -165,7 +218,7 @@ class _NurseryOnboardingScreenState
           // ── Step 1: Basics ────────────────────────────────────────────
           WizardStepScaffold(
             stepIndex: 0,
-            stepCount: 2,
+            stepCount: 3,
             title: 'Tell us about your nursery',
             subtitle: 'Staff see this before they accept a shift.',
             illustration: const OnboardingIllustration(
@@ -214,7 +267,7 @@ class _NurseryOnboardingScreenState
           // ── Step 2: About the setting ─────────────────────────────────
           WizardStepScaffold(
             stepIndex: 1,
-            stepCount: 2,
+            stepCount: 3,
             title: 'About the setting',
             subtitle: 'A real description helps staff say yes with confidence.',
             illustration: const OnboardingIllustration(
@@ -224,9 +277,9 @@ class _NurseryOnboardingScreenState
             ),
             canContinue: true,
             loading: _saving,
-            nextLabel: 'Finish',
+            nextLabel: 'Next',
             onNext: _saveAbout,
-            onSkip: () => context.go('/home'),
+            onSkip: () => _goTo(2),
             body: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -259,6 +312,88 @@ class _NurseryOnboardingScreenState
                 ),
               ],
             ),
+          ),
+
+          // ── Step 3: Registration & Compliance ─────────────────────────
+          WizardStepScaffold(
+            stepIndex: 2,
+            stepCount: 3,
+            title: 'Registration & Billing',
+            subtitle: 'Official business details for invoicing and admin verification.',
+            illustration: const OnboardingIllustration(
+              icon: Icons.domain_verification_rounded,
+              color: AppColors.coral,
+              satellites: [Icons.receipt_long_rounded, Icons.apartment_rounded],
+            ),
+            canContinue: true,
+            loading: _saving,
+            nextLabel: 'Complete Registration',
+            onNext: _saveRegistration,
+            body: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppTextField(
+                  label: 'Company number (optional)',
+                  controller: _companyNumberController,
+                  prefixIcon: Icons.numbers_rounded,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppTextField(
+                  label: 'Number of locations / branches',
+                  controller: _locationCountController,
+                  prefixIcon: Icons.account_tree_outlined,
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text('Preferred payment method',
+                    style: Theme.of(context).textTheme.labelLarge),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Bank Transfer (BACS)'),
+                      selected: _paymentMethod == 'bank_transfer',
+                      onSelected: (_) => setState(() => _paymentMethod = 'bank_transfer'),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Direct Debit'),
+                      selected: _paymentMethod == 'direct_debit',
+                      onSelected: (_) => setState(() => _paymentMethod = 'direct_debit'),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Card'),
+                      selected: _paymentMethod == 'card',
+                      onSelected: (_) => setState(() => _paymentMethod = 'card'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                AppTextField(
+                  label: 'Billing address (if different)',
+                  controller: _billingAddressController,
+                  prefixIcon: Icons.location_city_rounded,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppTextField(
+                  label: 'Billing contact email',
+                  controller: _billingEmailController,
+                  prefixIcon: Icons.email_outlined,
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppTextField(
+                  label: 'Staffing requirements / ratio notes',
+                  controller: _staffingReqController,
+                  prefixIcon: Icons.groups_rounded,
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
           ),
         ],
       ),

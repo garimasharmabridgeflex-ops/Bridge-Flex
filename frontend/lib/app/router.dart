@@ -20,6 +20,7 @@ import '../features/notifications/presentation/notifications_screen.dart';
 import '../features/training/presentation/training_module_screen.dart';
 import '../features/training/presentation/training_quiz_screen.dart';
 import '../features/profile/domain/profile.dart';
+import '../features/profile/presentation/branches_screen.dart';
 import '../features/profile/presentation/edit_profile_screen.dart';
 import '../features/profile/presentation/public_profile_screen.dart';
 import '../features/shifts/presentation/post_shift_screen.dart';
@@ -126,6 +127,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(path: '/profile/edit', builder: (_, __) => const EditProfileScreen()),
+      GoRoute(path: '/profile/branches', builder: (_, __) => const BranchesScreen()),
       GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
       GoRoute(
         path: '/settings/change-password',

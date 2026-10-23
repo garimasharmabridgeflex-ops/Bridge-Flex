@@ -251,8 +251,11 @@ class _NurseryOnboardingScreenState
                   initialDialCode: '+44',
                   textInputAction: TextInputAction.done,
                   onChanged: (full) => setState(() => _fullPhone = full),
-                  onValidityChanged: (valid) =>
-                      setState(() => _phoneValid = valid),
+                  onValidityChanged: (valid) {
+                    if (_phoneValid != valid && mounted) {
+                      setState(() => _phoneValid = valid);
+                    }
+                  },
                 ),
                 const SizedBox(height: AppSpacing.md),
                 OutlinedButton.icon(

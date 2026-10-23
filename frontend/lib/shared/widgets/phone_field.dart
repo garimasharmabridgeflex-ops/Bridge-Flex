@@ -158,8 +158,20 @@ class _PhoneFieldState extends State<PhoneField> {
       (c) => c.dialCode == widget.initialDialCode,
       orElse: () => _countries.firstWhere((c) => c.dialCode == '+44'),
     );
+    final digits = widget.controller.text.replaceAll(RegExp(r'\D'), '');
+    if (digits.isNotEmpty) {
+      if (digits.length < _selected.minDigits) {
+        _error = '${_selected.name} numbers need at least ${_selected.minDigits} digits';
+      } else if (digits.length > _selected.maxDigits) {
+        _error = '${_selected.name} numbers are at most ${_selected.maxDigits} digits';
+      }
+    }
     widget.controller.addListener(_notify);
-    _revalidate();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        widget.onValidityChanged?.call(_error == null);
+      }
+    });
   }
 
   @override
@@ -187,8 +199,10 @@ class _PhoneFieldState extends State<PhoneField> {
         next = '${_selected.name} numbers are at most ${_selected.maxDigits} digits';
       }
     }
-    if (next != _error) setState(() => _error = next);
-    widget.onValidityChanged?.call(next == null);
+    if (next != _error && mounted) setState(() => _error = next);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onValidityChanged?.call(next == null);
+    });
   }
 
   Future<void> _pickCountry() async {

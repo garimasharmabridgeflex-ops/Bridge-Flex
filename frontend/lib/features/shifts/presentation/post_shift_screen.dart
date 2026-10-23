@@ -711,6 +711,17 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
                 const SizedBox(height: AppSpacing.lg),
                 _sectionCard(context, [
                   _summaryRow(context, 'Title', _title.text.trim().isEmpty ? '—' : _title.text.trim()),
+                  _summaryRow(
+                    context,
+                    'Location',
+                    _selectedBranchId != null
+                        ? branches
+                                .where((b) => b.id == _selectedBranchId)
+                                .map((b) => '${b.name} (${b.postcode})')
+                                .firstOrNull ??
+                            'Branch Location'
+                        : 'Main Setting / Primary Location',
+                  ),
                   _summaryRow(context, 'When',
                       '${DateFormat('EEE d MMM').format(_date)}, ${_startTime.format(context)}–${_endTime.format(context)}'),
                   _summaryRow(context, 'Break', '$_unpaidBreakMinutes mins unpaid'),

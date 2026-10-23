@@ -51,12 +51,16 @@ class ShiftCard extends ConsumerWidget {
         authenticPhotoUrl = ownProfile.photos.first;
       } else if (ownProfile.photoUrl.isNotEmpty) {
         authenticPhotoUrl = ownProfile.photoUrl;
+      } else if (ownProfile.logoUrl.isNotEmpty) {
+        authenticPhotoUrl = ownProfile.logoUrl;
       }
     } else if (nurseryProfile != null) {
       if (nurseryProfile.photos.isNotEmpty) {
         authenticPhotoUrl = nurseryProfile.photos.first;
       } else if (nurseryProfile.photoUrl.isNotEmpty) {
         authenticPhotoUrl = nurseryProfile.photoUrl;
+      } else if (nurseryProfile.logoUrl.isNotEmpty) {
+        authenticPhotoUrl = nurseryProfile.logoUrl;
       }
     }
 
@@ -75,11 +79,17 @@ class ShiftCard extends ConsumerWidget {
     final String? ownerArea = (ownProfile?.city.isNotEmpty == true)
         ? ownProfile?.city
         : (ownProfile?.postcode.isNotEmpty == true ? ownProfile?.postcode : null);
-    final nurseryArea = (shift.nurseryArea?.isNotEmpty ?? false)
+    final rawArea = (shift.nurseryArea?.isNotEmpty ?? false)
         ? shift.nurseryArea!
         : (isOwner ? ownerArea : nurseryProfile?.locationArea)?.isNotEmpty == true
             ? (isOwner ? ownerArea! : nurseryProfile!.locationArea)
             : 'Early Years Setting';
+    final settingName = (shift.nurseryName?.isNotEmpty ?? false)
+        ? shift.nurseryName!
+        : (isOwner ? ownProfile?.name : nurseryProfile?.name) ?? '';
+    final nurseryArea = settingName.isNotEmpty && rawArea != 'Early Years Setting' && !rawArea.contains(settingName)
+        ? '$settingName • $rawArea'
+        : (settingName.isNotEmpty ? settingName : rawArea);
     final roomName = shift.room.isNotEmpty ? shift.room : 'EYFS Room';
 
     // Role-aware context action label (replaces misleading "Book Shift")

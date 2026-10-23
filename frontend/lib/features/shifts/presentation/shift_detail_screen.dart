@@ -309,7 +309,9 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
               ? nurseryPhotos.first
               : (isOwner ? profile?.photoUrl : nurseryProfile?.photoUrl)?.isNotEmpty == true
                   ? (isOwner ? profile!.photoUrl : nurseryProfile!.photoUrl)
-                  : null;
+                  : (isOwner ? profile?.logoUrl : nurseryProfile?.logoUrl)?.isNotEmpty == true
+                      ? (isOwner ? profile!.logoUrl : nurseryProfile!.logoUrl)
+                      : null;
           final heroPhotoUrl = authenticHeroPhoto ??
               kDefaultNurseryPhotos[shift.id.hashCode.abs() % kDefaultNurseryPhotos.length];
 
@@ -385,8 +387,8 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                                     ),
                                     child: Text(
                                       shift.requiredQualification.isNotEmpty
-                                          ? shift.requiredQualification
-                                          : 'Early Years Cover',
+                                          ? shift.requiredQualification.replaceAll('_', ' ').toUpperCase()
+                                          : 'EARLY YEARS COVER',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 11,

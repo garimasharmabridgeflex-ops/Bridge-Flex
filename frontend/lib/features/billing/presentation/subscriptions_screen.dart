@@ -23,6 +23,7 @@ class SubscriptionsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: const Color(0xFFF8FAFC),
         elevation: 0,
         scrolledUnderElevation: 0,

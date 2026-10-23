@@ -169,9 +169,9 @@ class _NavTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.pill),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: selected ? 12 : 8, vertical: 7),
         decoration: BoxDecoration(
           color: selected ? const Color(0xFF2563EB) : Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -185,22 +185,21 @@ class _NavTile extends StatelessWidget {
               size: 20,
               color: selected ? Colors.white : const Color(0xFF94A3B8),
             ),
-            if (selected)
+            if (selected) ...[
+              const SizedBox(width: 5),
               Flexible(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 5),
-                  child: Text(
-                    item.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11.5,
-                    ),
+                child: Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11.5,
                   ),
                 ),
               ),
+            ],
           ],
         ),
       ),

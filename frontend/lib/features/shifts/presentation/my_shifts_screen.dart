@@ -100,6 +100,21 @@ class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
                       ],
                     ),
                   ),
+                  if (isNursery) ...[
+                    FilledButton.icon(
+                      onPressed: () => context.push('/shifts/new'),
+                      icon: const Icon(Icons.add_rounded, size: 16),
+                      label: const Text('Post Shift', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563EB),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        visualDensity: VisualDensity.compact,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   const NotificationIconButton(color: Color(0xFF1B2A4A)),
                 ],
               ),
@@ -239,9 +254,24 @@ class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
                                       : Icons.event_note_outlined,
                                   title: emptyTitle,
                                   subtitle: isNursery
-                                      ? 'Tap the + button below to post a new shift.'
+                                      ? 'Post early years shifts to find verified practitioners.'
                                       : 'Browse available shifts to find nursery work.',
                                 ),
+                                if (isNursery) ...[
+                                  const SizedBox(height: 16),
+                                  Center(
+                                    child: FilledButton.icon(
+                                      onPressed: () => context.push('/shifts/new'),
+                                      icon: const Icon(Icons.add_rounded),
+                                      label: const Text('Post Shift Now'),
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: const Color(0xFF2563EB),
+                                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             );
                           }
@@ -270,6 +300,15 @@ class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
           ],
         ),
       ),
+      floatingActionButton: isNursery
+          ? FloatingActionButton.extended(
+              onPressed: () => context.push('/shifts/new'),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Post Shift', style: TextStyle(fontWeight: FontWeight.w700)),
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+            )
+          : null,
     );
   }
 }

@@ -147,16 +147,6 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         selectedIndex: activeIndex,
         onDestinationSelected: (i) => ref.read(homeShellTabIndexProvider.notifier).state = i,
         items: items,
-        // Both reference designs put the primary "create" action as a
-        // raised center button rather than a plain tab — for KFlex
-        // that's "post a shift", which only makes sense for nurseries.
-        centerAction: isStaff
-            ? null
-            : NavCenterAction(
-                icon: Icons.add_rounded,
-                tooltip: 'Post shift',
-                onTap: () => context.push('/shifts/new'),
-              ),
       ),
     );
   }

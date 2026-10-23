@@ -149,6 +149,11 @@ class Env {
       return Uri.parse('http://$devHost:${fn.localPort}');
     }
     final fnName = fn.name[0].toUpperCase() + fn.name.substring(1);
+    const proxyUrl = String.fromEnvironment('FUNCTIONS_PROXY_URL');
+    if (kIsWeb || proxyUrl.isNotEmpty) {
+      final base = proxyUrl.isNotEmpty ? proxyUrl : 'http://$devHost:8089';
+      return Uri.parse('$base/$fnName');
+    }
     return Uri.parse('https://$region-$firebaseProjectId.cloudfunctions.net/$fnName');
   }
 }

@@ -151,6 +151,24 @@ func demoUsers() []demoUser {
 			},
 		},
 		{
+			UID: "staff-jane", Email: "jane@example.com",
+			Role: "staff", Name: "Jane Doe",
+			Profile: map[string]any{
+				"dbsStatus":           "verified",
+				"phone":               "+447700900123",
+				"city":                "Manchester",
+				"age":                 int64(28),
+				"yearsExperience":     int64(5),
+				"qualificationLevel":  "level_3",
+				"bio":                 "Level 3 qualified practitioner with 5 years experience.",
+				"professionalSummary": "Level 3 Early Years Educator.",
+				"qualifications":      []string{"Level 3 Diploma in Early Years Education", "Paediatric First Aid"},
+				"skills":              []string{"Baby room", "Toddler room"},
+				"identityVerified":    true,
+				"rightToWorkVerified": true,
+			},
+		},
+		{
 			UID: "demo-staff-amelia", Email: "afrilexkenya+demo.staff@gmail.com",
 			Role: "staff", Name: "Amelia Hughes",
 			Profile: map[string]any{

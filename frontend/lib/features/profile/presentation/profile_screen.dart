@@ -9,6 +9,8 @@ import '../../../shared/services/uk_geocoding.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../settings/presentation/delete_account_flow.dart';
 import '../../billing/presentation/nursery_subscription_card.dart';
+import '../../home/presentation/widgets/email_verification_banner.dart';
+import '../../home/presentation/widgets/profile_completion_banner.dart';
 import '../domain/profile.dart';
 import 'public_profile_screen.dart';
 
@@ -20,6 +22,7 @@ class ProfileScreen extends ConsumerWidget {
     final profileAsync = ref.watch(ownProfileProvider);
     final scheme = Theme.of(context).colorScheme;
     final uid = ref.watch(authStateProvider).valueOrNull?.uid ?? '';
+    final emailVerified = ref.watch(emailVerifiedProvider).valueOrNull ?? true;
 
     return Scaffold(
       appBar: AppBar(
@@ -135,6 +138,15 @@ class ProfileScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (!emailVerified) ...[
+                      EmailVerificationBanner(onDismiss: () {}),
+                      const SizedBox(height: AppSpacing.sm),
+                    ],
+                    if (profile.hasIncompleteOptionalSteps &&
+                        (profile.role == UserRole.staff || profile.description.trim().isEmpty)) ...[
+                      ProfileCompletionBanner(profile: profile, onDismiss: () {}),
+                      const SizedBox(height: AppSpacing.sm),
+                    ],
                     if (profile.role == UserRole.nursery &&
                         profile.stats != null)
                       _StatRow(

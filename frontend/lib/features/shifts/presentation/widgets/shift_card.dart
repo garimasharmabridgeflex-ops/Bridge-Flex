@@ -117,233 +117,357 @@ class ShiftCard extends ConsumerWidget {
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x060F172A),
-            blurRadius: 10,
-            offset: Offset(0, 2),
+            color: Color(0x0A0F172A),
+            blurRadius: 18,
+            offset: Offset(0, 6),
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Nursery Authentic Thumbnail (76x76) ─────────────
-                Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
+                // ── Nursery Photo Header with Gradient & Badges (Stitch Pattern) ──
+                SizedBox(
+                  height: 145,
+                  width: double.infinity,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
                         photoUrl,
-                        width: 76,
-                        height: 76,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Container(
-                          width: 76,
-                          height: 76,
                           color: const Color(0xFF1B2A4A),
                           child: const Center(
-                            child: Icon(Icons.child_care_rounded, size: 32, color: Colors.white30),
+                            child: Icon(Icons.child_care_rounded, size: 48, color: Colors.white24),
                           ),
                         ),
                       ),
-                    ),
-                    if (shift.requiredQualification.isNotEmpty)
+                      // Smooth gradient overlay
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.35),
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.8),
+                            ],
+                            stops: const [0.0, 0.4, 1.0],
+                          ),
+                        ),
+                      ),
+                      // Badges top left
                       Positioned(
-                        bottom: 4,
-                        left: 4,
-                        right: 4,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xCC0F172A),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            shift.requiredQualification.replaceAll('_', ' ').toUpperCase(),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 8.5,
-                              fontWeight: FontWeight.w700,
+                        top: 10,
+                        left: 12,
+                        child: Row(
+                          children: [
+                            if (shift.requiredQualification.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1B2A4A).withValues(alpha: 0.92),
+                                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                                ),
+                                child: Text(
+                                  shift.requiredQualification.replaceAll('_', ' ').toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.4,
+                                  ),
+                                ),
+                              ),
+                            if (shift.branchName.isNotEmpty) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.95),
+                                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.storefront_outlined, size: 11, color: Color(0xFF1D4ED8)),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      shift.branchName,
+                                      style: const TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF1D4ED8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      // Bookmark button top right
+                      Positioned(
+                        top: 8,
+                        right: 10,
+                        child: InkWell(
+                          onTap: () => ref.read(bookmarkedShiftIdsProvider.notifier).toggle(shift.id),
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.4),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            child: Icon(
+                              isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                              color: isBookmarked ? const Color(0xFF38BDF8) : Colors.white,
+                              size: 17,
+                            ),
                           ),
                         ),
                       ),
-                  ],
-                ),
-                const SizedBox(width: 12),
-                // ── Shift Information ──────────────────────────────
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Line 1: Title + Pay Rate
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
+                      // Floating title & location on bottom of photo
+                      Positioned(
+                        bottom: 10,
+                        left: 14,
+                        right: 14,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
                               displayTitle,
                               style: const TextStyle(
-                                fontSize: 14.5,
+                                color: Colors.white,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFF1B2A4A),
+                                letterSpacing: -0.2,
+                                shadows: [
+                                  Shadow(color: Colors.black87, blurRadius: 4, offset: Offset(0, 1)),
+                                ],
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '£${shift.payRate.toStringAsFixed(2)}/hr',
-                            style: const TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF2563EB),
+                            const SizedBox(height: 2),
+                            Text(
+                              nurseryArea,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w500,
+                                shadows: const [
+                                  Shadow(color: Colors.black87, blurRadius: 3, offset: Offset(0, 1)),
+                                ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 3),
-                      // Line 2: Setting / Branch Name & Location
+                    ],
+                  ),
+                ),
+
+                // ── Shift Details Body (Stitch Micro-metrics + Pay Row) ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Micro-metrics 2-Column Grid
                       Row(
                         children: [
-                          if (shift.branchName.isNotEmpty) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEFF6FF),
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: const Color(0xFFBFDBFE)),
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
                               ),
                               child: Row(
-                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.storefront_outlined, size: 11, color: Color(0xFF2563EB)),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    shift.branchName,
-                                    style: const TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF1D4ED8),
+                                  Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEFF6FF),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(Icons.schedule_rounded, size: 16, color: Color(0xFF2563EB)),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Shift Time',
+                                          style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                                        ),
+                                        Text(
+                                          '$startFmt – $endFmt',
+                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 6),
-                          ],
+                          ),
+                          const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
-                              nurseryArea,
-                              style: const TextStyle(
-                                fontSize: 11.5,
-                                color: Color(0xFF64748B),
-                                fontWeight: FontWeight.w500,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(Icons.timelapse_rounded, size: 16, color: Color(0xFF64748B)),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Paid Hours',
+                                          style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                                        ),
+                                        Text(
+                                          '${payableHours}h (${shift.unpaidBreakMinutes}m break)',
+                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      // Line 3: Chips (Date, Hours, Room)
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: [
-                          _chip(Icons.calendar_today_rounded, dateFmt),
-                          _chip(Icons.schedule_rounded, '$startFmt–$endFmt (${payableHours}h)'),
-                          if (shift.room.isNotEmpty)
-                            _chip(Icons.meeting_room_outlined, shift.room),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      // Line 4: Action Buttons Row
+                      const SizedBox(height: 12),
+                      const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                      const SizedBox(height: 10),
+
+                      // Pay & Action Row
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.baseline,
+                                textBaseline: TextBaseline.alphabetic,
+                                children: [
+                                  Text(
+                                    '£${shift.payRate.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF0F172A),
+                                      letterSpacing: -0.3,
+                                    ),
+                                  ),
+                                  const Text(
+                                    ' /hr',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '£${shift.effectiveGrossPay.toStringAsFixed(2)} Total est. (inc. holiday pay)',
+                                style: const TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
                           Row(
                             children: [
                               if (isPendingApproval)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                  margin: const EdgeInsets.only(right: 6),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFFEF3C7),
-                                    borderRadius: BorderRadius.circular(6),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: const Text(
-                                    'Pending Approval',
+                                    'Pending',
                                     style: TextStyle(
                                       color: Color(0xFFB45309),
-                                      fontSize: 10.5,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 )
                               else if (shift.status != ShiftStatus.open)
-                                ShiftStatusBadge(status: shift.status)
-                              else
-                                Text(
-                                  '£${shift.effectiveGrossPay.toStringAsFixed(2)} total est.',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFF64748B),
-                                  ),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: ShiftStatusBadge(status: shift.status),
                                 ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              InkWell(
-                                onTap: () => ref.read(bookmarkedShiftIdsProvider.notifier).toggle(shift.id),
-                                borderRadius: BorderRadius.circular(16),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(4),
-                                  child: Icon(
-                                    isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                                    color: isBookmarked ? const Color(0xFF2563EB) : const Color(0xFF94A3B8),
-                                    size: 19,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
                               FilledButton(
                                 onPressed: onTap,
                                 style: FilledButton.styleFrom(
                                   backgroundColor: const Color(0xFF1B2A4A),
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(AppRadius.pill),
                                   ),
+                                  elevation: 0,
                                 ),
                                 child: Text(
                                   trailingLabel ?? defaultActionLabel,
                                   style: const TextStyle(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
                                   ),
                                 ),
                               ),

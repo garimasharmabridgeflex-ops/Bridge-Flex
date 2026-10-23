@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -37,18 +38,27 @@ class DocumentsRepository {
   /// registers the metadata doc, which also flips `dbsStatus` to `pending`.
   Future<void> uploadDbsCertificate({
     required String uid,
-    required File file,
+    File? file,
+    Uint8List? bytes,
     required String filename,
-  }) => uploadDocument(uid: uid, file: file, filename: filename, type: DocumentType.dbsCertificate);
+  }) => uploadDocument(
+        uid: uid,
+        file: file,
+        bytes: bytes,
+        filename: filename,
+        type: DocumentType.dbsCertificate,
+      );
 
   /// Uploads any of the documents-checklist types. dbs_certificate keeps its
   /// original `dbs-documents/{uid}/` path (backward compatibility with
   /// existing rules/uploads); every other type lives under
   /// `personal-documents/{uid}/{type}/`, mirroring backend/documents.go's
   /// documentTypePrefix and storage.rules.
+  /// Supports both [bytes] (safe on Flutter Web and Mobile) and [file].
   Future<void> uploadDocument({
     required String uid,
-    required File file,
+    File? file,
+    Uint8List? bytes,
     required String filename,
     required DocumentType type,
   }) async {
@@ -58,16 +68,20 @@ class DocumentsRepository {
         : 'personal-documents/$uid/$typeStr/$filename';
     final ref = _storage.ref(path);
     // Storage rules require contentType to match `image/.*|application/pdf`
-    // — putFile() doesn't reliably infer this from image_picker's
-    // cache-file paths, so set it explicitly or the write is denied with a
-    // 403 regardless of ownership being correct.
     final ext = filename.split('.').last.toLowerCase();
     final contentType = switch (ext) {
       'png' => 'image/png',
       'pdf' => 'application/pdf',
       _ => 'image/jpeg',
     };
-    await ref.putFile(file, SettableMetadata(contentType: contentType));
+    final metadata = SettableMetadata(contentType: contentType);
+    if (bytes != null) {
+      await ref.putData(bytes, metadata);
+    } else if (file != null) {
+      await ref.putFile(file, metadata);
+    } else {
+      throw ArgumentError('Either bytes or file must be provided');
+    }
     await _api.post(ApiFunction.createDocument, body: {
       'storagePath': path,
       'type': typeStr,

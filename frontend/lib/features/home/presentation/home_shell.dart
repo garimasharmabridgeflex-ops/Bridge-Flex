@@ -16,6 +16,8 @@ import 'widgets/floating_nav_bar.dart';
 import 'widgets/profile_completion_banner.dart';
 import 'widgets/update_banner.dart';
 
+final homeShellTabIndexProvider = StateProvider<int>((ref) => 0);
+
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
@@ -24,7 +26,6 @@ class HomeShell extends ConsumerStatefulWidget {
 }
 
 class _HomeShellState extends ConsumerState<HomeShell> {
-  int _index = 0;
   bool _bannerDismissed = false;
   bool _verifyBannerDismissed = false;
   bool _updateBannerDismissed = false;
@@ -82,7 +83,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       const NavItem(icon: Icons.person_outline_rounded, selectedIcon: Icons.person_rounded, label: 'Profile'),
     ];
 
-    if (_index >= tabs.length) _index = 0;
+    final currentIndex = ref.watch(homeShellTabIndexProvider);
+    final activeIndex = currentIndex >= tabs.length ? 0 : currentIndex;
 
     final showBanner =
         !_bannerDismissed && profile != null && profile.hasIncompleteOptionalSteps;
@@ -119,15 +121,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                   opacity: animation,
                   child: child,
                 ),
-                child: KeyedSubtree(key: ValueKey(_index), child: tabs[_index]),
+                child: KeyedSubtree(key: ValueKey(activeIndex), child: tabs[activeIndex]),
               ),
             ),
           ],
         ),
       ),
       bottomNavigationBar: FloatingNavBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        selectedIndex: activeIndex,
+        onDestinationSelected: (i) => ref.read(homeShellTabIndexProvider.notifier).state = i,
         items: items,
         // Both reference designs put the primary "create" action as a
         // raised center button rather than a plain tab — for KFlex

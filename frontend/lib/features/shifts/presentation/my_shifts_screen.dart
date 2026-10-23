@@ -9,6 +9,7 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../profile/domain/profile.dart';
+import '../data/bookmarks_provider.dart';
 import '../domain/shift.dart';
 import 'widgets/shift_card.dart';
 
@@ -19,7 +20,7 @@ final myShiftsProvider = FutureProvider.autoDispose<List<Shift>>((ref) {
   return ref.watch(shiftRepositoryProvider).fetchMyShifts();
 });
 
-enum _ShiftTab { active, completed, cancelled }
+enum _ShiftTab { upcoming, completed, cancelled, saved }
 
 class MyShiftsScreen extends ConsumerStatefulWidget {
   const MyShiftsScreen({super.key});
@@ -29,196 +30,247 @@ class MyShiftsScreen extends ConsumerStatefulWidget {
 }
 
 class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
-  _ShiftTab _selectedTab = _ShiftTab.active;
+  _ShiftTab _selectedTab = _ShiftTab.upcoming;
 
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(ownProfileProvider).valueOrNull;
     final isNursery = profile?.role == UserRole.nursery;
     final shiftsAsync = ref.watch(myShiftsProvider);
+    final savedShiftsAsync = ref.watch(savedShiftsListProvider);
     final now = DateTime.now();
     final firstName = profile?.name.trim().split(' ').firstOrNull ?? '';
 
     return Scaffold(
-      body: Column(
-        children: [
-          // ── Gradient hero: avatar + greeting + bell ──────────────────
-          Container(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.md,
-            ),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.indigo, AppColors.indigoDeep],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(AppRadius.lg),
-              ),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Colors.white.withValues(alpha: 0.18),
-                  backgroundImage: (profile?.photoUrl.isNotEmpty ?? false)
-                      ? NetworkImage(profile!.photoUrl)
-                      : null,
-                  child: (profile == null || profile.photoUrl.isEmpty)
-                      ? Icon(
-                          isNursery
-                              ? Icons.home_work_outlined
-                              : Icons.person_outline_rounded,
-                          color: Colors.white,
-                        )
-                      : null,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Welcome back 👋',
-                        style: TextStyle(fontSize: 12, color: Colors.white70),
-                      ),
-                      Text(
-                        firstName.isNotEmpty
-                            ? firstName
-                            : (isNursery
-                                  ? 'Your posted shifts'
-                                  : 'Your booked shifts'),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
-                          color: Colors.white,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                const NotificationIconButton(color: Colors.white70),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // Sleek compact tab selector
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            child: Container(
-              height: 40,
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(AppRadius.pill),
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // ── Clean Editorial Top Header ─────────────────────────────────
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF8FAFC),
+                border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 0.8)),
               ),
               child: Row(
                 children: [
-                  _ShiftTabTile(
-                    label: 'Active',
-                    selected: _selectedTab == _ShiftTab.active,
-                    onTap: () => setState(() => _selectedTab = _ShiftTab.active),
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: const Color(0xFFE2E8F0),
+                    backgroundImage: (profile?.photoUrl.isNotEmpty ?? false)
+                        ? NetworkImage(profile!.photoUrl)
+                        : null,
+                    child: (profile == null || profile.photoUrl.isEmpty)
+                        ? Icon(
+                            isNursery
+                                ? Icons.home_work_outlined
+                                : Icons.person_rounded,
+                            color: const Color(0xFF1B2A4A),
+                          )
+                        : null,
                   ),
-                  _ShiftTabTile(
-                    label: 'Completed',
-                    selected: _selectedTab == _ShiftTab.completed,
-                    onTap: () => setState(() => _selectedTab = _ShiftTab.completed),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isNursery ? 'NURSERY DASHBOARD' : 'MY SCHEDULE & BOOKINGS',
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF64748B),
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                        Text(
+                          isNursery
+                              ? 'Posted Shifts'
+                              : (firstName.isNotEmpty ? '$firstName’s Shifts' : 'My Shifts'),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 17,
+                            color: Color(0xFF0F172A),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
-                  _ShiftTabTile(
-                    label: 'Cancelled',
-                    selected: _selectedTab == _ShiftTab.cancelled,
-                    onTap: () => setState(() => _selectedTab = _ShiftTab.cancelled),
-                  ),
+                  const NotificationIconButton(color: Color(0xFF1B2A4A)),
                 ],
               ),
             ),
-          ),
+            const SizedBox(height: 10),
+
+            // ── Modern Tab Selector ────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                height: 42,
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0).withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Row(
+                  children: [
+                    _ShiftTabTile(
+                      label: isNursery ? 'Active' : 'Upcoming',
+                      selected: _selectedTab == _ShiftTab.upcoming,
+                      onTap: () => setState(() => _selectedTab = _ShiftTab.upcoming),
+                    ),
+                    _ShiftTabTile(
+                      label: 'Completed',
+                      selected: _selectedTab == _ShiftTab.completed,
+                      onTap: () => setState(() => _selectedTab = _ShiftTab.completed),
+                    ),
+                    _ShiftTabTile(
+                      label: 'Cancelled',
+                      selected: _selectedTab == _ShiftTab.cancelled,
+                      onTap: () => setState(() => _selectedTab = _ShiftTab.cancelled),
+                    ),
+                    if (!isNursery)
+                      _ShiftTabTile(
+                        label: 'Saved',
+                        icon: Icons.bookmark_rounded,
+                        selected: _selectedTab == _ShiftTab.saved,
+                        onTap: () => setState(() => _selectedTab = _ShiftTab.saved),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // ── Content Area ───────────────────────────────────────────────
             Expanded(
               child: RefreshIndicator(
-                onRefresh: () async => ref.invalidate(myShiftsProvider),
-                child: shiftsAsync.when(
-                  loading: () => ListView.separated(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    itemCount: 3,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: AppSpacing.sm),
-                    itemBuilder: (_, __) => const ShiftCardSkeleton(),
-                  ),
-                  error: (e, _) => EmptyState(
-                    icon: Icons.wifi_off_rounded,
-                    title: "Couldn't load your shifts",
-                    subtitle: '$e',
-                  ),
-                  data: (allShifts) {
-                    final filtered = allShifts.where((s) {
-                      final isDone = now.isAfter(s.endTime);
-                      return switch (_selectedTab) {
-                        _ShiftTab.active =>
-                          s.status != ShiftStatus.cancelled && !isDone,
-                        _ShiftTab.completed =>
-                          s.status != ShiftStatus.cancelled && isDone,
-                        _ShiftTab.cancelled =>
-                          s.status == ShiftStatus.cancelled,
-                      };
-                    }).toList();
+                color: const Color(0xFF1B2A4A),
+                onRefresh: () async {
+                  ref.invalidate(myShiftsProvider);
+                  ref.invalidate(savedShiftsListProvider);
+                },
+                child: _selectedTab == _ShiftTab.saved
+                    ? savedShiftsAsync.when(
+                        loading: () => ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: 2,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemBuilder: (_, __) => const ShiftCardSkeleton(),
+                        ),
+                        error: (e, _) => EmptyState(
+                          icon: Icons.wifi_off_rounded,
+                          title: "Couldn't load saved shifts",
+                          subtitle: '$e',
+                        ),
+                        data: (savedShifts) {
+                          if (savedShifts.isEmpty) {
+                            return ListView(
+                              children: const [
+                                SizedBox(height: 60),
+                                EmptyState(
+                                  icon: Icons.bookmark_border_rounded,
+                                  title: 'No saved shifts',
+                                  subtitle:
+                                      'Tap the bookmark icon on any shift in Browse to save it here for quick access.',
+                                ),
+                              ],
+                            );
+                          }
+                          return ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                            itemCount: savedShifts.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            itemBuilder: (context, i) {
+                              final shift = savedShifts[i];
+                              return ShiftCard(
+                                shift: shift,
+                                onTap: () => context.push('/shifts/${shift.id}'),
+                              ).animate().fadeIn(duration: 200.ms);
+                            },
+                          );
+                        },
+                      )
+                    : shiftsAsync.when(
+                        loading: () => ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: 3,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemBuilder: (_, __) => const ShiftCardSkeleton(),
+                        ),
+                        error: (e, _) => EmptyState(
+                          icon: Icons.wifi_off_rounded,
+                          title: "Couldn't load your shifts",
+                          subtitle: '$e',
+                        ),
+                        data: (allShifts) {
+                          final filtered = allShifts.where((s) {
+                            final isDone = now.isAfter(s.endTime);
+                            return switch (_selectedTab) {
+                              _ShiftTab.upcoming =>
+                                s.status != ShiftStatus.cancelled && !isDone,
+                              _ShiftTab.completed =>
+                                s.status != ShiftStatus.cancelled && isDone,
+                              _ShiftTab.cancelled =>
+                                s.status == ShiftStatus.cancelled,
+                              _ShiftTab.saved => true,
+                            };
+                          }).toList();
 
-                    if (filtered.isEmpty) {
-                      final emptyTitle = switch (_selectedTab) {
-                        _ShiftTab.active => 'No active shifts',
-                        _ShiftTab.completed => 'No completed shifts yet',
-                        _ShiftTab.cancelled => 'No cancelled shifts',
-                      };
-                      return ListView(
-                        children: [
-                          const SizedBox(height: 60),
-                          EmptyState(
-                            icon: isNursery
-                                ? Icons.post_add_rounded
-                                : Icons.event_note_outlined,
-                            title: emptyTitle,
-                            subtitle: 'Pull to refresh to update status.',
-                          ),
-                        ],
-                      );
-                    }
-                    return ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.md,
-                        AppSpacing.md,
-                        AppSpacing.md,
-                        88,
+                          if (filtered.isEmpty) {
+                            final emptyTitle = switch (_selectedTab) {
+                              _ShiftTab.upcoming => isNursery
+                                  ? 'No active shifts posted'
+                                  : 'No upcoming shifts booked',
+                              _ShiftTab.completed => 'No completed shifts yet',
+                              _ShiftTab.cancelled => 'No cancelled shifts',
+                              _ShiftTab.saved => 'No saved shifts',
+                            };
+                            return ListView(
+                              children: [
+                                const SizedBox(height: 60),
+                                EmptyState(
+                                  icon: isNursery
+                                      ? Icons.post_add_rounded
+                                      : Icons.event_note_outlined,
+                                  title: emptyTitle,
+                                  subtitle: isNursery
+                                      ? 'Tap the + button below to post a new shift.'
+                                      : 'Browse available shifts to find nursery work.',
+                                ),
+                              ],
+                            );
+                          }
+                          return ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            itemBuilder: (context, i) {
+                              final shift = filtered[i];
+                              final user = ref.watch(authStateProvider).valueOrNull;
+                              final isPending =
+                                  user != null && shift.hasAppliedBy(user.uid);
+                              return ShiftCard(
+                                shift: shift,
+                                isPendingApproval: isPending,
+                                onTap: () => context.push('/shifts/${shift.id}'),
+                              )
+                                  .animate()
+                                  .fadeIn(delay: (30 * i).ms, duration: 250.ms);
+                            },
+                          );
+                        },
                       ),
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: AppSpacing.sm),
-                      itemBuilder: (context, i) {
-                        final shift = filtered[i];
-                        final user = ref.watch(authStateProvider).valueOrNull;
-                        final isPending = user != null && shift.hasAppliedBy(user.uid);
-                        return ShiftCard(
-                              shift: shift,
-                              isPendingApproval: isPending,
-                              onTap: () => context.push('/shifts/${shift.id}'),
-                            )
-                            .animate()
-                            .fadeIn(delay: (40 * i).ms, duration: 300.ms)
-                            .slideY(begin: 0.05, end: 0);
-                      },
-                    );
-                  },
-                ),
               ),
             ),
           ],
         ),
-      );
+      ),
+    );
   }
 }
 
@@ -227,42 +279,57 @@ class _ShiftTabTile extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.icon,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Expanded(
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.pill),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
+          duration: const Duration(milliseconds: 160),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? scheme.surface : Colors.transparent,
+            color: selected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(AppRadius.pill),
             boxShadow: selected
-                ? [
+                ? const [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
+                      color: Color(0x100F172A),
                       blurRadius: 4,
-                      offset: const Offset(0, 2),
+                      offset: Offset(0, 1),
                     ),
                   ]
                 : null,
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-              color: selected ? AppColors.indigo : scheme.onSurfaceVariant,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 13,
+                  color: selected ? const Color(0xFF1B2A4A) : const Color(0xFF64748B),
+                ),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  color: selected ? const Color(0xFF1B2A4A) : const Color(0xFF64748B),
+                ),
+              ),
+            ],
           ),
         ),
       ),

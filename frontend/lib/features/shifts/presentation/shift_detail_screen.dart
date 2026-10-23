@@ -15,9 +15,12 @@ import '../../../shared/widgets/status_badge.dart';
 import '../../profile/domain/profile.dart';
 import '../../ratings/presentation/rate_shift_sheet.dart';
 import '../../timesheets/presentation/timesheet_card.dart';
+import '../../home/presentation/home_shell.dart';
+import '../data/bookmarks_provider.dart';
 import '../domain/shift.dart';
 import 'browse_shifts_screen.dart';
 import 'my_shifts_screen.dart';
+import 'widgets/shift_card.dart' show kDefaultNurseryPhotos;
 
 final shiftDetailProvider = FutureProvider.autoDispose.family<Shift?, String>((ref, shiftId) {
   return ref.watch(shiftRepositoryProvider).fetchShift(shiftId);
@@ -267,20 +270,12 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Stitch Hero Card with Oxford Navy Gradient
+                // Hero Card with Authentic Nursery Photo Background
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(20),
+                  height: 200,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(AppRadius.card),
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF1B2A4A),
-                        Color(0xFF2B4475),
-                      ],
-                    ),
                     boxShadow: const [
                       BoxShadow(
                         color: Color(0x140F172A),
@@ -289,53 +284,127 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                       ),
                     ],
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Stack(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.16),
-                              borderRadius: BorderRadius.circular(AppRadius.pill),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                            ),
-                            child: Text(
-                              shift.requiredQualification.isNotEmpty
-                                  ? shift.requiredQualification
-                                  : 'Early Years Cover',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ),
-                          ShiftStatusBadge(status: shift.status),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        shift.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.4,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadius.card),
+                        child: Image.network(
+                          kDefaultNurseryPhotos[shift.id.hashCode.abs() % kDefaultNurseryPhotos.length],
+                          width: double.infinity,
+                          height: 200,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1B2A4A)),
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        shift.room.isNotEmpty
-                            ? '${shift.room} • $dateStr'
-                            : dateStr,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(AppRadius.card),
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.45),
+                                Colors.black.withValues(alpha: 0.15),
+                                Colors.black.withValues(alpha: 0.85),
+                              ],
+                              stops: const [0.0, 0.4, 1.0],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned.fill(
+                        child: Padding(
+                          padding: const EdgeInsets.all(18),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0F172A).withValues(alpha: 0.8),
+                                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                    ),
+                                    child: Text(
+                                      shift.requiredQualification.isNotEmpty
+                                          ? shift.requiredQualification
+                                          : 'Early Years Cover',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      ShiftStatusBadge(status: shift.status),
+                                      const SizedBox(width: 8),
+                                      InkWell(
+                                        onTap: () {
+                                          ref.read(bookmarkedShiftIdsProvider.notifier).toggle(shift.id);
+                                        },
+                                        borderRadius: BorderRadius.circular(20),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(7),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(alpha: 0.45),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            ref.watch(bookmarkedShiftIdsProvider).contains(shift.id)
+                                                ? Icons.bookmark_rounded
+                                                : Icons.bookmark_border_rounded,
+                                            color: ref.watch(bookmarkedShiftIdsProvider).contains(shift.id)
+                                                ? const Color(0xFF38BDF8)
+                                                : Colors.white,
+                                            size: 18,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    shift.title,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 21,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.4,
+                                      shadows: [
+                                        Shadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 1)),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    shift.room.isNotEmpty
+                                        ? '${shift.room} • $dateStr'
+                                        : dateStr,
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.95),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      shadows: const [
+                                        Shadow(color: Colors.black54, blurRadius: 3, offset: Offset(0, 1)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -820,7 +889,10 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                           ),
                           const SizedBox(height: 10),
                           ElevatedButton.icon(
-                            onPressed: () => context.go('/home'),
+                            onPressed: () {
+                              ref.read(homeShellTabIndexProvider.notifier).state = 3;
+                              context.go('/home');
+                            },
                             icon: const Icon(Icons.arrow_forward_rounded, size: 15),
                             label: const Text('Complete Training Courses', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                             style: ElevatedButton.styleFrom(

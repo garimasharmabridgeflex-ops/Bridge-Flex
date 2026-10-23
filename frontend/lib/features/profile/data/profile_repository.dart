@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -125,7 +126,8 @@ class ProfileRepository {
       if (registeredCompanyName != null) 'registeredCompanyName': registeredCompanyName,
       if (ofstedRegNumber != null) 'ofstedRegNumber': ofstedRegNumber,
       if (yearEstablished != null) 'yearEstablished': yearEstablished,
-      if (nurseryType != null) 'nurseryType': nurseryTypeToApiString(nurseryType),
+      if (nurseryType != null && nurseryType != NurseryType.unspecified)
+        'nurseryType': nurseryTypeToApiString(nurseryType),
       if (website != null) 'website': website,
       if (postcode != null) 'postcode': postcode,
       if (email != null) 'email': email,
@@ -188,6 +190,13 @@ class ProfileRepository {
     return ref.getDownloadURL();
   }
 
+  /// Web-safe profile photo upload from raw bytes.
+  Future<String> uploadProfilePhotoBytes({required String uid, required Uint8List bytes}) async {
+    final ref = _storage.ref('profile-photos/$uid/photo.jpg');
+    await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+    return ref.getDownloadURL();
+  }
+
   /// Uploads one nursery setting photo to `nursery-photos/{uid}/{n}.jpg`.
   /// Full app spec §1.3 caps this at ~4 photos — enforced by the caller
   /// (presentation layer), not here.
@@ -198,6 +207,17 @@ class ProfileRepository {
   }) async {
     final ref = _storage.ref('nursery-photos/$uid/$index.jpg');
     await ref.putFile(file, SettableMetadata(contentType: 'image/jpeg'));
+    return ref.getDownloadURL();
+  }
+
+  /// Web-safe nursery photo upload from raw bytes.
+  Future<String> uploadNurseryPhotoBytes({
+    required String uid,
+    required Uint8List bytes,
+    required int index,
+  }) async {
+    final ref = _storage.ref('nursery-photos/$uid/$index.jpg');
+    await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
     return ref.getDownloadURL();
   }
 }

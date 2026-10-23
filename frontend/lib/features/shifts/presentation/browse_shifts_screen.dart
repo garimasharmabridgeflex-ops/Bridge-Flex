@@ -9,6 +9,8 @@ import '../../../app/theme.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../../shared/widgets/shimmer_box.dart';
+import '../../profile/domain/profile.dart';
+import '../data/bookmarks_provider.dart';
 import '../domain/shift.dart';
 import 'widgets/shift_card.dart';
 
@@ -70,7 +72,6 @@ class BrowseShiftsScreen extends ConsumerStatefulWidget {
 class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
   final _searchController = TextEditingController();
   String _query = '';
-  bool _showSearch = false;
   bool _nearMeOnly = false;
   _DateFilter _dateFilter = _DateFilter.any;
   DateTime? _pickedDate;
@@ -78,6 +79,8 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
   _SortOrder _sortOrder = _SortOrder.soonest;
   bool _showFilters = false;
   String? _categoryFilter;
+  String? _selectedCity;
+  bool _savedOnly = false;
 
   String _greeting() {
     final hour = DateTime.now().hour;
@@ -94,6 +97,8 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
 
   bool get _hasActiveFilters =>
       _nearMeOnly ||
+      _savedOnly ||
+      _selectedCity != null ||
       _dateFilter != _DateFilter.any ||
       _minPayRate > 0 ||
       _sortOrder != _SortOrder.soonest ||
@@ -101,6 +106,8 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
 
   void _clearFilters() => setState(() {
     _nearMeOnly = false;
+    _savedOnly = false;
+    _selectedCity = null;
     _dateFilter = _DateFilter.any;
     _pickedDate = null;
     _minPayRate = 0;
@@ -108,19 +115,120 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
     _categoryFilter = null;
   });
 
-  List<Shift> _applyFilters(List<Shift> shifts, String? ownArea) {
+  String _displayLocation(Profile? profile) {
+    if (_selectedCity != null && _selectedCity!.isNotEmpty) {
+      return _selectedCity!;
+    }
+    if (profile != null && profile.city.isNotEmpty) {
+      return profile.postcode.isNotEmpty ? '${profile.city}, ${profile.postcode}' : profile.city;
+    }
+    return 'Manchester & London';
+  }
+
+  void _showLocationPicker(BuildContext context, Profile? profile) {
+    final cities = [
+      'All UK Locations',
+      'Manchester & Greater Manchester',
+      'London (Central & Greater)',
+      'Birmingham & West Midlands',
+      'Leeds & West Yorkshire',
+      'Bristol & South West',
+    ];
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Select Search Location',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ...cities.map((c) {
+                final isSelected = (_selectedCity == c) || (_selectedCity == null && c == 'All UK Locations');
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    c == 'All UK Locations' ? Icons.public_rounded : Icons.location_on_outlined,
+                    color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                  ),
+                  title: Text(
+                    c,
+                    style: TextStyle(
+                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                      color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF0F172A),
+                      fontSize: 14,
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? const Icon(Icons.check_circle_rounded, color: Color(0xFF2563EB), size: 18)
+                      : null,
+                  onTap: () {
+                    setState(() {
+                      _selectedCity = c == 'All UK Locations' ? null : c;
+                    });
+                    Navigator.pop(ctx);
+                  },
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Shift> _applyFilters(List<Shift> shifts, Set<String> bookmarkedIds, String? ownArea) {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
     final weekEnd = todayStart.add(const Duration(days: 7));
 
     var filtered = shifts.where((s) {
-      // Text search
-      if (_query.isNotEmpty && !s.title.toLowerCase().contains(_query))
+      // Bookmarked / Saved filter
+      if (_savedOnly && !bookmarkedIds.contains(s.id)) {
         return false;
+      }
+
+      // Selected City filter
+      if (_selectedCity != null && _selectedCity!.isNotEmpty && _selectedCity != 'All UK Locations') {
+        final queryCity = _selectedCity!.split('&').first.split('(').first.trim().toLowerCase();
+        final matchCity = s.nurseryArea?.toLowerCase().contains(queryCity) ?? false;
+        final matchBranch = s.branchName.toLowerCase().contains(queryCity);
+        final matchNursery = s.nurseryName?.toLowerCase().contains(queryCity) ?? false;
+        final matchTitle = s.title.toLowerCase().contains(queryCity);
+        if (!matchCity && !matchBranch && !matchNursery && !matchTitle) return false;
+      }
+
+      // Text search
+      if (_query.isNotEmpty && !s.title.toLowerCase().contains(_query)) {
+        return false;
+      }
 
       // Category (age group)
-      if (_categoryFilter != null && s.ageGroup != _categoryFilter)
+      if (_categoryFilter != null && s.ageGroup != _categoryFilter) {
         return false;
+      }
 
       // Date filter
       switch (_dateFilter) {
@@ -150,7 +258,7 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
       // Min pay rate
       if (_minPayRate > 0 && s.payRate < _minPayRate) return false;
 
-      // Near me filter (B1 fix: filter in _applyFilters so filtered.isEmpty is accurate)
+      // Near me filter
       if (_nearMeOnly) {
         if (ownArea == null || ownArea.isEmpty) return false;
         if (s.nurseryArea != null && s.nurseryArea != ownArea) return false;
@@ -201,7 +309,7 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
         bottom: false,
         child: Column(
           children: [
-            // ── Top Utility Header (Stitch Alexandria Pattern) ───────────
+            // ── Clean Integrated Header (Zero Clutter) ───────────────────
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               decoration: const BoxDecoration(
@@ -212,7 +320,7 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
                 children: [
                   Row(
                     children: [
-                      // Left: Avatar with online badge
+                      // Left: Avatar with active online indicator
                       Stack(
                         children: [
                           CircleAvatar(
@@ -241,27 +349,11 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
                         ],
                       ),
                       const SizedBox(width: 12),
-                      // Location & Greeting
+                      // Greeting & Selectable Location Picker Chip
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.location_on_rounded, color: Color(0xFF2563EB), size: 14),
-                                const SizedBox(width: 3),
-                                Text(
-                                  ownAreaAsync.valueOrNull ?? 'Manchester, M1',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF64748B),
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
                             Text(
                               firstName.isNotEmpty ? '${_greeting()}, $firstName' : _greeting(),
                               style: const TextStyle(
@@ -272,72 +364,116 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
+                            const SizedBox(height: 2),
+                            InkWell(
+                              onTap: () => _showLocationPicker(context, profile),
+                              borderRadius: BorderRadius.circular(12),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.location_on_rounded, color: Color(0xFF2563EB), size: 13),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    _displayLocation(profile),
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF2563EB),
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  const Icon(Icons.keyboard_arrow_down_rounded, size: 14, color: Color(0xFF2563EB)),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                      // Right action buttons: Search, Filters, Notifications
-                      Row(
-                        children: [
-                          _CircularHeaderAction(
-                            icon: Icons.search_rounded,
-                            isActive: _showSearch || _query.isNotEmpty,
-                            onTap: () => setState(() => _showSearch = !_showSearch),
-                          ),
-                          const SizedBox(width: 8),
-                          _CircularHeaderAction(
-                            icon: Icons.tune_rounded,
-                            isActive: _hasActiveFilters,
-                            badgeColor: const Color(0xFF2563EB),
-                            onTap: () => setState(() => _showFilters = !_showFilters),
-                          ),
-                          const SizedBox(width: 8),
-                          const NotificationIconButton(color: Color(0xFF1B2A4A)),
-                        ],
-                      ),
+                      // Right: Clean Notification Bell
+                      const NotificationIconButton(color: Color(0xFF1B2A4A)),
                     ],
                   ),
-                  if (_showSearch) ...[
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _searchController,
-                      autofocus: true,
-                      onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        hintText: 'Search shifts, rooms, nurseries…',
-                        hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-                        prefixIcon: const Icon(Icons.search_rounded, size: 18, color: Color(0xFF64748B)),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                  const SizedBox(height: 10),
+
+                  // Integrated Search & Filters Bar (One unified component)
+                  Container(
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x06000000),
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
-                        ),
-                        suffixIcon: _query.isEmpty
-                            ? null
-                            : IconButton(
-                                icon: const Icon(Icons.close_rounded, size: 16),
-                                onPressed: () => setState(() {
-                                  _searchController.clear();
-                                  _query = '';
-                                }),
-                              ),
-                      ),
+                      ],
                     ),
-                  ],
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 12),
+                        const Icon(Icons.search_rounded, size: 18, color: Color(0xFF64748B)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+                            decoration: const InputDecoration(
+                              hintText: 'Search shifts, rooms, nurseries…',
+                              hintStyle: TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ),
+                        if (_query.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 16, color: Color(0xFF64748B)),
+                            onPressed: () => setState(() {
+                              _searchController.clear();
+                              _query = '';
+                            }),
+                          ),
+                        Container(width: 1, height: 22, color: const Color(0xFFE2E8F0)),
+                        InkWell(
+                          onTap: () => setState(() => _showFilters = !_showFilters),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.tune_rounded,
+                                  size: 16,
+                                  color: _hasActiveFilters ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+                                ),
+                                if (_hasActiveFilters) ...[
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF2563EB),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
 
-            // ── Quick Category Pills (Stitch Alexandria Pattern) ─────────
+            // ── Category & Bookmark Filter Pills ──────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
               child: SingleChildScrollView(
@@ -348,27 +484,49 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
                     _QuickPill(
                       label: 'All Shifts',
                       count: shiftsAsync.valueOrNull?.length,
-                      selected: _categoryFilter == null,
-                      onTap: () => setState(() => _categoryFilter = null),
+                      selected: !_savedOnly && _categoryFilter == null,
+                      onTap: () => setState(() {
+                        _savedOnly = false;
+                        _categoryFilter = null;
+                      }),
+                    ),
+                    const SizedBox(width: 8),
+                    _QuickPill(
+                      label: 'Saved',
+                      icon: Icons.bookmark_rounded,
+                      selected: _savedOnly,
+                      onTap: () => setState(() {
+                        _savedOnly = !_savedOnly;
+                        _categoryFilter = null;
+                      }),
                     ),
                     const SizedBox(width: 8),
                     _QuickPill(
                       label: 'Urgent Cover',
                       dotColor: const Color(0xFF2563EB),
                       selected: _categoryFilter == 'Urgent Cover',
-                      onTap: () => setState(() => _categoryFilter = _categoryFilter == 'Urgent Cover' ? null : 'Urgent Cover'),
+                      onTap: () => setState(() {
+                        _savedOnly = false;
+                        _categoryFilter = _categoryFilter == 'Urgent Cover' ? null : 'Urgent Cover';
+                      }),
                     ),
                     const SizedBox(width: 8),
                     _QuickPill(
                       label: 'Level 3 Qualified',
                       selected: _categoryFilter == 'Level 3 Qualified',
-                      onTap: () => setState(() => _categoryFilter = _categoryFilter == 'Level 3 Qualified' ? null : 'Level 3 Qualified'),
+                      onTap: () => setState(() {
+                        _savedOnly = false;
+                        _categoryFilter = _categoryFilter == 'Level 3 Qualified' ? null : 'Level 3 Qualified';
+                      }),
                     ),
                     const SizedBox(width: 8),
                     _QuickPill(
                       label: 'Baby Room',
                       selected: _categoryFilter == 'Baby Room',
-                      onTap: () => setState(() => _categoryFilter = _categoryFilter == 'Baby Room' ? null : 'Baby Room'),
+                      onTap: () => setState(() {
+                        _savedOnly = false;
+                        _categoryFilter = _categoryFilter == 'Baby Room' ? null : 'Baby Room';
+                      }),
                     ),
                   ],
                 ),
@@ -433,6 +591,7 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
                     ? _FilterPanel(
                         nearMeOnly: _nearMeOnly,
                         ownAreaAsync: ownAreaAsync,
+                        locationLabel: _displayLocation(profile),
                         dateFilter: _dateFilter,
                         pickedDate: _pickedDate,
                         minPayRate: _minPayRate,
@@ -502,8 +661,10 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
                     ],
                   ),
                   data: (shifts) {
+                    final bookmarkedIds = ref.watch(bookmarkedShiftIdsProvider);
                     final filtered = _applyFilters(
                       shifts,
+                      bookmarkedIds,
                       ownAreaAsync.valueOrNull,
                     );
 
@@ -556,6 +717,7 @@ class _FilterPanel extends StatelessWidget {
   const _FilterPanel({
     required this.nearMeOnly,
     required this.ownAreaAsync,
+    this.locationLabel,
     required this.dateFilter,
     required this.pickedDate,
     required this.minPayRate,
@@ -570,6 +732,7 @@ class _FilterPanel extends StatelessWidget {
 
   final bool nearMeOnly;
   final AsyncValue<String?> ownAreaAsync;
+  final String? locationLabel;
   final _DateFilter dateFilter;
   final DateTime? pickedDate;
   final double minPayRate;
@@ -663,7 +826,7 @@ class _FilterPanel extends StatelessWidget {
                   selected: nearMeOnly,
                   onSelected: onNearMeToggle,
                 ),
-                if (ownAreaAsync.valueOrNull != null)
+                if (locationLabel != null && locationLabel!.isNotEmpty)
                   Chip(
                     avatar: Icon(
                       Icons.place_rounded,
@@ -671,7 +834,7 @@ class _FilterPanel extends StatelessWidget {
                       color: scheme.primary,
                     ),
                     label: Text(
-                      ownAreaAsync.valueOrNull!,
+                      locationLabel!,
                       style: TextStyle(
                         fontSize: 11,
                         color: scheme.onSurfaceVariant,
@@ -963,6 +1126,7 @@ class _QuickPill extends StatelessWidget {
     required this.onTap,
     this.count,
     this.dotColor,
+    this.icon,
   });
 
   final String label;
@@ -970,6 +1134,7 @@ class _QuickPill extends StatelessWidget {
   final VoidCallback onTap;
   final int? count;
   final Color? dotColor;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -993,6 +1158,14 @@ class _QuickPill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 13,
+                color: selected ? Colors.white : const Color(0xFF64748B),
+              ),
+              const SizedBox(width: 5),
+            ],
             if (dotColor != null) ...[
               Container(
                 width: 6,

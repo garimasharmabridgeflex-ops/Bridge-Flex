@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -62,7 +62,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   QualificationLevel _qualification = QualificationLevel.none;
   OfstedRating _ofsted = OfstedRating.notRated;
   String? _photoUrl;
-  File? _newPhoto;
+  Uint8List? _newPhotoBytes;
   List<String> _photos = [];
 
   NurseryType _nurseryType = NurseryType.unspecified;
@@ -164,7 +164,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Future<void> _pickPhoto() async {
     final picked = await pickImageWithSourceSheet(context);
     if (picked == null) return;
-    setState(() => _newPhoto = File(picked.path));
+    final bytes = await picked.readAsBytes();
+    setState(() => _newPhotoBytes = bytes);
   }
 
   static const _maxNurseryPhotos = 5;
@@ -175,11 +176,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     if (user == null) return;
     final picked = await pickImageWithSourceSheet(context);
     if (picked == null) return;
+    final bytes = await picked.readAsBytes();
     setState(() => _loading = true);
     try {
-      final url = await ref.read(profileRepositoryProvider).uploadNurseryPhoto(
+      final url = await ref.read(profileRepositoryProvider).uploadNurseryPhotoBytes(
             uid: user.uid,
-            file: File(picked.path),
+            bytes: bytes,
             index: _photos.length + 1,
           );
       setState(() => _photos.add(url));
@@ -275,10 +277,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     setState(() => _loading = true);
     try {
       String? uploadedPhotoUrl;
-      if (_newPhoto != null && user != null) {
+      if (_newPhotoBytes != null && user != null) {
         uploadedPhotoUrl = await ref
             .read(profileRepositoryProvider)
-            .uploadProfilePhoto(uid: user.uid, file: _newPhoto!);
+            .uploadProfilePhotoBytes(uid: user.uid, bytes: _newPhotoBytes!);
       }
       await ref.read(profileRepositoryProvider).updateProfile(
             name: _name.text.trim(),
@@ -365,10 +367,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         CircleAvatar(
                           radius: 44,
                           backgroundColor: scheme.primary.withValues(alpha: 0.12),
-                          backgroundImage: _newPhoto != null
-                              ? FileImage(_newPhoto!)
+                          backgroundImage: _newPhotoBytes != null
+                              ? MemoryImage(_newPhotoBytes!)
                               : (_photoUrl != null ? NetworkImage(_photoUrl!) : null) as ImageProvider?,
-                          child: (_newPhoto == null && _photoUrl == null)
+                          child: (_newPhotoBytes == null && _photoUrl == null)
                               ? Icon(Icons.person_outline_rounded, size: 40, color: scheme.primary)
                               : null,
                         ),

@@ -149,10 +149,10 @@ class _NurseryOnboardingScreenState
           );
       ref.invalidate(ownProfileProvider);
       if (mounted) _goTo(1);
-    } on ApiException catch (e) {
+    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        final msg = e is ApiException ? e.message : 'Could not save profile. Please check your connection and try again.';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -169,10 +169,10 @@ class _NurseryOnboardingScreenState
           );
       ref.invalidate(ownProfileProvider);
       if (mounted) _goTo(2);
-    } on ApiException catch (e) {
+    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        final msg = e is ApiException ? e.message : 'Could not save profile. Please check your connection and try again.';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -198,10 +198,10 @@ class _NurseryOnboardingScreenState
           );
       ref.invalidate(ownProfileProvider);
       if (mounted) context.go('/home');
-    } on ApiException catch (e) {
+    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        final msg = e is ApiException ? e.message : 'Could not save profile. Please check your connection and try again.';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
     } finally {
       if (mounted) setState(() => _saving = false);

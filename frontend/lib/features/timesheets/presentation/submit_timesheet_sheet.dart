@@ -80,7 +80,7 @@ class _SubmitTimesheetSheetState extends ConsumerState<SubmitTimesheetSheet> {
 
   double get _calculatedGrossPay {
     final billable = _calculatedBillableMinutes;
-    final hourlyRate = widget.shift.effectivePayRate;
+    final hourlyRate = widget.shift.payRate;
     return (billable / 60.0) * hourlyRate;
   }
 
@@ -163,7 +163,7 @@ class _SubmitTimesheetSheetState extends ConsumerState<SubmitTimesheetSheet> {
               child: Container(
                 width: 40,
                 height: 4,
-                margin: const EdgeInsets.bottom(12),
+                margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFFCBD5E1),
                   borderRadius: BorderRadius.circular(2),

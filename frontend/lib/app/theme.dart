@@ -12,6 +12,11 @@ abstract final class AppColors {
   static const Color primaryDark = Color(0xFF0F172A);
   static const Color primaryLight = Color(0xFF2D426E);
 
+  // Backward-compatibility aliases
+  static const Color indigo = Color(0xFF1B2A4A);
+  static const Color indigoDeep = Color(0xFF0F172A);
+  static const Color teal = Color(0xFF059669);
+
   // Slate Blue Accent
   static const Color slateBlue = Color(0xFF2563EB);
   static const Color slateBlueMuted = Color(0xFF3B82F6);

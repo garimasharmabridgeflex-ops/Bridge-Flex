@@ -121,7 +121,7 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
                           error = null;
                         });
                         try {
-                          await ref.read(payrollRepositoryProvider).savePayrollProfile(
+                          await ref.read(payrollRepositoryProvider).updatePayrollProfile(
                                 bankAccountName: nameCtrl.text.trim(),
                                 bankAccountNumber: accCtrl.text.trim(),
                                 bankSortCode: sortCtrl.text.trim(),

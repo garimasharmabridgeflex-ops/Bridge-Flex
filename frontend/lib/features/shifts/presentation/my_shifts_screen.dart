@@ -200,7 +200,7 @@ class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
                           const SizedBox(height: AppSpacing.sm),
                       itemBuilder: (context, i) {
                         final shift = filtered[i];
-                        final user = ref.watch(currentUserProvider);
+                        final user = ref.watch(authStateProvider).valueOrNull;
                         final isPending = user != null && shift.hasAppliedBy(user.uid);
                         return ShiftCard(
                               shift: shift,

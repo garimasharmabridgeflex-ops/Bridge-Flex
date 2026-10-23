@@ -394,9 +394,5 @@ class _NurseryOnboardingScreenState
         ],
       ),
     );
-          ),
-        ],
-      ),
-    );
   }
 }

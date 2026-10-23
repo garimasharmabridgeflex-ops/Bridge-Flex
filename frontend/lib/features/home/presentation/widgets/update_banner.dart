@@ -23,46 +23,42 @@ class UpdateAvailableBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      margin: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
-      padding: const EdgeInsets.all(AppSpacing.md),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.mint.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFBFDBFE)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.system_update_rounded, color: AppColors.mint, size: 20),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'A new version of KFlex is available.',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-                const SizedBox(height: 6),
-                GestureDetector(
-                  onTap: () => _openDownloadUrl(downloadUrl),
-                  child: Text(
-                    'Download update →',
-                    style: TextStyle(
-                      color: scheme.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ],
+          const Icon(Icons.system_update_rounded, color: Color(0xFF2563EB), size: 18),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'A new version of KFlex is available.',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF1E40AF)),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          IconButton(
-            onPressed: onDismiss,
-            icon: const Icon(Icons.close_rounded, size: 18),
-            visualDensity: VisualDensity.compact,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+          const SizedBox(width: 6),
+          TextButton(
+            onPressed: () => _openDownloadUrl(downloadUrl),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('Update', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Color(0xFF2563EB))),
+          ),
+          const SizedBox(width: 4),
+          InkWell(
+            onTap: onDismiss,
+            borderRadius: BorderRadius.circular(12),
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.close_rounded, size: 16, color: Color(0xFF2563EB)),
+            ),
           ),
         ],
       ),

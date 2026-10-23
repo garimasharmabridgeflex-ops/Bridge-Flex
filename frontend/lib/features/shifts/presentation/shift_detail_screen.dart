@@ -212,6 +212,17 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
     }
   }
 
+  void _openEditShiftSheet(BuildContext context, Shift shift) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _EditShiftSheet(shift: shift),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final shiftAsync = ref.watch(shiftDetailProvider(widget.shiftId));
@@ -220,7 +231,23 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
     final now = DateTime.now();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Shift details')),
+      appBar: AppBar(
+        title: const Text('Shift details'),
+        actions: [
+          shiftAsync.whenOrNull(
+            data: (shift) {
+              if (shift != null && user?.uid == shift.nurseryId && shift.status == ShiftStatus.open) {
+                return TextButton.icon(
+                  onPressed: () => _openEditShiftSheet(context, shift),
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: const Text('Edit'),
+                );
+              }
+              return null;
+            },
+          ) ?? const SizedBox.shrink(),
+        ],
+      ),
       body: shiftAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => EmptyState(icon: Icons.error_outline, title: 'Failed to load', subtitle: '$e'),
@@ -414,6 +441,32 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 4),
+                                  if (shift.branchName.isNotEmpty) ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      margin: const EdgeInsets.only(bottom: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.25),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.storefront_outlined, size: 13, color: Colors.white),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            shift.branchName,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                   Text(
                                     shift.room.isNotEmpty
                                         ? '${shift.room} • $dateStr'
@@ -1072,6 +1125,23 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                 ],
+                if (isOwner && shift.status == ShiftStatus.open) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _busy ? null : () => _openEditShiftSheet(context, shift),
+                      icon: const Icon(Icons.edit_rounded, size: 18),
+                      label: const Text('Edit shift details'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563EB),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
                 if (canCancel)
                   Padding(
                     padding: const EdgeInsets.only(top: AppSpacing.sm),
@@ -1414,5 +1484,411 @@ class _CompliancePill extends StatelessWidget {
     );
   }
 }
+
+class _EditShiftSheet extends ConsumerStatefulWidget {
+  const _EditShiftSheet({required this.shift});
+  final Shift shift;
+
+  @override
+  ConsumerState<_EditShiftSheet> createState() => _EditShiftSheetState();
+}
+
+class _EditShiftSheetState extends ConsumerState<_EditShiftSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _titleController;
+  late final TextEditingController _payRateController;
+  late final TextEditingController _roomController;
+  late final TextEditingController _childrenController;
+  late final TextEditingController _descriptionController;
+
+  late DateTime _selectedDate;
+  late TimeOfDay _startTime;
+  late TimeOfDay _endTime;
+  late String _ageGroup;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.shift.title);
+    _payRateController = TextEditingController(text: widget.shift.payRate.toStringAsFixed(2));
+    _roomController = TextEditingController(text: widget.shift.room);
+    _childrenController = TextEditingController(
+      text: widget.shift.numberOfChildren > 0 ? widget.shift.numberOfChildren.toString() : '',
+    );
+    _descriptionController = TextEditingController(text: widget.shift.description);
+
+    _selectedDate = widget.shift.startTime;
+    _startTime = TimeOfDay.fromDateTime(widget.shift.startTime);
+    _endTime = TimeOfDay.fromDateTime(widget.shift.endTime);
+    _ageGroup = widget.shift.ageGroup.isNotEmpty ? widget.shift.ageGroup : 'Toddlers (2-3 yrs)';
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _payRateController.dispose();
+    _roomController.dispose();
+    _childrenController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 1)),
+      lastDate: DateTime.now().add(const Duration(days: 180)),
+    );
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
+  Future<void> _pickStartTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _startTime,
+    );
+    if (picked != null) {
+      setState(() => _startTime = picked);
+    }
+  }
+
+  Future<void> _pickEndTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _endTime,
+    );
+    if (picked != null) {
+      setState(() => _endTime = picked);
+    }
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final payRate = double.tryParse(_payRateController.text.trim());
+    if (payRate == null || payRate < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid hourly rate (minimum £10.00)')),
+      );
+      return;
+    }
+
+    final startDateTime = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      _startTime.hour,
+      _startTime.minute,
+    );
+
+    var endDateTime = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      _endTime.hour,
+      _endTime.minute,
+    );
+
+    if (endDateTime.isBefore(startDateTime)) {
+      endDateTime = endDateTime.add(const Duration(days: 1));
+    }
+
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    final numChildren = int.tryParse(_childrenController.text.trim()) ?? 0;
+
+    setState(() => _saving = true);
+    try {
+      await ref.read(shiftRepositoryProvider).updateShift(
+            shiftId: widget.shift.id,
+            title: _titleController.text.trim(),
+            date: dateStr,
+            startTime: startDateTime,
+            endTime: endDateTime,
+            payRate: payRate,
+            room: _roomController.text.trim(),
+            ageGroup: _ageGroup,
+            numberOfChildren: numChildren,
+            description: _descriptionController.text.trim(),
+          );
+
+      ref.invalidate(shiftDetailProvider(widget.shift.id));
+      ref.invalidate(myShiftsProvider);
+      ref.invalidate(openShiftsProvider);
+
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Shift details updated successfully.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e is ApiException ? e.message : 'Failed to update shift: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final dateStr = DateFormat('EEE, d MMM yyyy').format(_selectedDate);
+    final startStr =
+        '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}';
+    final endStr =
+        '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}';
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.88,
+      ),
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + bottomInset),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Edit Shift Details',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1B2A4A),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: () => Navigator.of(context).pop(),
+                  tooltip: 'Close',
+                ),
+              ],
+            ),
+            const Divider(),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 8),
+                    // Title
+                    TextFormField(
+                      controller: _titleController,
+                      decoration: const InputDecoration(
+                        labelText: 'Shift Title / Role *',
+                        hintText: 'e.g. Level 3 Nursery Practitioner',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.badge_outlined),
+                      ),
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Please enter a title' : null,
+                    ),
+                    const SizedBox(height: 14),
+                    // Pay Rate
+                    TextFormField(
+                      controller: _payRateController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Hourly Pay Rate (£/hr) *',
+                        prefixText: '£ ',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.payments_outlined),
+                      ),
+                      validator: (v) {
+                        final parsed = double.tryParse(v ?? '');
+                        if (parsed == null || parsed <= 0) return 'Enter a valid rate';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    // Date & Times
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: _pickDate,
+                            borderRadius: BorderRadius.circular(8),
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Date',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.calendar_today_outlined, size: 20),
+                              ),
+                              child: Text(dateStr,
+                                  style:
+                                      const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: _pickStartTime,
+                            borderRadius: BorderRadius.circular(8),
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Start Time',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.schedule_rounded, size: 20),
+                              ),
+                              child: Text(startStr,
+                                  style:
+                                      const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: InkWell(
+                            onTap: _pickEndTime,
+                            borderRadius: BorderRadius.circular(8),
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'End Time',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.schedule_rounded, size: 20),
+                              ),
+                              child: Text(endStr,
+                                  style:
+                                      const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    // Room & Number of Children
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _roomController,
+                            decoration: const InputDecoration(
+                              labelText: 'Room Name',
+                              hintText: 'e.g. Toddler Room',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.meeting_room_outlined),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _childrenController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Children Count',
+                              hintText: 'e.g. 12',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.groups_outlined),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    // Age Group Dropdown
+                    DropdownButtonFormField<String>(
+                      value: [
+                        'Babies (0-2 yrs)',
+                        'Toddlers (2-3 yrs)',
+                        'Preschool (3-5 yrs)',
+                        'Mixed Ages (0-5 yrs)',
+                      ].contains(_ageGroup)
+                          ? _ageGroup
+                          : 'Toddlers (2-3 yrs)',
+                      decoration: const InputDecoration(
+                        labelText: 'Age Group',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.child_care_rounded),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'Babies (0-2 yrs)', child: Text('Babies (0-2 yrs)')),
+                        DropdownMenuItem(value: 'Toddlers (2-3 yrs)', child: Text('Toddlers (2-3 yrs)')),
+                        DropdownMenuItem(value: 'Preschool (3-5 yrs)', child: Text('Preschool (3-5 yrs)')),
+                        DropdownMenuItem(value: 'Mixed Ages (0-5 yrs)', child: Text('Mixed Ages (0-5 yrs)')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setState(() => _ageGroup = val);
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    // Additional Details / Notes
+                    TextFormField(
+                      controller: _descriptionController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Requirements & Notes',
+                        hintText: 'Any special instructions or room details...',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton(
+                onPressed: _saving ? null : _save,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _saving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text(
+                        'Save Changes',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 
 

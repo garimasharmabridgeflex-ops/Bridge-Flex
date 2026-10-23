@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -5,11 +6,21 @@ import '../../app/theme.dart';
 
 /// Bottom sheet offering "Take photo" / "Choose from gallery" — previously
 /// every picker in the app went straight to the gallery with no way to use
-/// the camera at all.
+/// the camera at all. On web, file picker is used directly to avoid camera
+/// permission crashes.
 Future<XFile?> pickImageWithSourceSheet(
   BuildContext context, {
   int imageQuality = 85,
 }) async {
+  if (kIsWeb) {
+    try {
+      return await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: imageQuality);
+    } catch (e) {
+      debugPrint('pickImage Web error: $e');
+      return null;
+    }
+  }
+
   final source = await showModalBottomSheet<ImageSource>(
     context: context,
     shape: const RoundedRectangleBorder(
@@ -37,5 +48,10 @@ Future<XFile?> pickImageWithSourceSheet(
     ),
   );
   if (source == null) return null;
-  return ImagePicker().pickImage(source: source, imageQuality: imageQuality);
+  try {
+    return await ImagePicker().pickImage(source: source, imageQuality: imageQuality);
+  } catch (e) {
+    debugPrint('pickImage error: $e');
+    return null;
+  }
 }

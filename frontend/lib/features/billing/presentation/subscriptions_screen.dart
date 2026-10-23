@@ -66,7 +66,20 @@ class SubscriptionsScreen extends ConsumerWidget {
                     data: (data) {
                       final sub = data.subscription;
                       final trial = data.trial;
+                      final isApproved = profile?.nurseryApprovalStatus == 'approved';
+
                       if (sub.isTrialing) {
+                        if (!isApproved) {
+                          return const _StatusCard(
+                            title: '14-Day Free Trial (Pending Approval)',
+                            subtitle: 'Activates upon admin verification',
+                            badge: 'Pending Verification',
+                            badgeColor: Color(0xFFF59E0B),
+                            icon: Icons.hourglass_top_rounded,
+                            details:
+                                'Your 14-day free trial will activate automatically once your nursery account and Ofsted details are verified. All 14 trial days will be preserved.',
+                          );
+                        }
                         return _StatusCard(
                           title: '14-Day Free Trial',
                           subtitle: trial.isExpired ? 'Trial has ended' : '${trial.daysRemaining} days remaining',

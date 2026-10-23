@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/update/app_update_service.dart';
+import '../../billing/presentation/subscriptions_screen.dart';
 import '../../chat/presentation/chat_list_screen.dart';
 import '../../profile/domain/profile.dart';
 import '../../shifts/presentation/browse_shifts_screen.dart';
@@ -17,6 +18,9 @@ import 'widgets/profile_completion_banner.dart';
 import 'widgets/update_banner.dart';
 
 final homeShellTabIndexProvider = StateProvider<int>((ref) => 0);
+final sessionBannerDismissedProvider = StateProvider<bool>((ref) => false);
+final sessionVerifyBannerDismissedProvider = StateProvider<bool>((ref) => false);
+final sessionUpdateBannerDismissedProvider = StateProvider<bool>((ref) => false);
 
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
@@ -52,12 +56,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     });
     final updateInfo = ref.watch(appUpdateStatusProvider).valueOrNull;
 
+    final bannerDismissed = ref.watch(sessionBannerDismissedProvider);
+    final verifyDismissed = ref.watch(sessionVerifyBannerDismissedProvider);
+    final updateDismissed = ref.watch(sessionUpdateBannerDismissedProvider);
+
     final tabs = [
       if (isStaff) const BrowseShiftsScreen(),
       const MyShiftsScreen(),
       const ChatListScreen(),
-      // Training modules are staff professional development — a nursery has
-      // nothing to complete there, and the tab is the only way in.
+      if (!isStaff) const SubscriptionsScreen(),
       if (isStaff) const TrainingScreen(),
       const ProfileScreen(),
     ];
@@ -74,6 +81,12 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         selectedIcon: Icons.chat_bubble_rounded,
         label: 'Messages',
       ),
+      if (!isStaff)
+        const NavItem(
+          icon: Icons.receipt_long_outlined,
+          selectedIcon: Icons.receipt_long_rounded,
+          label: 'Billing',
+        ),
       if (isStaff)
         const NavItem(
           icon: Icons.school_outlined,
@@ -86,8 +99,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final currentIndex = ref.watch(homeShellTabIndexProvider);
     final activeIndex = currentIndex >= tabs.length ? 0 : currentIndex;
 
-    final showBanner =
-        !_bannerDismissed && profile != null && profile.hasIncompleteOptionalSteps;
+    final showBanner = !bannerDismissed &&
+        profile != null &&
+        profile.hasIncompleteOptionalSteps &&
+        // If nursery has already filled in description or company name, don't nag
+        (isStaff || profile.description.trim().isEmpty);
 
     return Scaffold(
       // HomeShell has no AppBar of its own (each tab supplies one), so
@@ -96,21 +112,21 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       body: SafeArea(
         child: Column(
           children: [
-            if (!emailVerified && !_verifyBannerDismissed)
+            if (!emailVerified && !verifyDismissed)
               EmailVerificationBanner(
-                onDismiss: () => setState(() => _verifyBannerDismissed = true),
+                onDismiss: () => ref.read(sessionVerifyBannerDismissedProvider.notifier).state = true,
               ),
             if (updateInfo != null &&
                 updateInfo.status == AppUpdateStatus.optional &&
-                !_updateBannerDismissed)
+                !updateDismissed)
               UpdateAvailableBanner(
                 downloadUrl: updateInfo.downloadUrl,
-                onDismiss: () => setState(() => _updateBannerDismissed = true),
+                onDismiss: () => ref.read(sessionUpdateBannerDismissedProvider.notifier).state = true,
               ),
             if (showBanner)
               ProfileCompletionBanner(
                 profile: profile,
-                onDismiss: () => setState(() => _bannerDismissed = true),
+                onDismiss: () => ref.read(sessionBannerDismissedProvider.notifier).state = true,
               ),
             Expanded(
               child: AnimatedSwitcher(

@@ -127,9 +127,11 @@ class NurserySubscriptionCard extends ConsumerWidget {
       data: (data) {
         final sub = data.subscription;
         final trial = data.trial;
+        final profile = ref.watch(ownProfileProvider).valueOrNull;
+        final isApproved = profile?.nurseryApprovalStatus == 'approved';
 
         if (sub.isTrialing) {
-          final isExpired = trial.isExpired;
+          final isExpired = isApproved && trial.isExpired;
           final color = isExpired ? AppColors.coral : AppColors.teal;
 
           return Card(
@@ -149,10 +151,18 @@ class NurserySubscriptionCard extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(isExpired ? Icons.timer_off_outlined : Icons.timer_outlined, color: color, size: 20),
+                          Icon(
+                            !isApproved
+                                ? Icons.hourglass_top_rounded
+                                : (isExpired ? Icons.timer_off_outlined : Icons.timer_outlined),
+                            color: color,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Text(
-                            isExpired ? 'Free Trial Expired' : '14-Day Free Trial',
+                            !isApproved
+                                ? '14-Day Free Trial'
+                                : (isExpired ? 'Free Trial Expired' : '14-Day Free Trial'),
                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: color),
                           ),
                         ],
@@ -164,7 +174,9 @@ class NurserySubscriptionCard extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          isExpired ? 'Expired' : '${trial.daysRemaining} days left',
+                          !isApproved
+                              ? 'Activates on verification'
+                              : (isExpired ? 'Expired' : '${trial.daysRemaining} days left'),
                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
                         ),
                       ),
@@ -172,9 +184,11 @@ class NurserySubscriptionCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    isExpired
-                        ? 'Your 14-day free trial has expired. Select a membership plan or use Pay As You Go to continue posting shifts.'
-                        : 'Explore available practitioners and post shifts. Staffing hours worked are billed separately at the standard rate.',
+                    !isApproved
+                        ? 'Your 14-day free trial will activate automatically upon compliance verification of your nursery account. All 14 days will be preserved.'
+                        : (isExpired
+                            ? 'Your 14-day free trial has expired. Select a membership plan or use Pay As You Go to continue posting shifts.'
+                            : 'Explore available practitioners and post shifts. Staffing hours worked are billed separately at the standard rate.'),
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),

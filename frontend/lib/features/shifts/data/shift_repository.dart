@@ -84,6 +84,12 @@ class ShiftRepository {
     DateTime? startTime,
     DateTime? endTime,
     double? payRate,
+    String? room,
+    String? ageGroup,
+    int? numberOfChildren,
+    List<String>? expectedDuties,
+    List<String>? requirements,
+    String? description,
   }) {
     return _api.post(ApiFunction.updateShift, body: {
       'shiftId': shiftId,
@@ -92,6 +98,12 @@ class ShiftRepository {
       if (startTime != null) 'startTime': startTime.toUtc().toIso8601String(),
       if (endTime != null) 'endTime': endTime.toUtc().toIso8601String(),
       if (payRate != null) 'payRate': payRate,
+      if (room != null) 'room': room,
+      if (ageGroup != null) 'ageGroup': ageGroup,
+      if (numberOfChildren != null) 'numberOfChildren': numberOfChildren,
+      if (expectedDuties != null) 'expectedDuties': expectedDuties,
+      if (requirements != null) 'requirements': requirements,
+      if (description != null) 'description': description,
     });
   }
 

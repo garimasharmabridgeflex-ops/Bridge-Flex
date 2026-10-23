@@ -174,11 +174,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     if (_photos.length >= _maxNurseryPhotos) return;
     final user = ref.read(authStateProvider).valueOrNull;
     if (user == null) return;
-    final picked = await pickImageWithSourceSheet(context);
-    if (picked == null) return;
-    final bytes = await picked.readAsBytes();
-    setState(() => _loading = true);
     try {
+      final picked = await pickImageWithSourceSheet(context);
+      if (picked == null) return;
+      setState(() => _loading = true);
+      final bytes = await picked.readAsBytes();
       final url = await ref.read(profileRepositoryProvider).uploadNurseryPhotoBytes(
             uid: user.uid,
             bytes: bytes,
@@ -193,7 +193,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         );
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload error: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to add photo: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

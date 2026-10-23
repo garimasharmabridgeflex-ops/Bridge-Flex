@@ -255,28 +255,29 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
     final subAsync = ref.watch(nurserySubscriptionProvider);
 
     if (profile != null && profile.role == UserRole.nursery) {
-      final status = profile.nurseryApprovalStatus;
-      if (status == 'pending_approval' || status == 'pending') {
+      final status = profile.nurseryApprovalStatus.toLowerCase().trim();
+      if (status != 'approved') {
+        if (status == 'rejected') {
+          return _buildBlockedScaffold(
+            context,
+            icon: Icons.highlight_off_rounded,
+            iconColor: const Color(0xFFDC2626),
+            title: 'Nursery Verification Issue',
+            message:
+                'Your nursery registration has not been approved. Please review your settings or contact support for assistance.',
+            actionLabel: 'Edit Nursery Profile',
+            onAction: () => context.push('/profile/edit'),
+          );
+        }
         return _buildBlockedScaffold(
           context,
           icon: Icons.hourglass_top_rounded,
           iconColor: const Color(0xFFD97706),
           title: 'Account Verification Required',
           message:
-              'Your nursery registration is currently being verified by our compliance team. Once verified, you will be able to post shifts and book qualified practitioners.',
+              'Your nursery registration is currently being verified by our compliance team. Once verified, you will receive your 14-day free trial and will be able to post shifts and book qualified practitioners.',
           actionLabel: 'Return to Dashboard',
           onAction: () => context.go('/'),
-        );
-      } else if (status == 'rejected') {
-        return _buildBlockedScaffold(
-          context,
-          icon: Icons.highlight_off_rounded,
-          iconColor: const Color(0xFFDC2626),
-          title: 'Nursery Verification Issue',
-          message:
-              'Your nursery registration has not been approved. Please review your settings or contact support for assistance.',
-          actionLabel: 'Edit Nursery Profile',
-          onAction: () => context.push('/profile/edit'),
         );
       }
 
@@ -334,25 +335,84 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
                   prefixIcon: Icons.title_rounded,
                 ),
                 const SizedBox(height: AppSpacing.md),
-                if (branches.isNotEmpty) ...[
-                  DropdownButtonFormField<String>(
-                    value: _selectedBranchId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Nursery Branch / Location',
-                      prefixIcon: Icon(Icons.location_on_outlined),
-                    ),
-                    items: [
-                      const DropdownMenuItem(value: null, child: Text('Main Nursery / Primary Location')),
-                      ...branches.map((b) => DropdownMenuItem(
-                            value: b.id,
-                            child: Text('${b.name} (${b.postcode})', overflow: TextOverflow.ellipsis),
-                          )),
-                    ],
-                    onChanged: (v) => setState(() => _selectedBranchId = v),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Shift Setting / Location',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1B2A4A),
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: () async {
+                              await context.push('/profile/branches');
+                              ref.invalidate(branchesProvider);
+                            },
+                            icon: const Icon(Icons.add_location_alt_outlined, size: 16),
+                            label: const Text('Manage Branches', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              foregroundColor: const Color(0xFF2563EB),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: _selectedBranchId,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                          ),
+                          prefixIcon: const Icon(Icons.storefront_outlined, color: Color(0xFF2563EB)),
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('Main Setting / Primary Location', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                          ),
+                          ...branches.map((b) => DropdownMenuItem(
+                                value: b.id,
+                                child: Text('${b.name} (${b.postcode})', style: const TextStyle(fontSize: 13.5)),
+                              )),
+                        ],
+                        onChanged: (v) => setState(() => _selectedBranchId = v),
+                      ),
+                      if (_selectedBranchId != null) ...[
+                        const SizedBox(height: 6),
+                        Builder(
+                          builder: (context) {
+                            final b = branches.where((x) => x.id == _selectedBranchId).firstOrNull;
+                            if (b == null) return const SizedBox.shrink();
+                            return Text(
+                              '📍 ${b.address}, ${b.postcode}',
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                            );
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
                 AppTextField(
                   label: 'Shift overview & notes (optional)',
                   controller: _description,

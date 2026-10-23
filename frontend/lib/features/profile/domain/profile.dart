@@ -269,7 +269,7 @@ class Profile {
     this.preferredPaymentMethod = '',
     this.locationCount = 1,
     this.staffingRequirements = '',
-    this.nurseryApprovalStatus = 'approved',
+    this.nurseryApprovalStatus = 'pending_approval',
     this.stats,
     this.ratingBreakdown,
   });
@@ -426,7 +426,7 @@ class Profile {
         preferredPaymentMethod: json['preferredPaymentMethod'] as String? ?? '',
         locationCount: (json['locationCount'] as num?)?.toInt() ?? 1,
         staffingRequirements: json['staffingRequirements'] as String? ?? '',
-        nurseryApprovalStatus: json['nurseryApprovalStatus'] as String? ?? 'approved',
+        nurseryApprovalStatus: json['nurseryApprovalStatus'] as String? ?? 'pending_approval',
         stats: json['stats'] != null ? NurseryStats.fromJson(json['stats'] as Map<String, dynamic>) : null,
         ratingBreakdown: json['ratingBreakdown'] != null
             ? RatingBreakdown.fromJson(json['ratingBreakdown'] as Map<String, dynamic>)

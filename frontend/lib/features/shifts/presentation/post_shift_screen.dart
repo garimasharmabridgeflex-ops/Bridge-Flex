@@ -12,7 +12,9 @@ import '../../../shared/widgets/chip_multi_select.dart';
 import '../../billing/presentation/nursery_subscription_card.dart';
 import '../../onboarding/presentation/widgets/onboarding_illustration.dart';
 import '../../onboarding/presentation/widgets/wizard_scaffold.dart';
+import '../../profile/domain/branch.dart';
 import '../../profile/domain/profile.dart';
+import '../../profile/presentation/branches_screen.dart';
 
 /// Posting a shift as a 3-step wizard (Shift details → Care details → Pay &
 /// publish) — reuses the same [WizardStepScaffold] chrome the onboarding
@@ -32,7 +34,13 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
   final _payRate = TextEditingController();
   final _room = TextEditingController();
   final _numberOfChildren = TextEditingController();
+  final _safeguardingNotes = TextEditingController();
+  final _healthAndSafetyNotes = TextEditingController();
+
   int _capacity = 1;
+  int _unpaidBreakMinutes = 30;
+  String _requiredQualification = 'level_3';
+  String? _selectedBranchId;
   DateTime _date = DateTime.now().add(const Duration(days: 1));
   TimeOfDay _startTime = const TimeOfDay(hour: 9, minute: 0);
   TimeOfDay _endTime = const TimeOfDay(hour: 17, minute: 0);
@@ -60,6 +68,8 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
     _payRate.dispose();
     _room.dispose();
     _numberOfChildren.dispose();
+    _safeguardingNotes.dispose();
+    _healthAndSafetyNotes.dispose();
     super.dispose();
   }
 
@@ -128,6 +138,11 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
             numberOfChildren: int.tryParse(_numberOfChildren.text.trim()) ?? 0,
             expectedDuties: _expectedDuties,
             requirements: _requirements,
+            branchId: _selectedBranchId ?? '',
+            requiredQualification: _requiredQualification,
+            unpaidBreakMinutes: _unpaidBreakMinutes,
+            safeguardingNotes: _safeguardingNotes.text.trim(),
+            healthAndSafetyNotes: _healthAndSafetyNotes.text.trim(),
           );
       if (mounted) {
         context.pushReplacement('/shifts/$shiftId');
@@ -285,6 +300,11 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
       }
     }
 
+    final totalMinutes = _endDateTime.difference(_startDateTime).inMinutes;
+    final payableMinutes = (totalMinutes - _unpaidBreakMinutes).clamp(0, totalMinutes);
+    final payableHours = (payableMinutes / 60.0).toStringAsFixed(1);
+    final branches = ref.watch(branchesProvider).valueOrNull ?? const <Branch>[];
+
     return Scaffold(
       body: PageView(
         controller: _pageController,
@@ -314,10 +334,29 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
                   prefixIcon: Icons.title_rounded,
                 ),
                 const SizedBox(height: AppSpacing.md),
+                if (branches.isNotEmpty) ...[
+                  DropdownButtonFormField<String>(
+                    value: _selectedBranchId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Nursery Branch / Location',
+                      prefixIcon: Icon(Icons.location_on_outlined),
+                    ),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Main Nursery / Primary Location')),
+                      ...branches.map((b) => DropdownMenuItem(
+                            value: b.id,
+                            child: Text('${b.name} (${b.postcode})', overflow: TextOverflow.ellipsis),
+                          )),
+                    ],
+                    onChanged: (v) => setState(() => _selectedBranchId = v),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 AppTextField(
-                  label: 'Shift details & requirements (optional)',
+                  label: 'Shift overview & notes (optional)',
                   controller: _description,
-                  maxLines: 3,
+                  maxLines: 2,
                   prefixIcon: Icons.notes_rounded,
                 ),
                 const SizedBox(height: AppSpacing.md),
@@ -355,7 +394,7 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
                     Expanded(
                       child: _PickerTile(
                         icon: Icons.schedule_rounded,
-                        label: 'Start',
+                        label: 'Start time',
                         value: _startTime.format(context),
                         onTap: () => _pickTime(isStart: true),
                       ),
@@ -364,23 +403,72 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
                     Expanded(
                       child: _PickerTile(
                         icon: Icons.schedule_rounded,
-                        label: 'End',
+                        label: 'End time',
                         value: _endTime.format(context),
                         onTap: () => _pickTime(isStart: false),
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Unpaid break duration', style: Theme.of(context).textTheme.labelMedium),
+                    Text(
+                      _unpaidBreakMinutes == 0 ? 'No break' : '$_unpaidBreakMinutes mins unpaid',
+                      style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF2563EB), fontSize: 12.5),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  children: [0, 15, 30, 45, 60].map((mins) {
+                    final isSelected = _unpaidBreakMinutes == mins;
+                    return ChoiceChip(
+                      label: Text(mins == 0 ? 'None (0m)' : '${mins}m'),
+                      selected: isSelected,
+                      onSelected: (_) => setState(() => _unpaidBreakMinutes = mins),
+                      selectedColor: const Color(0xFF2563EB).withValues(alpha: 0.15),
+                      labelStyle: TextStyle(
+                        color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF475569),
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: 12,
+                      ),
+                    );
+                  }).toList(),
+                ),
+                Container(
+                  margin: const EdgeInsets.only(top: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFF64748B)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Total working time: $payableHours hrs (Break deducted from gross hours)',
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF475569), fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
 
-          // ── Step 2: Care details ─────────────────────────────────────
+          // ── Step 2: Care & Compliance ────────────────────────────────
           WizardStepScaffold(
             stepIndex: 1,
             stepCount: 3,
-            title: 'Care details',
-            subtitle: 'Helps staff know exactly what the shift involves.',
+            title: 'Care & compliance',
+            subtitle: 'Qualifications, duties, and safety instructions.',
             illustration: const OnboardingIllustration(
               icon: Icons.child_care_rounded,
               color: AppColors.mint,
@@ -394,6 +482,24 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
             body: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                DropdownButtonFormField<String>(
+                  value: _requiredQualification,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Minimum Required Qualification',
+                    prefixIcon: Icon(Icons.school_outlined),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'level_3', child: Text('Level 3 (Early Years Educator) — Standard')),
+                    DropdownMenuItem(value: 'level_2', child: Text('Level 2 (Early Years Assistant)')),
+                    DropdownMenuItem(value: 'level_4_plus', child: Text('Level 4+ / Degree / EYTS / QTS')),
+                    DropdownMenuItem(value: 'none', child: Text('Unqualified / Any experience level')),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setState(() => _requiredQualification = v);
+                  },
+                ),
+                const SizedBox(height: AppSpacing.md),
                 DropdownButtonFormField<String>(
                   initialValue: _ageGroup,
                   isExpanded: true,
@@ -416,14 +522,14 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
                   children: [
                     Expanded(
                       child: AppTextField(
-                        label: 'Room',
+                        label: 'Room name (e.g. Baby Room)',
                         controller: _room,
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: AppTextField(
-                        label: 'Children',
+                        label: 'Number of children',
                         controller: _numberOfChildren,
                         keyboardType: TextInputType.number,
                       ),
@@ -440,13 +546,29 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
                   allowCustom: true,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                Text('Minimum requirements', style: Theme.of(context).textTheme.labelLarge),
+                Text('Special requirements', style: Theme.of(context).textTheme.labelLarge),
                 const SizedBox(height: 8),
                 ChipMultiSelect(
                   options: shiftRequirementOptions,
                   selected: _requirements,
                   onChanged: (v) => setState(() => _requirements = v),
                   allowCustom: true,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text('Compliance & Check-in Details', style: Theme.of(context).textTheme.labelLarge),
+                const SizedBox(height: 8),
+                AppTextField(
+                  label: 'Safeguarding & check-in procedure (optional)',
+                  controller: _safeguardingNotes,
+                  maxLines: 2,
+                  prefixIcon: Icons.shield_outlined,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppTextField(
+                  label: 'Health & safety guidelines (optional)',
+                  controller: _healthAndSafetyNotes,
+                  maxLines: 2,
+                  prefixIcon: Icons.health_and_safety_outlined,
                 ),
               ],
             ),
@@ -457,7 +579,7 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
             stepIndex: 2,
             stepCount: 3,
             title: 'Pay & publish',
-            subtitle: 'Set the rate and post it live.',
+            subtitle: 'Review shift calculation and publish live.',
             illustration: const OnboardingIllustration(
               icon: Icons.payments_rounded,
               color: AppColors.coral,
@@ -478,17 +600,80 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   prefixIcon: Icons.payments_outlined,
                 ),
+                const SizedBox(height: AppSpacing.md),
+                Builder(
+                  builder: (context) {
+                    final rate = double.tryParse(_payRate.text) ?? 0.0;
+                    final grossPay = rate * (payableMinutes / 60.0);
+                    final holidayPay = grossPay * 0.1207;
+                    final totalEst = grossPay + holidayPay;
+
+                    return Container(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.calculate_outlined, size: 18, color: Color(0xFF2563EB)),
+                              SizedBox(width: 8),
+                              Text('Pay Calculation Preview', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                            ],
+                          ),
+                          const Divider(height: 20),
+                          _calcRow('Shift duration', '${totalMinutes ~/ 60}h ${totalMinutes % 60}m'),
+                          _calcRow('Unpaid break', '-$_unpaidBreakMinutes mins'),
+                          _calcRow('Payable working hours', '$payableHours hrs', isBold: true),
+                          const SizedBox(height: 4),
+                          _calcRow('Practitioner basic pay', '£${grossPay.toStringAsFixed(2)}'),
+                          _calcRow('Statutory holiday pay (12.07%)', '£${holidayPay.toStringAsFixed(2)}'),
+                          const Divider(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Est. Practitioner Total', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+                              Text(
+                                '£${totalEst.toStringAsFixed(2)}',
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF2563EB)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: AppSpacing.lg),
                 _sectionCard(context, [
                   _summaryRow(context, 'Title', _title.text.trim().isEmpty ? '—' : _title.text.trim()),
                   _summaryRow(context, 'When',
                       '${DateFormat('EEE d MMM').format(_date)}, ${_startTime.format(context)}–${_endTime.format(context)}'),
-                  _summaryRow(context, 'Staff needed', '$_capacity'),
+                  _summaryRow(context, 'Break', '$_unpaidBreakMinutes mins unpaid'),
+                  _summaryRow(context, 'Staff needed', '$_capacity practitioner${_capacity == 1 ? '' : 's'}'),
                   _summaryRow(context, 'Age group', _ageGroup),
+                  _summaryRow(context, 'Qualification', _requiredQualification.replaceAll('_', ' ').toUpperCase()),
                 ]),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _calcRow(String label, String value, {bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: 12, color: const Color(0xFF64748B), fontWeight: isBold ? FontWeight.w700 : FontWeight.w400)),
+          Text(value, style: TextStyle(fontSize: 12, fontWeight: isBold ? FontWeight.w700 : FontWeight.w600)),
         ],
       ),
     );

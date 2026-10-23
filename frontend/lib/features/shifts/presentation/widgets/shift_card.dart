@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../app/providers.dart';
 import '../../../../app/theme.dart';
 import '../../../../shared/widgets/status_badge.dart';
+import '../../../profile/domain/profile.dart';
 import '../../data/bookmarks_provider.dart';
 import '../../domain/shift.dart';
 
@@ -31,6 +33,35 @@ class ShiftCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isBookmarked = ref.watch(bookmarkedShiftIdsProvider).contains(shift.id);
+    final authUser = ref.watch(authStateProvider).valueOrNull;
+    final myUid = authUser?.uid ?? '';
+    final ownProfile = ref.watch(ownProfileProvider).valueOrNull;
+    final isOwner = myUid.isNotEmpty && myUid == shift.nurseryId;
+    final isNursery = ownProfile?.role == UserRole.nursery;
+    final isStaff = ownProfile?.role == UserRole.staff;
+
+    final nurseryProfile = isOwner
+        ? null
+        : ref.watch(publicProfileProvider(shift.nurseryId)).valueOrNull;
+
+    // Use authentic nursery photo if available, with robust fallback
+    String? authenticPhotoUrl;
+    if (isOwner && ownProfile != null) {
+      if (ownProfile.photos.isNotEmpty) {
+        authenticPhotoUrl = ownProfile.photos.first;
+      } else if (ownProfile.photoUrl.isNotEmpty) {
+        authenticPhotoUrl = ownProfile.photoUrl;
+      }
+    } else if (nurseryProfile != null) {
+      if (nurseryProfile.photos.isNotEmpty) {
+        authenticPhotoUrl = nurseryProfile.photos.first;
+      } else if (nurseryProfile.photoUrl.isNotEmpty) {
+        authenticPhotoUrl = nurseryProfile.photoUrl;
+      }
+    }
+
+    final photoUrl = authenticPhotoUrl ??
+        kDefaultNurseryPhotos[shift.id.hashCode.abs() % kDefaultNurseryPhotos.length];
 
     final startFmt = DateFormat('HH:mm').format(shift.startTime);
     final endFmt = DateFormat('HH:mm').format(shift.endTime);
@@ -41,10 +72,39 @@ class ShiftCard extends ConsumerWidget {
     final payableHours = (payableMinutes / 60.0).toStringAsFixed(1);
 
     final displayTitle = shift.title.isNotEmpty ? shift.title : 'Early Years Practitioner Cover';
-    final nurseryArea = (shift.nurseryArea?.isNotEmpty ?? false) ? shift.nurseryArea! : 'Manchester, M1';
+    final String? ownerArea = (ownProfile?.city.isNotEmpty == true)
+        ? ownProfile?.city
+        : (ownProfile?.postcode.isNotEmpty == true ? ownProfile?.postcode : null);
+    final nurseryArea = (shift.nurseryArea?.isNotEmpty ?? false)
+        ? shift.nurseryArea!
+        : (isOwner ? ownerArea : nurseryProfile?.locationArea)?.isNotEmpty == true
+            ? (isOwner ? ownerArea! : nurseryProfile!.locationArea)
+            : 'Early Years Setting';
     final roomName = shift.room.isNotEmpty ? shift.room : 'EYFS Room';
 
-    final photoUrl = kDefaultNurseryPhotos[shift.id.hashCode.abs() % kDefaultNurseryPhotos.length];
+    // Role-aware context action label (replaces misleading "Book Shift")
+    String defaultActionLabel;
+    if (isOwner || isNursery) {
+      if (shift.pendingStaffIds.isNotEmpty) {
+        defaultActionLabel = 'Review (${shift.pendingStaffIds.length})';
+      } else if (shift.status == ShiftStatus.open) {
+        defaultActionLabel = 'Manage Shift';
+      } else {
+        defaultActionLabel = 'View Shift';
+      }
+    } else if (isStaff) {
+      if (shift.bookedStaffIds.contains(myUid) || shift.bookedStaffId == myUid) {
+        defaultActionLabel = 'Booked';
+      } else if (shift.pendingStaffIds.contains(myUid)) {
+        defaultActionLabel = 'Applied';
+      } else if (shift.status == ShiftStatus.open) {
+        defaultActionLabel = 'Apply Now';
+      } else {
+        defaultActionLabel = 'View Shift';
+      }
+    } else {
+      defaultActionLabel = 'View Details';
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -398,7 +458,7 @@ class ShiftCard extends ConsumerWidget {
                         ),
                       ),
                       child: Text(
-                        trailingLabel ?? 'Book Shift',
+                        trailingLabel ?? defaultActionLabel,
                         style: const TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,

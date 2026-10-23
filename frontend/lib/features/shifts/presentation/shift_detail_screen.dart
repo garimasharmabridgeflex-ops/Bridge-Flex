@@ -271,6 +271,21 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
           final dateStr = DateFormat('EEEE, d MMMM yyyy').format(shift.startTime);
           final timeStr = '${DateFormat('HH:mm').format(shift.startTime)} – ${DateFormat('HH:mm').format(shift.endTime)}';
 
+          final nurseryProfile = isOwner
+              ? null
+              : ref.watch(publicProfileProvider(shift.nurseryId)).valueOrNull;
+
+          final nurseryPhotos = isOwner
+              ? (profile?.photos ?? const <String>[])
+              : (nurseryProfile?.photos ?? const <String>[]);
+          final authenticHeroPhoto = nurseryPhotos.isNotEmpty
+              ? nurseryPhotos.first
+              : (isOwner ? profile?.photoUrl : nurseryProfile?.photoUrl)?.isNotEmpty == true
+                  ? (isOwner ? profile!.photoUrl : nurseryProfile!.photoUrl)
+                  : null;
+          final heroPhotoUrl = authenticHeroPhoto ??
+              kDefaultNurseryPhotos[shift.id.hashCode.abs() % kDefaultNurseryPhotos.length];
+
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.md,
@@ -300,7 +315,7 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(AppRadius.card),
                         child: Image.network(
-                          kDefaultNurseryPhotos[shift.id.hashCode.abs() % kDefaultNurseryPhotos.length],
+                          heroPhotoUrl,
                           width: double.infinity,
                           height: 200,
                           fit: BoxFit.cover,
@@ -785,6 +800,34 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     child: Text(shift.description),
+                  ),
+                ],
+                if (nurseryPhotos.length > 1) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Text('Nursery setting photos', style: Theme.of(context).textTheme.labelMedium),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 90,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: nurseryPhotos.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, i) => ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          nurseryPhotos[i],
+                          width: 120,
+                          height: 90,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 120,
+                            height: 90,
+                            color: const Color(0xFFF1F5F9),
+                            child: const Icon(Icons.broken_image_outlined, color: Color(0xFF94A3B8)),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
                 const SizedBox(height: AppSpacing.md),

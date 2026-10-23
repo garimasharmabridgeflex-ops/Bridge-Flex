@@ -287,6 +287,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             phone: _fullPhone.trim(),
             photoUrl: uploadedPhotoUrl ?? _photoUrl,
             description: role == UserRole.nursery ? _description.text.trim() : null,
+            photos: role == UserRole.nursery ? _photos : null,
             address: role == UserRole.nursery ? _address.text.trim() : null,
             openingHours: role == UserRole.nursery ? _openingHours.text.trim() : null,
             ofstedRating: role == UserRole.nursery ? _ofsted : null,
@@ -545,7 +546,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           children: [
                             ClipRRect(
                               borderRadius: BorderRadius.circular(AppRadius.md),
-                              child: Image.network(_photos[i], width: 120, height: 100, fit: BoxFit.cover),
+                              child: Image.network(
+                                _photos[i],
+                                width: 120,
+                                height: 100,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 120,
+                                  height: 100,
+                                  color: const Color(0xFFF1F5F9),
+                                  child: const Center(
+                                    child: Icon(Icons.broken_image_outlined, color: Color(0xFF94A3B8)),
+                                  ),
+                                ),
+                              ),
                             ),
                             Positioned(
                               top: 4,

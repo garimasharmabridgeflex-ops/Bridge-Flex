@@ -216,7 +216,8 @@ class ProfileRepository {
     required Uint8List bytes,
     required int index,
   }) async {
-    final ref = _storage.ref('nursery-photos/$uid/$index.jpg');
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final ref = _storage.ref('nursery-photos/$uid/${index}_$timestamp.jpg');
     await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
     return ref.getDownloadURL();
   }

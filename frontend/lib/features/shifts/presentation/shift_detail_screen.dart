@@ -161,21 +161,30 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
   }
 
   Future<void> _cancel(Shift shift, {required bool isStaffDroppingBookedShift}) async {
+    final isNurseryRemovingOpenShift = !isStaffDroppingBookedShift && shift.status == ShiftStatus.open;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(isStaffDroppingBookedShift ? 'Cancel your acceptance?' : 'Cancel this shift?'),
+        title: Text(
+          isStaffDroppingBookedShift
+              ? 'Cancel your acceptance?'
+              : isNurseryRemovingOpenShift
+                  ? 'Remove this shift?'
+                  : 'Cancel this shift?',
+        ),
         content: Text(
           isStaffDroppingBookedShift
               ? 'The shift will reopen so someone else can take it. The nursery will be notified.'
-              : 'This removes the shift from the marketplace entirely and cannot be undone.',
+              : isNurseryRemovingOpenShift
+                  ? 'This shift has not been booked yet. Removing it will permanently take it off the marketplace.'
+                  : 'This removes the shift from the marketplace entirely and cannot be undone.',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep it')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
-            child: const Text('Cancel shift'),
+            child: Text(isNurseryRemovingOpenShift ? 'Remove shift' : 'Cancel shift'),
           ),
         ],
       ),
@@ -190,7 +199,9 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
           content: Text(
             isStaffDroppingBookedShift
                 ? 'Cancelled — the shift is open again for someone else.'
-                : 'Shift cancelled.',
+                : isNurseryRemovingOpenShift
+                    ? 'Shift removed from marketplace.'
+                    : 'Shift cancelled.',
           ),
         ));
       }
@@ -1031,11 +1042,17 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                                   isStaffDroppingBookedShift:
                                       isBookedStaff && shift.status == ShiftStatus.booked,
                                 ),
-                        icon: const Icon(Icons.close_rounded),
+                        icon: Icon(
+                          (isOwner && shift.status == ShiftStatus.open)
+                              ? Icons.delete_outline_rounded
+                              : Icons.close_rounded,
+                        ),
                         label: Text(
                           isBookedStaff && shift.status == ShiftStatus.booked
                               ? 'Cancel my acceptance'
-                              : 'Cancel shift',
+                              : (isOwner && shift.status == ShiftStatus.open)
+                                  ? 'Remove shift'
+                                  : 'Cancel shift',
                         ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Theme.of(context).colorScheme.error,

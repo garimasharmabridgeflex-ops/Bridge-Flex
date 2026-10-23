@@ -88,24 +88,28 @@ class FloatingNavBar extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 for (var i = 0; i < leftItems.length; i++)
-                                  _NavTile(
-                                    item: leftItems[i],
-                                    selected: i == selectedIndex,
-                                    onTap: () => onDestinationSelected(i),
+                                  Flexible(
+                                    child: _NavTile(
+                                      item: leftItems[i],
+                                      selected: i == selectedIndex,
+                                      onTap: () => onDestinationSelected(i),
+                                    ),
                                   ),
                               ],
                             ),
                           ),
-                          const SizedBox(width: 56),
+                          const SizedBox(width: 48),
                           Expanded(
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 for (var i = 0; i < rightItems.length; i++)
-                                  _NavTile(
-                                    item: rightItems[i],
-                                    selected: (half + i) == selectedIndex,
-                                    onTap: () => onDestinationSelected(half + i),
+                                  Flexible(
+                                    child: _NavTile(
+                                      item: rightItems[i],
+                                      selected: (half + i) == selectedIndex,
+                                      onTap: () => onDestinationSelected(half + i),
+                                    ),
                                   ),
                               ],
                             ),
@@ -167,7 +171,7 @@ class _NavTile extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: selected ? const Color(0xFF2563EB) : Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -182,16 +186,18 @@ class _NavTile extends StatelessWidget {
               color: selected ? Colors.white : const Color(0xFF94A3B8),
             ),
             if (selected)
-              Padding(
-                padding: const EdgeInsets.only(left: 6),
-                child: Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11.5,
+              Flexible(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 5),
+                  child: Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11.5,
+                    ),
                   ),
                 ),
               ),

@@ -9,8 +9,10 @@ import '../../../core/api/api_exception.dart';
 import '../../../shared/constants/profile_options.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/chip_multi_select.dart';
+import '../../billing/presentation/nursery_subscription_card.dart';
 import '../../onboarding/presentation/widgets/onboarding_illustration.dart';
 import '../../onboarding/presentation/widgets/wizard_scaffold.dart';
+import '../../profile/domain/profile.dart';
 
 /// Posting a shift as a 3-step wizard (Shift details → Care details → Pay &
 /// publish) — reuses the same [WizardStepScaffold] chrome the onboarding
@@ -137,8 +139,152 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
     }
   }
 
+  Widget _buildBlockedScaffold(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String message,
+    required String actionLabel,
+    required VoidCallback onAction,
+  }) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        title: const Text('Post Shift'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              elevation: 0,
+              color: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 36),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: iconColor.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, color: iconColor, size: 36),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1B2A4A),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF64748B),
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: onAction,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          actionLabel,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final profile = ref.watch(ownProfileProvider).valueOrNull;
+    final subAsync = ref.watch(nurserySubscriptionProvider);
+
+    if (profile != null && profile.role == UserRole.nursery) {
+      final status = profile.nurseryApprovalStatus;
+      if (status == 'pending_approval' || status == 'pending') {
+        return _buildBlockedScaffold(
+          context,
+          icon: Icons.hourglass_top_rounded,
+          iconColor: const Color(0xFFD97706),
+          title: 'Account Verification Required',
+          message:
+              'Your nursery registration is currently being verified by our compliance team. Once verified, you will be able to post shifts and book qualified practitioners.',
+          actionLabel: 'Return to Dashboard',
+          onAction: () => context.go('/'),
+        );
+      } else if (status == 'rejected') {
+        return _buildBlockedScaffold(
+          context,
+          icon: Icons.highlight_off_rounded,
+          iconColor: const Color(0xFFDC2626),
+          title: 'Nursery Verification Issue',
+          message:
+              'Your nursery registration has not been approved. Please review your settings or contact support for assistance.',
+          actionLabel: 'Edit Nursery Profile',
+          onAction: () => context.push('/profile/edit'),
+        );
+      }
+
+      final subData = subAsync.valueOrNull;
+      if (subData != null) {
+        final isTrialExpired =
+            subData.subscription.isTrialing && subData.trial.isExpired;
+        final isSubExpired = subData.subscription.isExpired;
+        if (isTrialExpired || isSubExpired) {
+          return _buildBlockedScaffold(
+            context,
+            icon: Icons.card_membership_rounded,
+            iconColor: const Color(0xFF2563EB),
+            title: 'Membership Required to Post Shifts',
+            message:
+                'Your 14-day free trial has expired. To post new shifts and access our verified practitioner pool, please activate a membership plan or choose pay-as-you-go.',
+            actionLabel: 'View Membership Plans',
+            onAction: () => context.push('/billing/subscriptions'),
+          );
+        }
+      }
+    }
+
     return Scaffold(
       body: PageView(
         controller: _pageController,

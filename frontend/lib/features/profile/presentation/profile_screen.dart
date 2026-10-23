@@ -406,7 +406,7 @@ class _StaffMembershipCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
                   Text(
-                    'Practitioner Membership · Free Forever',
+                    'Practitioner Membership',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1B2A4A)),
                   ),
                   SizedBox(height: 2),

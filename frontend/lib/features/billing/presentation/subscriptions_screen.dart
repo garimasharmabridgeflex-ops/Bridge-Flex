@@ -91,13 +91,13 @@ class SubscriptionsScreen extends ConsumerWidget {
                   const SizedBox.shrink(),
             ] else ...[
               _StatusCard(
-                title: 'Practitioner Access: Free Forever',
-                subtitle: 'Zero membership fees for early years staff',
-                badge: '100% Free',
+                title: 'Practitioner Membership',
+                subtitle: 'Early years practitioner platform access',
+                badge: 'Active',
                 badgeColor: const Color(0xFF10B981),
                 icon: Icons.check_circle_outline_rounded,
                 details:
-                    'Practitioners never pay any fees or subscriptions on Bridge-Flex. You keep your full hourly earnings plus accrued 12.07% statutory holiday pay.',
+                    'Practitioners do not pay platform subscriptions on Bridge-Flex. You keep your full hourly earnings plus accrued 12.07% statutory holiday pay.',
               ),
             ],
             const SizedBox(height: 24),

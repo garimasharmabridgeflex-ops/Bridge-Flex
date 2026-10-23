@@ -23,7 +23,7 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen> {
-  static const _stuckAfter = Duration(seconds: 12);
+  static const _stuckAfter = Duration(seconds: 4);
 
   bool _showRetry = false;
   bool _retrying = false;
@@ -95,7 +95,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     letterSpacing: 0.5,
                   ),
             ).animate().fadeIn(delay: 250.ms, duration: 400.ms).slideY(begin: 0.2, end: 0),
-            if (_showRetry) ...[
+            if (_showRetry || ref.watch(ownProfileProvider).hasError) ...[
               const SizedBox(height: AppSpacing.xl),
               Text(
                 'This is taking longer than usual.',

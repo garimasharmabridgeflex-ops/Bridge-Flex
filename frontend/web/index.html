@@ -102,10 +102,14 @@
   </style>
   <script id="splash-screen-script">
     function removeSplashFromWeb() {
-      document.getElementById("splash")?.remove();
-      document.getElementById("splash-branding")?.remove();
+      var s = document.getElementById("splash");
+      if (s) s.remove();
+      var b = document.getElementById("splash-branding");
+      if (b) b.remove();
       document.body.style.background = "transparent";
     }
+    window.addEventListener('flutter-first-frame', removeSplashFromWeb);
+    setTimeout(removeSplashFromWeb, 2500);
   </script>
 </head>
 <body>

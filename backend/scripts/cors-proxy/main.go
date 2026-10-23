@@ -36,6 +36,14 @@ func main() {
 		return nil
 	}
 
+	cloudProxy.ErrorHandler = func(w http.ResponseWriter, req *http.Request, err error) {
+		log.Printf("proxy error for %s %s: %v", req.Method, req.URL.Path, err)
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		http.Error(w, err.Error(), http.StatusBadGateway)
+	}
+
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Origin", "*")

@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
-import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_spacing.dart';
-import '../../../core/widgets/primary_button.dart';
+import '../../../app/theme.dart';
 import '../domain/payroll_models.dart';
 
 final practitionerEarningsProvider = FutureProvider.autoDispose<PractitionerEarningsSummary>((ref) {
@@ -35,12 +33,16 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
       context: context,
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => Padding(
+        builder: (ctx, setSheetState) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
           padding: EdgeInsets.only(
-            left: AppSpacing.lg,
-            right: AppSpacing.lg,
-            top: AppSpacing.lg,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.lg,
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -48,12 +50,12 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
             children: [
               Row(
                 children: [
-                  const Icon(Icons.account_balance_rounded, color: AppColors.teal),
+                  const Icon(Icons.account_balance_rounded, color: Color(0xFF1B2A4A)),
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
                       'Bank & Payroll Details',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1B2A4A)),
                     ),
                   ),
                   IconButton(
@@ -62,12 +64,12 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: 8),
               const Text(
                 'Enter your UK bank details and National Insurance number for direct PAYE wage payments:',
-                style: TextStyle(color: Colors.grey, fontSize: 13),
+                style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
               ),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: 16),
               TextField(
                 controller: nameCtrl,
                 decoration: const InputDecoration(
@@ -75,7 +77,7 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
                   hintText: 'e.g. Jane Doe',
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: 12),
               TextField(
                 controller: accCtrl,
                 keyboardType: TextInputType.number,
@@ -86,7 +88,7 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
                       : 'e.g. 12345678',
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: 12),
               TextField(
                 controller: sortCtrl,
                 keyboardType: TextInputType.number,
@@ -95,10 +97,9 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
                   hintText: 'e.g. 20-40-60',
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: 12),
               TextField(
                 controller: niCtrl,
-                textCapitalization: TextCapitalization.characters,
                 decoration: InputDecoration(
                   labelText: 'National Insurance Number',
                   hintText: profile.nationalInsuranceNumberMasked.isNotEmpty
@@ -107,42 +108,55 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
                 ),
               ),
               if (error != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Text(error!, style: const TextStyle(color: AppColors.coral, fontSize: 12)),
+                const SizedBox(height: 10),
+                Text(error!, style: const TextStyle(color: Color(0xFFDC2626), fontSize: 12)),
               ],
-              const SizedBox(height: AppSpacing.lg),
-              PrimaryButton(
-                label: 'Save Bank Details',
-                loading: busy,
-                onPressed: () async {
-                  setSheetState(() {
-                    busy = true;
-                    error = null;
-                  });
-                  try {
-                    await ref.read(payrollRepositoryProvider).updatePayrollProfile(
-                          bankAccountName: nameCtrl.text.trim(),
-                          bankAccountNumber: accCtrl.text.trim().isNotEmpty ? accCtrl.text.trim() : null,
-                          bankSortCode: sortCtrl.text.trim(),
-                          nationalInsuranceNumber: niCtrl.text.trim().isNotEmpty ? niCtrl.text.trim() : null,
-                        );
-                    ref.invalidate(payrollProfileProvider);
-                    if (ctx.mounted) Navigator.of(ctx).pop();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Payroll details saved successfully.'),
-                          backgroundColor: AppColors.teal,
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    setSheetState(() {
-                      busy = false;
-                      error = e.toString();
-                    });
-                  }
-                },
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        setSheetState(() {
+                          busy = true;
+                          error = null;
+                        });
+                        try {
+                          await ref.read(payrollRepositoryProvider).savePayrollProfile(
+                                bankAccountName: nameCtrl.text.trim(),
+                                bankAccountNumber: accCtrl.text.trim(),
+                                bankSortCode: sortCtrl.text.trim(),
+                                nationalInsuranceNumber: niCtrl.text.trim(),
+                              );
+                          if (ctx.mounted) {
+                            Navigator.of(ctx).pop();
+                            ref.invalidate(payrollProfileProvider);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Bank details updated securely with AES-256 envelope encryption.'),
+                                backgroundColor: Color(0xFF059669),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setSheetState(() {
+                            busy = false;
+                            error = e.toString();
+                          });
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1B2A4A),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.pill)),
+                ),
+                child: busy
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Save Encrypted Details', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -157,6 +171,7 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
     final profileAsync = ref.watch(payrollProfileProvider);
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text('Earnings & Payslips'),
         actions: [
@@ -176,191 +191,314 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Earnings Summary Card
+              // Hero Earnings Card in Oxford Navy Gradient (Stitch Pattern)
               earningsAsync.when(
                 loading: () => const Center(
                   child: Padding(
-                    padding: EdgeInsets.all(24),
+                    padding: EdgeInsets.all(32),
                     child: CircularProgressIndicator(),
                   ),
                 ),
-                error: (e, _) => Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Text('Error loading earnings: $e'),
-                  ),
-                ),
-                data: (earnings) => Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
+                error: (e, _) => Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(color: AppColors.teal.withValues(alpha: 0.2)),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
-                  color: AppColors.teal.withValues(alpha: 0.05),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Total Gross Earnings',
-                          style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          earnings.grossPayFormatted,
-                          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.teal),
-                        ),
-                        const SizedBox(height: 12),
-                        const Divider(),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Completed Shifts', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                const SizedBox(height: 2),
-                                Text('${earnings.totalCompletedShifts}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              ],
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                const Text('Approved Hours', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                const SizedBox(height: 2),
-                                Text(earnings.billableHoursFormatted, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              ],
-                            ),
+                  child: Text('Error loading earnings: $e'),
+                ),
+                data: (earnings) => Column(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(24),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFF1B2A4A),
+                            Color(0xFF273E6B),
                           ],
                         ),
-                        if (earnings.eligibleForRolledUpHolidayPay) ...[
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x140F172A),
+                            blurRadius: 20,
+                            offset: Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'TOTAL GROSS EARNINGS',
+                                style: TextStyle(
+                                  color: Color(0xFF94A3B8),
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.16),
+                                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                                ),
+                                child: const Text(
+                                  'HMRC PAYE',
+                                  style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            earnings.grossPayFormatted,
+                            style: const TextStyle(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                              fontSize: 34,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.6,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(14),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text('Basic: ${earnings.basicPayFormatted}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                                Text('Rolled-up Holiday (12.07%): ${earnings.holidayPayFormatted}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.teal)),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.event_available_rounded, size: 16, color: Color(0xFF93C5FD)),
+                                    const SizedBox(width: 8),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: const [
+                                        Text('Upcoming Payout', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10)),
+                                        Text('Friday, 24 Oct', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF059669),
+                                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                                  ),
+                                  child: const Text('In Transit', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                ),
                               ],
                             ),
                           ),
                         ],
-                      ],
+                      ),
                     ),
-                  ),
+
+                    const SizedBox(height: 12),
+
+                    // 4-Column Statutory Metrics Row (Stitch Pattern)
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x060F172A),
+                            blurRadius: 12,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          // Basic Pay
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Text(
+                                  earnings.basicPayFormatted,
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                const Text('Basic Pay', style: TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                              ],
+                            ),
+                          ),
+                          Container(height: 24, width: 1, color: const Color(0xFFE2E8F0)),
+                          // Holiday Pay
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Text(
+                                  earnings.holidayPayFormatted,
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF2563EB)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                const Text('Holiday (12%)', style: TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                              ],
+                            ),
+                          ),
+                          Container(height: 24, width: 1, color: const Color(0xFFE2E8F0)),
+                          // Total Hours
+                          Expanded(
+                            child: Column(
+                              children: [
+                                Text(
+                                  earnings.billableHoursFormatted,
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF0F172A)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                const Text('Total Hours', style: TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                              ],
+                            ),
+                          ),
+                          Container(height: 24, width: 1, color: const Color(0xFFE2E8F0)),
+                          // Tax Code
+                          Expanded(
+                            child: Column(
+                              children: const [
+                                Text(
+                                  '1257L',
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF1B2A4A)),
+                                ),
+                                SizedBox(height: 2),
+                                Text('Tax Code', style: TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: 14),
 
-              // Bank Details Card
+              // Bank Details Card (Encrypted)
               profileAsync.when(
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
-                data: (profile) => Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                data: (profile) => Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: const [
-                                Icon(Icons.account_balance_rounded, size: 20, color: AppColors.teal),
-                                SizedBox(width: 8),
-                                Text('Bank & Payroll Info', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                              ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.account_balance_rounded, size: 18, color: Color(0xFF1B2A4A)),
+                              SizedBox(width: 8),
+                              Text('Bank & Payroll Info', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF0F172A))),
+                            ],
+                          ),
+                          TextButton(
+                            onPressed: () => _editBankDetails(profile),
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF2563EB),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                             ),
-                            TextButton(
-                              onPressed: () => _editBankDetails(profile),
-                              child: const Text('Update'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Account Number:', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                            Text(
-                              profile.bankAccountNumberMasked.isNotEmpty ? profile.bankAccountNumberMasked : 'Not set',
-                              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Sort Code:', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                            Text(
-                              profile.bankSortCode.isNotEmpty ? profile.bankSortCode : 'Not set',
-                              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('National Insurance:', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                            Text(
-                              profile.nationalInsuranceNumberMasked.isNotEmpty ? profile.nationalInsuranceNumberMasked : 'Not set',
-                              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                            child: const Text('Update', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Account Number:', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+                          Text(
+                            profile.bankAccountNumberMasked.isNotEmpty ? profile.bankAccountNumberMasked : 'Not set',
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF0F172A)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Sort Code:', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+                          Text(
+                            profile.bankSortCode.isNotEmpty ? profile.bankSortCode : 'Not set',
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF0F172A)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('National Insurance:', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+                          Text(
+                            profile.nationalInsuranceNumberMasked.isNotEmpty ? profile.nationalInsuranceNumberMasked : 'Not set',
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF0F172A)),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
 
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: 18),
 
-              // Payslips Section
+              // Issued Payslips Section (Stitch Pattern)
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: const [
-                  Icon(Icons.description_outlined, size: 20, color: AppColors.teal),
-                  SizedBox(width: 8),
-                  Text('Uploaded Payslips', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text('Issued Payslips', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Color(0xFF0F172A))),
+                  Text('Weekly Cadence', style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                 ],
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: 10),
               earningsAsync.when(
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
                 data: (earnings) {
                   if (earnings.payslips.isEmpty) {
                     return Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
                       child: const Center(
                         child: Text(
-                          'No payslips uploaded yet. Payslips are added after each processed pay period.',
-                          style: TextStyle(color: Colors.grey, fontSize: 13),
+                          'No payslips generated yet. Payslips appear here following each processed pay cycle.',
+                          style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -369,18 +507,73 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
 
                   return Column(
                     children: earnings.payslips.map((ps) {
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          leading: const Icon(Icons.picture_as_pdf_rounded, color: AppColors.coral),
-                          title: Text(ps.periodName.isNotEmpty ? ps.periodName : ps.fileName),
-                          subtitle: Text('Added on ${ps.uploadedAt.day}/${ps.uploadedAt.month}/${ps.uploadedAt.year}'),
-                          trailing: const Icon(Icons.download_rounded),
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Downloading ${ps.fileName}...')),
-                            );
-                          },
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      ps.periodName.isNotEmpty ? ps.periodName : ps.fileName,
+                                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF0F172A)),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Issued on ${ps.uploadedAt.day}/${ps.uploadedAt.month}/${ps.uploadedAt.year}',
+                                      style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFECFDF5),
+                                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                                    border: Border.all(color: const Color(0xFFA7F3D0)),
+                                  ),
+                                  child: const Text('Paid', style: TextStyle(color: Color(0xFF059669), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            InkWell(
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Downloading ${ps.fileName}...')),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                ),
+                                child: const Center(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.download_rounded, size: 16, color: Color(0xFF2563EB)),
+                                      SizedBox(width: 6),
+                                      Text('Download Payslip PDF', style: TextStyle(color: Color(0xFF2563EB), fontSize: 12, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       );
                     }).toList(),

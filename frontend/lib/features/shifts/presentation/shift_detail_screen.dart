@@ -242,56 +242,322 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
           final canRate = (isOwner || isBookedStaff) && isDone;
           final otherPartyId = isOwner ? shift.bookedStaffId : shift.nurseryId;
 
+          final totalMinutes = shift.duration.inMinutes;
+          final payableMinutes = (totalMinutes - shift.unpaidBreakMinutes).clamp(0, totalMinutes);
+          final payableHours = (payableMinutes / 60.0).toStringAsFixed(1);
+          final dateStr = DateFormat('EEEE, d MMMM yyyy').format(shift.startTime);
+          final timeStr = '${DateFormat('HH:mm').format(shift.startTime)} – ${DateFormat('HH:mm').format(shift.endTime)}';
+
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
               AppSpacing.md,
-              AppSpacing.lg,
+              AppSpacing.md,
+              AppSpacing.md,
               AppSpacing.xxl,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        shift.title,
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
+                // Stitch Hero Card with Oxford Navy Gradient
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF1B2A4A),
+                        Color(0xFF2B4475),
+                      ],
                     ),
-                    ShiftStatusBadge(status: shift.status),
-                  ],
-                ).animate().fadeIn(duration: 300.ms),
-                const SizedBox(height: AppSpacing.lg),
-                _InfoTile(
-                  icon: Icons.calendar_today_rounded,
-                  label: 'Date',
-                  value: DateFormat('EEEE d MMMM yyyy').format(shift.startTime),
-                ),
-                _InfoTile(
-                  icon: Icons.schedule_rounded,
-                  label: 'Time',
-                  value:
-                      '${DateFormat('HH:mm').format(shift.startTime)} – ${DateFormat('HH:mm').format(shift.endTime)}'
-                      ' (${shift.duration.inMinutes ~/ 60}h ${shift.duration.inMinutes % 60}m)',
-                ),
-                _InfoTile(
-                  icon: Icons.payments_rounded,
-                  label: 'Pay & Earnings',
-                  value:
-                      '£${shift.payRate.toStringAsFixed(2)}/hr · Est. Gross £${shift.effectiveGrossPay.toStringAsFixed(2)}',
-                  valueColor: AppColors.coral,
-                ),
-                if (shift.unpaidBreakMinutes > 0)
-                  _InfoTile(
-                    icon: Icons.coffee_outlined,
-                    label: 'Unpaid break',
-                    value: '${shift.unpaidBreakMinutes} minutes',
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x140F172A),
+                        blurRadius: 20,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
                   ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(AppRadius.pill),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                            ),
+                            child: Text(
+                              shift.requiredQualification.isNotEmpty
+                                  ? shift.requiredQualification
+                                  : 'Early Years Cover',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                          ShiftStatusBadge(status: shift.status),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        shift.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        shift.room.isNotEmpty
+                            ? '${shift.room} • $dateStr'
+                            : dateStr,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(duration: 300.ms),
+
+                const SizedBox(height: 12),
+
+                // Stitch 4-Column Key Metrics Card
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x060F172A),
+                        blurRadius: 12,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      // Metric 1: Rate
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              '£${shift.payRate.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF1B2A4A),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Hourly Rate',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(height: 28, width: 1, color: const Color(0xFFE2E8F0)),
+                      // Metric 2: Total Pay
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              '£${shift.effectiveGrossPay.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF2563EB),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Total Pay',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(height: 28, width: 1, color: const Color(0xFFE2E8F0)),
+                      // Metric 3: Payable Hours
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              '${payableHours}h',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF1B2A4A),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Payable',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(height: 28, width: 1, color: const Color(0xFFE2E8F0)),
+                      // Metric 4: Ratio / Age Group
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              shift.ageGroup.isNotEmpty ? shift.ageGroup : '1:3',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1B2A4A),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Room Ratio',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Schedule Card (Stitch pattern)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.calendar_month_rounded,
+                          color: Color(0xFF2563EB),
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              dateStr,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1B2A4A),
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '$timeStr • ${shift.unpaidBreakMinutes}m unpaid break',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Pay Breakdown Callout (Statutory 12.07% Holiday Pay)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        color: Color(0xFF2563EB),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Decision 12 Compliant Rolled-up Holiday Pay',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1B2A4A),
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'Gross rate of £${shift.payRate.toStringAsFixed(2)}/hr includes 12.07% statutory rolled-up holiday pay under UK Working Time Regulations.',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF64748B),
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.md),
                 if (shift.requiredQualification.isNotEmpty)
                   _InfoTile(
                     icon: Icons.school_outlined,

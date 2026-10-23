@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
-import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_spacing.dart';
-import '../../../core/widgets/primary_button.dart';
+import '../../../app/theme.dart';
 import '../../shifts/domain/shift.dart';
 import '../domain/timesheet.dart';
 
@@ -49,17 +47,33 @@ class _SubmitTimesheetSheetState extends ConsumerState<SubmitTimesheetSheet> {
     }
   }
 
+  void _adjustTime(bool isStart, int deltaMinutes) {
+    final current = isStart ? _startTime : _endTime;
+    final totalMins = (current.hour * 60 + current.minute + deltaMinutes + 1440) % 1440;
+    setState(() {
+      if (isStart) {
+        _startTime = TimeOfDay(hour: totalMins ~/ 60, minute: totalMins % 60);
+      } else {
+        _endTime = TimeOfDay(hour: totalMins ~/ 60, minute: totalMins % 60);
+      }
+    });
+  }
+
   DateTime _combineDateAndTime(DateTime date, TimeOfDay time) {
     return DateTime(date.year, date.month, date.day, time.hour, time.minute);
   }
 
-  int get _calculatedBillableMinutes {
+  int get _elapsedMinutes {
     final start = _combineDateAndTime(_startDate, _startTime);
     var end = _combineDateAndTime(_startDate, _endTime);
     if (end.isBefore(start)) {
       end = end.add(const Duration(days: 1));
     }
-    final totalMins = end.difference(start).inMinutes;
+    return end.difference(start).inMinutes;
+  }
+
+  int get _calculatedBillableMinutes {
+    final totalMins = _elapsedMinutes;
     final billable = totalMins - _breakMinutes;
     return billable > 0 ? billable : 0;
   }
@@ -106,7 +120,7 @@ class _SubmitTimesheetSheetState extends ConsumerState<SubmitTimesheetSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Timesheet submitted successfully! Awaiting nursery review.'),
-            backgroundColor: AppColors.teal,
+            backgroundColor: Color(0xFF059669),
           ),
         );
       }
@@ -123,174 +137,409 @@ class _SubmitTimesheetSheetState extends ConsumerState<SubmitTimesheetSheet> {
   @override
   Widget build(BuildContext context) {
     final billableMins = _calculatedBillableMinutes;
-    final hours = billableMins ~/ 60;
-    final mins = billableMins % 60;
-    final timeFormatted = mins == 0 ? '${hours}h' : '${hours}h ${mins}m';
+    final elapsedMins = _elapsedMinutes;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.lg,
-        right: AppSpacing.lg,
-        top: AppSpacing.lg,
-        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
+    final startStr = '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}';
+    final endStr = '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}';
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.access_time_rounded, color: AppColors.teal),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  widget.existingTimesheet != null
-                      ? 'Resubmit Corrected Hours'
-                      : 'Submit Timesheet',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Modal Handle & Title
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.bottom(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.close_rounded),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-          if (widget.existingTimesheet?.nurseryFeedback.isNotEmpty == true) ...[
-            const SizedBox(height: AppSpacing.sm),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  widget.existingTimesheet != null ? 'Resubmit Timesheet' : 'Submit Timesheet',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1B2A4A),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF64748B)),
+                  onPressed: () => Navigator.of(context).pop(),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Time Adjuster Cards (Stitch Pattern: Start & Finish)
+            Row(
+              children: [
+                // Start Time Card
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'SHIFT START',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF64748B),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        InkWell(
+                          onTap: () async {
+                            final picked = await showTimePicker(context: context, initialTime: _startTime);
+                            if (picked != null) setState(() => _startTime = picked);
+                          },
+                          child: Text(
+                            startStr,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF1B2A4A),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: () => _adjustTime(true, -15),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                                  ),
+                                  child: const Center(
+                                    child: Text(
+                                      '-15m',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: InkWell(
+                                onTap: () => _adjustTime(true, 15),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                                  ),
+                                  child: const Center(
+                                    child: Text(
+                                      '+15m',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // End Time Card
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'SHIFT FINISH',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF64748B),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        InkWell(
+                          onTap: () async {
+                            final picked = await showTimePicker(context: context, initialTime: _endTime);
+                            if (picked != null) setState(() => _endTime = picked);
+                          },
+                          child: Text(
+                            endStr,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF1B2A4A),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: () => _adjustTime(false, -15),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                                  ),
+                                  child: const Center(
+                                    child: Text(
+                                      '-15m',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: InkWell(
+                                onTap: () => _adjustTime(false, 15),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                                  ),
+                                  child: const Center(
+                                    child: Text(
+                                      '+15m',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF475569)),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Statutory Break Segmented Pills (Stitch Pattern)
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.coral.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.coral.withValues(alpha: 0.3)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Nursery feedback / correction note:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.coral),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Text(
+                        'STATUTORY UNPAID BREAK',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF64748B),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      Text(
+                        'UK WTR Compliant',
+                        style: TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.existingTimesheet!.nurseryFeedback,
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: AppSpacing.md),
-          const Text(
-            'Record your actual working hours and unpaid break duration below:',
-            style: TextStyle(color: Colors.grey, fontSize: 13),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final picked = await showTimePicker(
-                      context: context,
-                      initialTime: _startTime,
-                    );
-                    if (picked != null) {
-                      setState(() => _startTime = picked);
-                    }
-                  },
-                  icon: const Icon(Icons.play_circle_outline_rounded, size: 18),
-                  label: Text('Start: ${_startTime.format(context)}'),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final picked = await showTimePicker(
-                      context: context,
-                      initialTime: _endTime,
-                    );
-                    if (picked != null) {
-                      setState(() => _endTime = picked);
-                    }
-                  },
-                  icon: const Icon(Icons.stop_circle_outlined, size: 18),
-                  label: Text('End: ${_endTime.format(context)}'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              const Text('Unpaid Break: ', style: TextStyle(fontWeight: FontWeight.w600)),
-              const Spacer(),
-              DropdownButton<int>(
-                value: _breakMinutes,
-                items: const [
-                  DropdownMenuItem(value: 0, child: Text('0 mins')),
-                  DropdownMenuItem(value: 15, child: Text('15 mins')),
-                  DropdownMenuItem(value: 30, child: Text('30 mins')),
-                  DropdownMenuItem(value: 45, child: Text('45 mins')),
-                  DropdownMenuItem(value: 60, child: Text('60 mins')),
-                ],
-                onChanged: (val) {
-                  if (val != null) setState(() => _breakMinutes = val);
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.teal.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.teal.withValues(alpha: 0.2)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Billable Hours', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    const SizedBox(height: 2),
-                    Text(timeFormatted, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Text('Estimated Gross Pay', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    const SizedBox(height: 2),
-                    Text(
-                      '£${_calculatedGrossPay.toStringAsFixed(2)}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.teal),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
                     ),
-                  ],
-                ),
-              ],
+                    child: Row(
+                      children: [
+                        for (final breakOption in [0, 30, 60])
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => setState(() => _breakMinutes = breakOption),
+                              borderRadius: BorderRadius.circular(AppRadius.pill),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: _breakMinutes == breakOption ? const Color(0xFF1B2A4A) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    breakOption == 0 ? '0 mins' : '${breakOption} mins',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: _breakMinutes == breakOption ? Colors.white : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          if (_errorMessage != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              _errorMessage!,
-              style: const TextStyle(color: AppColors.coral, fontSize: 12),
-              textAlign: TextAlign.center,
+
+            const SizedBox(height: 12),
+
+            // 4-Column Calculation Summary (Stitch Pattern)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                children: [
+                  // Elapsed
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text(
+                          (elapsedMins / 60.0).toStringAsFixed(2),
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1B2A4A)),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text('Elapsed', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+                      ],
+                    ),
+                  ),
+                  Container(height: 24, width: 1, color: const Color(0xFFE2E8F0)),
+                  // Break
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text(
+                          '-${(_breakMinutes / 60.0).toStringAsFixed(2)}',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text('Break', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+                      ],
+                    ),
+                  ),
+                  Container(height: 24, width: 1, color: const Color(0xFFE2E8F0)),
+                  // Payable
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text(
+                          (billableMins / 60.0).toStringAsFixed(2),
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1B2A4A)),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text('Payable', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+                      ],
+                    ),
+                  ),
+                  Container(height: 24, width: 1, color: const Color(0xFFE2E8F0)),
+                  // Gross Est
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text(
+                          '£${_calculatedGrossPay.toStringAsFixed(2)}',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF059669)),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text('Gross Est.', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _errorMessage!,
+                style: const TextStyle(color: Color(0xFFDC2626), fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+            ],
+
+            const SizedBox(height: 16),
+
+            // Submit Button in Oxford Navy Pill
+            ElevatedButton(
+              onPressed: _busy ? null : _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1B2A4A),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                elevation: 0,
+              ),
+              child: _busy
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text(
+                      'Submit Timesheet for Nursery Sign-off',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
             ),
           ],
-          const SizedBox(height: AppSpacing.lg),
-          PrimaryButton(
-            label: widget.existingTimesheet != null ? 'Resubmit Timesheet' : 'Confirm & Submit Timesheet',
-            loading: _busy,
-            onPressed: _submit,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-        ],
+        ),
       ),
     );
   }

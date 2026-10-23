@@ -1,30 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// KFlex brand palette. Deep indigo for trust/professionalism, warm
-/// rose for the "act now" moments (accept shift, post shift) — deliberately
-/// pink/red rather than orange/amber-toned so it stays distinct from the
-/// warm-orange accent used elsewhere in the sector's app UI conventions.
+/// KFlex brand palette. Oxford Navy for high-trust institutional authority,
+/// Slate Blue for interactive elements, Soft Porcelain for canvas, and
+/// Emerald for verified/paid states (Stitch Design System).
 abstract final class AppColors {
-  static const Color indigo = Color(0xFF3F4CE0);
-  static const Color indigoDeep = Color(0xFF2A2F8F);
-  static const Color primary = Color(0xFF3F4CE0);
-  static const Color primaryDark = Color(0xFF2A2F8F);
-  static const Color primaryLight = Color(0xFF6B76F7);
-  static const Color secondary = Color(0xFFE0447A);
-  static const Color coral = Color(0xFFE0447A);
-  static const Color mint = Color(0xFF1FB894);
-  static const Color amber = Color(0xFFF4C430);
+  // Oxford Navy & Dark Slate
+  static const Color oxford = Color(0xFF1B2A4A);
+  static const Color oxfordDark = Color(0xFF0F172A);
+  static const Color primary = Color(0xFF1B2A4A);
+  static const Color primaryDark = Color(0xFF0F172A);
+  static const Color primaryLight = Color(0xFF2D426E);
 
-  static const Color surfaceLight = Color(0xFFF7F7FB);
-  static const Color surfaceDark = Color(0xFF121218);
-  static const Color cardDark = Color(0xFF1B1B24);
+  // Slate Blue Accent
+  static const Color slateBlue = Color(0xFF2563EB);
+  static const Color slateBlueMuted = Color(0xFF3B82F6);
+  static const Color secondary = Color(0xFF2563EB);
+
+  // Status & Utility Colors
+  static const Color emerald = Color(0xFF059669);
+  static const Color mint = Color(0xFF10B981);
+  static const Color amber = Color(0xFFD97706);
+  static const Color coral = Color(0xFFDC2626);
+  static const Color rose = Color(0xFFE11D48);
+
+  // Porcelain Canvas & Tonal Layering
+  static const Color porcelain = Color(0xFFF8FAFC);
+  static const Color surfaceLight = Color(0xFFF8FAFC);
+  static const Color surfaceDark = Color(0xFF0F172A);
+  static const Color cardDark = Color(0xFF1E293B);
+  static const Color outlineSubtle = Color(0xFFE2E8F0);
 }
 
 abstract final class AppRadius {
   static const double sm = 10;
   static const double md = 16;
   static const double lg = 22;
+  static const double card = 24;
   static const double pill = 999;
 }
 
@@ -49,21 +61,21 @@ class AppTheme {
 
   static ThemeData light() {
     final scheme = ColorScheme.fromSeed(
-      seedColor: AppColors.indigo,
+      seedColor: AppColors.oxford,
       brightness: Brightness.light,
-      primary: AppColors.indigo,
-      secondary: AppColors.coral,
+      primary: AppColors.oxford,
+      secondary: AppColors.slateBlue,
       surface: Colors.white,
     );
-    return _base(scheme, AppColors.surfaceLight);
+    return _base(scheme, AppColors.porcelain);
   }
 
   static ThemeData dark() {
     final scheme = ColorScheme.fromSeed(
-      seedColor: AppColors.indigo,
+      seedColor: AppColors.oxford,
       brightness: Brightness.dark,
-      primary: const Color(0xFF8890FF),
-      secondary: AppColors.coral,
+      primary: const Color(0xFF93C5FD),
+      secondary: AppColors.slateBlueMuted,
       surface: AppColors.cardDark,
     );
     return _base(scheme, AppColors.surfaceDark);
@@ -100,7 +112,8 @@ class AppTheme {
         elevation: 0,
         color: scheme.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          side: BorderSide(color: AppColors.outlineSubtle.withValues(alpha: 0.6)),
         ),
         margin: EdgeInsets.zero,
       ),

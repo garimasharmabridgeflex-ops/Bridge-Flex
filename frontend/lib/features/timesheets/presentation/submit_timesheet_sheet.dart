@@ -415,7 +415,7 @@ class _SubmitTimesheetSheetState extends ConsumerState<SubmitTimesheetSheet> {
                                 ),
                                 child: Center(
                                   child: Text(
-                                    breakOption == 0 ? '0 mins' : '${breakOption} mins',
+                                    breakOption == 0 ? '0 mins' : '$breakOption mins',
                                     style: TextStyle(
                                       fontSize: 11.5,
                                       fontWeight: FontWeight.w700,

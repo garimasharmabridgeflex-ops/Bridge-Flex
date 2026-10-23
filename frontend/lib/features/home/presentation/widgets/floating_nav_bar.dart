@@ -55,36 +55,29 @@ class FloatingNavBar extends StatelessWidget {
             alignment: Alignment.bottomCenter,
             children: [
               Container(
-                height: 64,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                height: 60,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: scheme.surface,
+                  color: const Color(0xFF1B2A4A),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
-                  boxShadow: [
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                  boxShadow: const [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
+                      color: Color(0x400F172A),
+                      blurRadius: 24,
+                      offset: Offset(0, 10),
                     ),
                   ],
                 ),
-                // Without a center action the tiles just share the bar evenly.
-                // With one, each side gets its OWN equal half (both Expanded)
-                // separated by the fixed 56px button gap, so the FAB stays dead
-                // centered no matter how many tiles land on each side. A flat
-                // row of equal tiles + a fixed gap does not: an odd split (e.g.
-                // a nursery's 3 tabs → 2 left / 1 right) pushes the FAB half a
-                // tile off-centre.
                 child: centerAction == null
                     ? Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           for (var i = 0; i < leftItems.length; i++)
-                            Expanded(
-                              child: _NavTile(
-                                item: leftItems[i],
-                                selected: i == selectedIndex,
-                                onTap: () => onDestinationSelected(i),
-                              ),
+                            _NavTile(
+                              item: leftItems[i],
+                              selected: i == selectedIndex,
+                              onTap: () => onDestinationSelected(i),
                             ),
                         ],
                       )
@@ -92,14 +85,13 @@ class FloatingNavBar extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 for (var i = 0; i < leftItems.length; i++)
-                                  Expanded(
-                                    child: _NavTile(
-                                      item: leftItems[i],
-                                      selected: i == selectedIndex,
-                                      onTap: () => onDestinationSelected(i),
-                                    ),
+                                  _NavTile(
+                                    item: leftItems[i],
+                                    selected: i == selectedIndex,
+                                    onTap: () => onDestinationSelected(i),
                                   ),
                               ],
                             ),
@@ -107,14 +99,13 @@ class FloatingNavBar extends StatelessWidget {
                           const SizedBox(width: 56),
                           Expanded(
                             child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 for (var i = 0; i < rightItems.length; i++)
-                                  Expanded(
-                                    child: _NavTile(
-                                      item: rightItems[i],
-                                      selected: (half + i) == selectedIndex,
-                                      onTap: () => onDestinationSelected(half + i),
-                                    ),
+                                  _NavTile(
+                                    item: rightItems[i],
+                                    selected: (half + i) == selectedIndex,
+                                    onTap: () => onDestinationSelected(half + i),
                                   ),
                               ],
                             ),
@@ -170,40 +161,37 @@ class _NavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.pill),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-        padding: EdgeInsets.symmetric(horizontal: selected ? 10 : 0, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
+          color: selected ? const Color(0xFF2563EB) : Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.pill),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               selected ? item.selectedIcon : item.icon,
-              size: 22,
-              color: selected ? AppColors.primary : scheme.onSurfaceVariant,
+              size: 20,
+              color: selected ? Colors.white : const Color(0xFF94A3B8),
             ),
             if (selected)
-              Flexible(
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 6),
-                  child: Text(
-                    item.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
-                    ),
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11.5,
                   ),
                 ),
               ),

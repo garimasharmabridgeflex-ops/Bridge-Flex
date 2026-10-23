@@ -5,13 +5,6 @@ import '../../../../app/theme.dart';
 import '../../../../shared/widgets/status_badge.dart';
 import '../../domain/shift.dart';
 
-String _postedAgo(DateTime createdAt) {
-  final diff = DateTime.now().difference(createdAt);
-  if (diff.inMinutes < 1) return 'Just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-  if (diff.inHours < 24) return '${diff.inHours}h ago';
-  return '${diff.inDays}d ago';
-}
 
 class ShiftCard extends StatefulWidget {
   const ShiftCard({
@@ -45,158 +38,213 @@ class _ShiftCardState extends State<ShiftCard> {
     final payableMinutes = (totalMinutes - shift.unpaidBreakMinutes).clamp(0, totalMinutes);
     final payableHours = (payableMinutes / 60.0).toStringAsFixed(1);
 
+    final displayTitle = shift.title.isNotEmpty ? shift.title : 'Early Years Practitioner Cover';
+    final nurseryArea = (shift.nurseryArea?.isNotEmpty ?? false) ? shift.nurseryArea! : 'Central Manchester';
+    final roomName = shift.room.isNotEmpty ? shift.room : 'Baby Room';
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x080F172A),
-            blurRadius: 16,
+            color: Color(0x0A0F172A),
+            blurRadius: 20,
             offset: Offset(0, 4),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(AppRadius.card),
+        borderRadius: BorderRadius.circular(24),
         child: InkWell(
           onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(AppRadius.card),
+          borderRadius: BorderRadius.circular(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top Header Card with Gradient & Badges
+              // ── Nursery Visual Header (Stitch Alexandria Pattern) ───────
               Container(
-                height: 104,
+                height: 164,
                 width: double.infinity,
-                padding: const EdgeInsets.all(14),
                 decoration: const BoxDecoration(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.card - 1)),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(23)),
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
                       Color(0xFF1B2A4A),
-                      Color(0xFF273E6B),
+                      Color(0xFF1E3A5F),
+                      Color(0xFF2563EB),
                     ],
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Stack(
                   children: [
-                    // Top badges row
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.16),
-                                borderRadius: BorderRadius.circular(AppRadius.pill),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                              ),
-                              child: Text(
-                                shift.requiredQualification.isNotEmpty
-                                    ? shift.requiredQualification
-                                    : 'Early Years Cover',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.2,
-                                ),
-                              ),
-                            ),
-                            if (widget.isPendingApproval) ...[
-                              const SizedBox(width: 6),
+                    // Subtle background decorative radial glow
+                    Positioned(
+                      right: -30,
+                      top: -30,
+                      child: Container(
+                        width: 140,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.08),
+                        ),
+                      ),
+                    ),
+                    // Gradient overlay to guarantee high-contrast text readability
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(23)),
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.35),
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.75),
+                            ],
+                            stops: const [0.0, 0.45, 1.0],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Top Badges & Bookmark Row
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      right: 12,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFD97706),
-                                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                                  color: const Color(0xFF0F172A).withValues(alpha: 0.75),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                                 ),
-                                child: const Text(
-                                  'Awaiting Approval',
-                                  style: TextStyle(
+                                child: Text(
+                                  shift.requiredQualification.isNotEmpty
+                                      ? shift.requiredQualification
+                                      : 'Priority Cover',
+                                  style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.2,
                                   ),
                                 ),
                               ),
-                            ] else if (shift.status != ShiftStatus.open) ...[
                               const SizedBox(width: 6),
-                              ShiftStatusBadge(status: shift.status),
-                            ],
-                          ],
-                        ),
-                        InkWell(
-                          onTap: () => setState(() => _isBookmarked = !_isBookmarked),
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.25),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              _isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Title and Room details
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          shift.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.2,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Text(
-                              dateFmt,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.85),
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            if (shift.room.isNotEmpty) ...[
-                              Text(
-                                ' • ${shift.room}',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.75),
-                                  fontSize: 11.5,
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.95),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Text(
+                                  'Ofsted: Outstanding',
+                                  style: TextStyle(
+                                    color: Color(0xFF0F172A),
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
+                              if (widget.isPendingApproval) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFD97706),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Text(
+                                    'Awaiting Approval',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ] else if (shift.status != ShiftStatus.open) ...[
+                                const SizedBox(width: 6),
+                                ShiftStatusBadge(status: shift.status),
+                              ],
                             ],
-                          ],
-                        ),
-                      ],
+                          ),
+                          InkWell(
+                            onTap: () => setState(() => _isBookmarked = !_isBookmarked),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.all(7),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                _isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Floating Nursery Title & Subtitle at lower edge
+                    Positioned(
+                      bottom: 12,
+                      left: 14,
+                      right: 14,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            displayTitle,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.2,
+                              shadows: [
+                                Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 1)),
+                              ],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$nurseryArea • $roomName • $dateFmt',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                              shadows: const [
+                                Shadow(color: Colors.black45, blurRadius: 3, offset: Offset(0, 1)),
+                              ],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
 
-              // Micro-metrics 2-Column Row (Clean Stitch Pattern)
+              // ── Micro-metrics 2-Column Row (Stitch Pattern) ─────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
                 child: Row(
@@ -221,7 +269,7 @@ class _ShiftCardState extends State<ShiftCard> {
                               child: const Icon(
                                 Icons.access_time_rounded,
                                 color: Color(0xFF2563EB),
-                                size: 14,
+                                size: 15,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -275,7 +323,7 @@ class _ShiftCardState extends State<ShiftCard> {
                               child: const Icon(
                                 Icons.hourglass_bottom_rounded,
                                 color: Color(0xFF475569),
-                                size: 14,
+                                size: 15,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -312,9 +360,9 @@ class _ShiftCardState extends State<ShiftCard> {
                 ),
               ),
 
-              // Pay & Action Row (Clean divider, bold rate & pill button)
+              // ── Pay & Action Row (Large Rate, Total + Pill CTA) ─────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(14, 2, 14, 14),
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -329,7 +377,7 @@ class _ShiftCardState extends State<ShiftCard> {
                             Text(
                               '£${shift.payRate.toStringAsFixed(2)}',
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 19,
                                 fontWeight: FontWeight.w900,
                                 color: Color(0xFF0F172A),
                               ),
@@ -345,7 +393,7 @@ class _ShiftCardState extends State<ShiftCard> {
                           ],
                         ),
                         Text(
-                          '£${shift.effectiveGrossPay.toStringAsFixed(2)} total (inc. holiday pay)',
+                          '£${shift.effectiveGrossPay.toStringAsFixed(2)} Total (inc. 12.07% holiday pay)',
                           style: const TextStyle(
                             fontSize: 10.5,
                             fontWeight: FontWeight.w500,
@@ -360,15 +408,15 @@ class _ShiftCardState extends State<ShiftCard> {
                         backgroundColor: const Color(0xFF1B2A4A),
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppRadius.pill),
                         ),
                       ),
                       child: Text(
-                        widget.trailingLabel ?? 'View Shift',
+                        widget.trailingLabel ?? 'Book Shift',
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w700,
                         ),
                       ),

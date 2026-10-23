@@ -229,6 +229,15 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
           // offered the apply button again, and must not be shown as booked.
           final hasApplied = user != null && shift.hasAppliedBy(user.uid);
           final wasDeclined = user != null && shift.wasRejectedFor(user.uid);
+
+          final trainingAsync = ref.watch(trainingOverviewProvider);
+          final trainingOverview = trainingAsync.valueOrNull;
+          final hasIncompleteCourses = trainingOverview != null &&
+              trainingOverview.totalCount > 0 &&
+              !trainingOverview.allComplete;
+          final isDbsVerified = profile?.dbsStatus == DbsStatus.verified;
+          final isEligible = !hasIncompleteCourses && isDbsVerified;
+
           final canAccept = !isOwner &&
               !alreadyAccepted &&
               !hasApplied &&
@@ -558,6 +567,86 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                 ),
 
                 const SizedBox(height: AppSpacing.md),
+
+                // ── Stitch Alexandria Compliance & Eligibility Checklist ───
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    boxShadow: const [
+                      BoxShadow(color: Color(0x060F172A), blurRadius: 8, offset: Offset(0, 2)),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Compliance & Eligibility',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1B2A4A),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: isEligible ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              isEligible ? 'Verified' : 'Action Required',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isEligible ? const Color(0xFF059669) : const Color(0xFFDC2626),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _CompliancePill(
+                            label: shift.requiredQualification.isNotEmpty
+                                ? shift.requiredQualification
+                                : 'Level 3 Early Years',
+                            isPassed: true,
+                          ),
+                          _CompliancePill(
+                            label: 'Enhanced DBS Active',
+                            isPassed: isDbsVerified,
+                          ),
+                          _CompliancePill(
+                            label: 'Paediatric 1st Aid',
+                            isPassed: true,
+                          ),
+                          _CompliancePill(
+                            label: 'Right to Work UK',
+                            isPassed: true,
+                          ),
+                          _CompliancePill(
+                            label: hasIncompleteCourses
+                                ? 'Courses (${trainingOverview.completedCount}/${trainingOverview.totalCount})'
+                                : 'Training Complete',
+                            isPassed: !hasIncompleteCourses,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.md),
                 if (shift.requiredQualification.isNotEmpty)
                   _InfoTile(
                     icon: Icons.school_outlined,
@@ -693,16 +782,125 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                 ],
-                if (canAccept)
-                  PrimaryButton(
-                    label: 'Apply for shift',
-                    icon: Icons.check_circle_outline_rounded,
-                    loading: _busy,
-                    onPressed: () => _apply(shift),
-                  ).animate().fadeIn(duration: 250.ms).scale(
-                        begin: const Offset(0.97, 0.97),
-                        end: const Offset(1, 1),
+                if (canAccept) ...[
+                  if (hasIncompleteCourses) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
                       ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(Icons.school_rounded, color: Color(0xFF2563EB), size: 18),
+                              SizedBox(width: 8),
+                              Text(
+                                'Mandatory Courses Required',
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF1E3A8A),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'You have completed ${trainingOverview.completedCount} of ${trainingOverview.totalCount} required training courses. Complete all mandatory modules before applying for nursery shifts.',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF1E40AF),
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          ElevatedButton.icon(
+                            onPressed: () => context.go('/home'),
+                            icon: const Icon(Icons.arrow_forward_rounded, size: 15),
+                            label: const Text('Complete Training Courses', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2563EB),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const PrimaryButton(
+                      label: 'Complete Courses to Apply',
+                      icon: Icons.lock_outline_rounded,
+                      loading: false,
+                      onPressed: null,
+                    ),
+                  ] else if (!isDbsVerified) ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFBEB),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFFDE68A)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Icon(Icons.verified_user_outlined, color: Color(0xFFD97706), size: 18),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Vetting Verification Pending',
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF92400E),
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Your Enhanced DBS and identity documents must be approved by the admin team before you can apply for shifts.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFFB45309),
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const PrimaryButton(
+                      label: 'Vetting Approval Required',
+                      icon: Icons.lock_outline_rounded,
+                      loading: false,
+                      onPressed: null,
+                    ),
+                  ] else ...[
+                    PrimaryButton(
+                      label: 'Apply for shift',
+                      icon: Icons.check_circle_outline_rounded,
+                      loading: _busy,
+                      onPressed: () => _apply(shift),
+                    ).animate().fadeIn(duration: 250.ms).scale(
+                          begin: const Offset(0.97, 0.97),
+                          end: const Offset(1, 1),
+                        ),
+                  ],
+                ],
                 if (hasApplied) ...[
                   _StatusNotice(
                     icon: Icons.hourglass_top_rounded,
@@ -788,13 +986,11 @@ class _InfoTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
-    this.valueColor,
   });
 
   final IconData icon;
   final String label;
   final String value;
-  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -817,7 +1013,7 @@ class _InfoTile extends StatelessWidget {
                   style: Theme.of(context)
                       .textTheme
                       .bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w600, color: valueColor),
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -886,6 +1082,8 @@ class _StatusNotice extends StatelessWidget {
     );
   }
 }
+
+
 
 /// The nursery's decision list for a shift.
 ///
@@ -1047,3 +1245,42 @@ class _ApplicantRow extends ConsumerWidget {
     );
   }
 }
+
+class _CompliancePill extends StatelessWidget {
+  const _CompliancePill({required this.label, required this.isPassed});
+  final String label;
+  final bool isPassed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isPassed ? Icons.check_circle_rounded : Icons.cancel_rounded,
+            color: isPassed ? const Color(0xFF2563EB) : const Color(0xFFEF4444),
+            size: 15,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1E293B),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+

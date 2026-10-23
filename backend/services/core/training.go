@@ -699,24 +699,29 @@ type trainingConfig struct {
 // same field a nursery sees on the public profile, so the gate and the
 // approval screen can never disagree about who has completed what.
 func missingRequiredTraining(ctx context.Context, db *firestore.Client, uid string) ([]string, error) {
+	var required []string
 	cfgSnap, err := db.Doc(trainingConfigDoc).Get(ctx)
-	if status.Code(err) == codes.NotFound {
-		return nil, nil
+	if err == nil {
+		var cfg trainingConfig
+		if err := cfgSnap.DataTo(&cfg); err == nil && len(cfg.RequiredModuleIDs) > 0 {
+			required = cfg.RequiredModuleIDs
+		}
 	}
-	if err != nil {
-		return nil, err
+	if len(required) == 0 {
+		mods, err := loadModules(ctx, db, false)
+		if err == nil {
+			for _, m := range mods {
+				required = append(required, m.ID)
+			}
+		}
 	}
-	var cfg trainingConfig
-	if err := cfgSnap.DataTo(&cfg); err != nil {
-		return nil, err
-	}
-	if len(cfg.RequiredModuleIDs) == 0 {
+	if len(required) == 0 {
 		return nil, nil
 	}
 
 	profSnap, err := db.Collection("profiles").Doc(uid).Get(ctx)
 	if status.Code(err) == codes.NotFound {
-		return cfg.RequiredModuleIDs, nil
+		return required, nil
 	}
 	if err != nil {
 		return nil, err
@@ -731,7 +736,7 @@ func missingRequiredTraining(ctx context.Context, db *firestore.Client, uid stri
 	}
 
 	var missing []string
-	for _, id := range cfg.RequiredModuleIDs {
+	for _, id := range required {
 		if !done[id] {
 			missing = append(missing, id)
 		}

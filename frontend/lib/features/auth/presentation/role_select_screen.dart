@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/providers.dart';
 import '../../../app/theme.dart';
 import '../../../core/api/api_exception.dart';
-import '../../onboarding/presentation/widgets/onboarding_illustration.dart';
 import '../../profile/domain/profile.dart';
 
 class RoleSelectScreen extends ConsumerStatefulWidget {
@@ -22,12 +21,16 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
     setState(() => _loading = true);
     try {
       await ref.read(profileRepositoryProvider).setRole(role);
-      // ownProfileProvider is a one-shot fetch now (see providers.dart) —
-      // invalidate to refetch, which is what triggers the router redirect.
       ref.invalidate(ownProfileProvider);
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: const Color(0xFF1B2A4A),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -37,56 +40,107 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Center(
-                child: const OnboardingIllustration(
-                  icon: Icons.diversity_3_rounded,
-                  color: AppColors.indigo,
-                  satellites: [Icons.home_work_rounded, Icons.badge_rounded],
-                  size: 132,
-                ).animate().fadeIn(duration: 350.ms),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                "How will you use\nKFlex?",
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      height: 1.15,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // App Badge / Brand Icon
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1B2A4A),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x201B2A4A),
+                          blurRadius: 16,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
                     ),
-              ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.1, end: 0),
-              const SizedBox(height: 8),
-              Text(
-                'This decides what you can post and book. It only gets set once.',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-              ).animate().fadeIn(delay: 80.ms, duration: 350.ms),
-              const SizedBox(height: AppSpacing.xl),
-              _RoleCard(
-                icon: Icons.home_work_outlined,
-                title: "I'm a nursery",
-                subtitle: 'Post last-minute shifts and book qualified staff.',
-                color: AppColors.indigo,
-                loading: _loading,
-                onTap: () => _choose(UserRole.nursery),
-              ).animate().fadeIn(delay: 150.ms, duration: 350.ms).slideX(begin: -0.05, end: 0),
-              const SizedBox(height: AppSpacing.md),
-              _RoleCard(
-                icon: Icons.badge_outlined,
-                title: "I'm staff",
-                subtitle: 'Browse open shifts nearby and get booked fast.',
-                color: AppColors.coral,
-                loading: _loading,
-                onTap: () => _choose(UserRole.staff),
-              ).animate().fadeIn(delay: 220.ms, duration: 350.ms).slideX(begin: 0.05, end: 0),
-            ],
+                    child: const Icon(
+                      Icons.diversity_3_rounded,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                  ).animate().fadeIn(duration: 300.ms).scale(begin: const Offset(0.9, 0.9)),
+                  const SizedBox(height: 24),
+
+                  const Text(
+                    "Welcome to KFlex",
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2563EB),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "How will you be using\nthe platform?",
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                      height: 1.2,
+                      letterSpacing: -0.5,
+                    ),
+                  ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.08, end: 0),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Select your account type to continue. This configures your shifts, bookings, and compliance features.',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: Color(0xFF64748B),
+                      height: 1.45,
+                    ),
+                  ).animate().fadeIn(delay: 80.ms, duration: 350.ms),
+                  const SizedBox(height: 32),
+
+                  // Option 1: Nursery
+                  _RoleCard(
+                    icon: Icons.corporate_fare_rounded,
+                    title: "I'm a Nursery Manager",
+                    subtitle: 'Post last-minute nursery shifts, review verified practitioners, and manage timesheets.',
+                    accentColor: const Color(0xFF1B2A4A),
+                    loading: _loading,
+                    onTap: () => _choose(UserRole.nursery),
+                  ).animate().fadeIn(delay: 140.ms, duration: 350.ms).slideY(begin: 0.05, end: 0),
+                  const SizedBox(height: 16),
+
+                  // Option 2: Staff
+                  _RoleCard(
+                    icon: Icons.badge_rounded,
+                    title: "I'm a Childcare Practitioner",
+                    subtitle: 'Browse qualified nursery shifts nearby, complete EYFS training, and earn flexible pay.',
+                    accentColor: const Color(0xFF2563EB),
+                    loading: _loading,
+                    onTap: () => _choose(UserRole.staff),
+                  ).animate().fadeIn(delay: 200.ms, duration: 350.ms).slideY(begin: 0.05, end: 0),
+
+                  if (_loading) ...[
+                    const SizedBox(height: 28),
+                    const Center(
+                      child: SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Color(0xFF1B2A4A),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -99,7 +153,7 @@ class _RoleCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.color,
+    required this.accentColor,
     required this.onTap,
     required this.loading,
   });
@@ -107,55 +161,87 @@ class _RoleCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final Color color;
+  final Color accentColor;
   final VoidCallback onTap;
   final bool loading;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: loading ? null : onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              Container(
-                height: 52,
-                width: 52,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x080F172A),
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: loading ? null : onTap,
+          borderRadius: BorderRadius.circular(20),
+          hoverColor: const Color(0xFFF8FAFC),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: accentColor.withValues(alpha: 0.15)),
+                  ),
+                  child: Icon(icon, color: accentColor, size: 24),
                 ),
-                child: Icon(icon, color: color, size: 26),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-                    ),
-                  ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: Color(0xFF64748B),
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Icon(Icons.chevron_right_rounded, color: Theme.of(context).colorScheme.outline),
-            ],
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
+                    color: const Color(0xFF94A3B8),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+

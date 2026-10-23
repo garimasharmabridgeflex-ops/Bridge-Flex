@@ -9,21 +9,21 @@ import (
 )
 
 func main() {
-	target, err := url.Parse("https://europe-west2-kvision-503115.cloudfunctions.net")
+	cloudTarget, err := url.Parse("https://europe-west2-kvision-503115.cloudfunctions.net")
 	if err != nil {
 		log.Fatalf("invalid target URL: %v", err)
 	}
 
-	proxy := httputil.NewSingleHostReverseProxy(target)
-	proxy.Transport = &http.Transport{
+	cloudProxy := httputil.NewSingleHostReverseProxy(cloudTarget)
+	cloudProxy.Transport = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
-	originalDirector := proxy.Director
-	proxy.Director = func(req *http.Request) {
+	originalDirector := cloudProxy.Director
+	cloudProxy.Director = func(req *http.Request) {
 		originalDirector(req)
-		req.Host = target.Host
+		req.Host = cloudTarget.Host
 	}
-	proxy.ModifyResponse = func(resp *http.Response) error {
+	cloudProxy.ModifyResponse = func(resp *http.Response) error {
 		resp.Header.Set("Access-Control-Allow-Origin", "*")
 		resp.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		resp.Header.Set("Access-Control-Allow-Headers", "*")
@@ -38,11 +38,14 @@ func main() {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		proxy.ServeHTTP(w, r)
+
+		// Forward all requests directly to live GCP Cloud Functions with CORS headers
+		cloudProxy.ServeHTTP(w, r)
 	})
 
-	log.Println("CORS proxy listening on 0.0.0.0:8089 -> https://europe-west2-kvision-503115.cloudfunctions.net")
+	log.Println("CORS Proxy listening on 0.0.0.0:8089 (Forwarding 100% to live GCP Cloud Functions)")
 	if err := http.ListenAndServe("0.0.0.0:8089", handler); err != nil {
 		log.Fatalf("listen error: %v", err)
 	}
 }
+

@@ -18,20 +18,6 @@ final openShiftsProvider = FutureProvider.autoDispose<List<Shift>>((ref) {
   return ref.watch(shiftRepositoryProvider).fetchOpenShifts();
 });
 
-/// One `fetchPublicProfile` per unique nurseryId, cached per-uid by Riverpod
-/// — a shift list of N shifts across M unique nurseries makes M calls, not
-/// N. Backs the "Near me" filter (locationArea is the coarse geohash prefix
-/// already used everywhere else, ARCHITECTURE.md v2 §2 — a real distance/
-/// radius search is an open product question, §8 item 4; matching on that
-/// same prefix is a reasonable "same broad area" proxy without deciding it).
-final _nurseryLocationAreaProvider = FutureProvider.autoDispose
-    .family<String?, String>((ref, nurseryId) async {
-      final profile = await ref
-          .watch(profileRepositoryProvider)
-          .fetchPublicProfile(nurseryId);
-      return profile?.locationArea;
-    });
-
 final _ownLocationAreaProvider = FutureProvider.autoDispose<String?>((
   ref,
 ) async {
@@ -84,6 +70,7 @@ class BrowseShiftsScreen extends ConsumerStatefulWidget {
 class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
   final _searchController = TextEditingController();
   String _query = '';
+  bool _showSearch = false;
   bool _nearMeOnly = false;
   _DateFilter _dateFilter = _DateFilter.any;
   DateTime? _pickedDate;
@@ -92,18 +79,11 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
   bool _showFilters = false;
   String? _categoryFilter;
 
-  static const _categoryOptions = [
-    ('Babies (0-2)', Icons.child_care_rounded),
-    ('Toddlers (2-3)', Icons.emoji_people_rounded),
-    ('Preschool (3-5)', Icons.school_rounded),
-    ('Mixed ages', Icons.groups_rounded),
-  ];
-
   String _greeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning 👋';
-    if (hour < 17) return 'Good afternoon 👋';
-    return 'Good evening 👋';
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 
   @override
@@ -216,162 +196,225 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
     final firstName = profile?.name.trim().split(' ').firstOrNull ?? '';
 
     return Scaffold(
-      body: Column(
-        children: [
-          // ── Gradient hero: greeting + bell + search ──────────────────
-          Container(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.md,
-            ),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.indigo, AppColors.indigoDeep],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // ── Top Utility Header (Stitch Alexandria Pattern) ───────────
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF8FAFC),
+                border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 0.8)),
               ),
-              borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(AppRadius.lg),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: Colors.white.withValues(alpha: 0.18),
-                      backgroundImage: (profile?.photoUrl.isNotEmpty ?? false)
-                          ? NetworkImage(profile!.photoUrl)
-                          : null,
-                      child: (profile == null || profile.photoUrl.isEmpty)
-                          ? const Icon(
-                              Icons.person_outline_rounded,
-                              color: Colors.white,
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      // Left: Avatar with online badge
+                      Stack(
                         children: [
-                          Text(
-                            _greeting(),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.white70,
-                            ),
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundColor: const Color(0xFFE2E8F0),
+                            backgroundImage: (profile?.photoUrl.isNotEmpty ?? false)
+                                ? NetworkImage(profile!.photoUrl)
+                                : null,
+                            child: (profile == null || profile.photoUrl.isEmpty)
+                                ? const Icon(Icons.person_rounded, color: Color(0xFF1B2A4A))
+                                : null,
                           ),
-                          Text(
-                            firstName.isNotEmpty ? firstName : 'Open shifts',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 18,
-                              color: Colors.white,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Stack(
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.tune_rounded,
-                            color: _hasActiveFilters
-                                ? Colors.white
-                                : Colors.white70,
-                          ),
-                          tooltip: 'Filters & Sort',
-                          onPressed: () =>
-                              setState(() => _showFilters = !_showFilters),
-                        ),
-                        if (_hasActiveFilters)
                           Positioned(
-                            right: 8,
-                            top: 8,
+                            bottom: 0,
+                            right: 0,
                             child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: AppColors.coral,
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2563EB),
                                 shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
                               ),
                             ),
                           ),
-                      ],
-                    ),
-                    const NotificationIconButton(color: Colors.white70),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                TextField(
-                  controller: _searchController,
-                  onChanged: (v) =>
-                      setState(() => _query = v.trim().toLowerCase()),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white,
-                    hintText: 'Search shifts by title…',
-                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                    suffixIcon: _query.isEmpty
-                        ? null
-                        : IconButton(
-                            icon: const Icon(Icons.close_rounded, size: 18),
-                            onPressed: () => setState(() {
-                              _searchController.clear();
-                              _query = '';
-                            }),
+                        ],
+                      ),
+                      const SizedBox(width: 12),
+                      // Location & Greeting
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on_rounded, color: Color(0xFF2563EB), size: 14),
+                                const SizedBox(width: 3),
+                                Text(
+                                  ownAreaAsync.valueOrNull ?? 'Manchester, M1',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF64748B),
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              firstName.isNotEmpty ? '${_greeting()}, $firstName' : _greeting(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16,
+                                color: Color(0xFF0F172A),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Right action buttons: Search, Filters, Notifications
+                      Row(
+                        children: [
+                          _CircularHeaderAction(
+                            icon: Icons.search_rounded,
+                            isActive: _showSearch || _query.isNotEmpty,
+                            onTap: () => setState(() => _showSearch = !_showSearch),
                           ),
+                          const SizedBox(width: 8),
+                          _CircularHeaderAction(
+                            icon: Icons.tune_rounded,
+                            isActive: _hasActiveFilters,
+                            badgeColor: const Color(0xFF2563EB),
+                            onTap: () => setState(() => _showFilters = !_showFilters),
+                          ),
+                          const SizedBox(width: 8),
+                          const NotificationIconButton(color: Color(0xFF1B2A4A)),
+                        ],
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  if (_showSearch) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _searchController,
+                      autofocus: true,
+                      onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        hintText: 'Search shifts, rooms, nurseries…',
+                        hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                        prefixIcon: const Icon(Icons.search_rounded, size: 18, color: Color(0xFF64748B)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+                        ),
+                        suffixIcon: _query.isEmpty
+                            ? null
+                            : IconButton(
+                                icon: const Icon(Icons.close_rounded, size: 16),
+                                onPressed: () => setState(() {
+                                  _searchController.clear();
+                                  _query = '';
+                                }),
+                              ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
 
-          // ── Category quick filters ────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.xs,
-            ),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Category',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
+            // ── Quick Category Pills (Stitch Alexandria Pattern) ─────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  children: [
+                    _QuickPill(
+                      label: 'All Shifts',
+                      count: shiftsAsync.valueOrNull?.length,
+                      selected: _categoryFilter == null,
+                      onTap: () => setState(() => _categoryFilter = null),
+                    ),
+                    const SizedBox(width: 8),
+                    _QuickPill(
+                      label: 'Urgent Cover',
+                      dotColor: const Color(0xFF2563EB),
+                      selected: _categoryFilter == 'Urgent Cover',
+                      onTap: () => setState(() => _categoryFilter = _categoryFilter == 'Urgent Cover' ? null : 'Urgent Cover'),
+                    ),
+                    const SizedBox(width: 8),
+                    _QuickPill(
+                      label: 'Level 3 Qualified',
+                      selected: _categoryFilter == 'Level 3 Qualified',
+                      onTap: () => setState(() => _categoryFilter = _categoryFilter == 'Level 3 Qualified' ? null : 'Level 3 Qualified'),
+                    ),
+                    const SizedBox(width: 8),
+                    _QuickPill(
+                      label: 'Baby Room',
+                      selected: _categoryFilter == 'Baby Room',
+                      onTap: () => setState(() => _categoryFilter = _categoryFilter == 'Baby Room' ? null : 'Baby Room'),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
-            SizedBox(
-              height: 84,
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                scrollDirection: Axis.horizontal,
-                itemCount: _categoryOptions.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (context, i) {
-                  final (label, icon) = _categoryOptions[i];
-                  final selected = _categoryFilter == label;
-                  return _CategoryTile(
-                    label: label,
-                    icon: icon,
-                    selected: selected,
-                    onTap: () => setState(
-                      () => _categoryFilter = selected ? null : label,
-                    ),
-                  );
-                },
+
+            // ── Date Horizon Selector (Stitch Pattern) ────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Select Date',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1B2A4A),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => _pickDate(),
+                        child: const Text(
+                          'View Calendar',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF2563EB),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  _DateHorizonSelector(
+                    activeFilter: _dateFilter,
+                    pickedDate: _pickedDate,
+                    onSelect: (filter, date) => setState(() {
+                      _dateFilter = filter;
+                      _pickedDate = date;
+                    }),
+                  ),
+                ],
               ),
             ),
 
@@ -502,6 +545,7 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
             ),
           ],
         ),
+      ),
     );
   }
 }
@@ -724,78 +768,6 @@ class _FilterPanel extends StatelessWidget {
 
 // ─── Category tile ────────────────────────────────────────────────────────────
 
-class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final shortLabel = label.split(' ').first;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: SizedBox(
-        width: 72,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              height: 56,
-              width: 56,
-              decoration: BoxDecoration(
-                color: selected
-                    ? AppColors.indigo
-                    : AppColors.indigo.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                boxShadow: selected
-                    ? [
-                        BoxShadow(
-                          color: AppColors.indigo.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : null,
-                border: Border.all(
-                  color: selected
-                      ? AppColors.indigo
-                      : AppColors.indigo.withValues(alpha: 0.15),
-                ),
-              ),
-              child: Icon(
-                icon,
-                color: selected ? Colors.white : AppColors.indigo,
-                size: 26,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              shortLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                color: selected ? AppColors.indigo : scheme.onSurface,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _FilterSectionLabel extends StatelessWidget {
   const _FilterSectionLabel(this.text);
@@ -910,7 +882,7 @@ class _NearMeAwareCard extends ConsumerWidget {
   Widget _card(BuildContext context, String? area) {
     return ShiftCard(
           shift: shift,
-          trailingLabel: 'View →',
+          trailingLabel: 'Book Shift',
           onTap: () => context.push('/shifts/${shift.id}'),
         )
         .animate()
@@ -918,3 +890,246 @@ class _NearMeAwareCard extends ConsumerWidget {
         .slideY(begin: 0.05, end: 0, curve: Curves.easeOutCubic);
   }
 }
+
+// ─── Stitch Alexandria Utility Header Action Button ──────────────────────────
+
+class _CircularHeaderAction extends StatelessWidget {
+  const _CircularHeaderAction({
+    required this.icon,
+    required this.onTap,
+    this.isActive = false,
+    this.badgeColor,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool isActive;
+  final Color? badgeColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isActive ? const Color(0xFF1B2A4A) : const Color(0xFFE2E8F0),
+                width: isActive ? 1.2 : 1.0,
+              ),
+              boxShadow: const [
+                BoxShadow(color: Color(0x080F172A), blurRadius: 4, offset: Offset(0, 1)),
+              ],
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: isActive ? const Color(0xFF1B2A4A) : const Color(0xFF475569),
+            ),
+          ),
+          if (badgeColor != null && isActive)
+            Positioned(
+              top: 1,
+              right: 1,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: badgeColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Stitch Alexandria Quick Filter Pill ──────────────────────────────────────
+
+class _QuickPill extends StatelessWidget {
+  const _QuickPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.count,
+    this.dotColor,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final int? count;
+  final Color? dotColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF1B2A4A) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? const Color(0xFF1B2A4A) : const Color(0xFFE2E8F0),
+          ),
+          boxShadow: [
+            if (!selected)
+              const BoxShadow(color: Color(0x060F172A), blurRadius: 4, offset: Offset(0, 1)),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (dotColor != null) ...[
+              Container(
+                width: 6,
+                height: 6,
+                margin: const EdgeInsets.only(right: 6),
+                decoration: BoxDecoration(
+                  color: dotColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                color: selected ? Colors.white : const Color(0xFF334155),
+              ),
+            ),
+            if (count != null) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: selected ? Colors.white.withValues(alpha: 0.22) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  count.toString(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: selected ? Colors.white : const Color(0xFF64748B),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Stitch Alexandria Date Horizon Selector ──────────────────────────────────
+
+class _DateHorizonSelector extends StatelessWidget {
+  const _DateHorizonSelector({
+    required this.activeFilter,
+    required this.pickedDate,
+    required this.onSelect,
+  });
+
+  final _DateFilter activeFilter;
+  final DateTime? pickedDate;
+  final void Function(_DateFilter filter, DateTime? date) onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final days = List.generate(5, (i) {
+      final d = today.add(Duration(days: i));
+      final isToday = i == 0;
+      final dayName = isToday ? 'TODAY' : DateFormat('EEE').format(d).toUpperCase();
+      final dateNum = DateFormat('d MMM').format(d);
+      final isSelected = (activeFilter == _DateFilter.today && isToday) ||
+          (activeFilter == _DateFilter.pickDate &&
+              pickedDate != null &&
+              pickedDate!.year == d.year &&
+              pickedDate!.month == d.month &&
+              pickedDate!.day == d.day);
+
+      return (d, isToday, dayName, dateNum, isSelected);
+    });
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: days.map((item) {
+          final (d, isToday, dayName, dateNum, isSelected) = item;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: InkWell(
+              onTap: () {
+                if (isToday) {
+                  onSelect(activeFilter == _DateFilter.today ? _DateFilter.any : _DateFilter.today, null);
+                } else {
+                  onSelect(_DateFilter.pickDate, d);
+                }
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 68,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFF1B2A4A) : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected ? const Color(0xFF1B2A4A) : const Color(0xFFE2E8F0),
+                  ),
+                  boxShadow: const [
+                    BoxShadow(color: Color(0x060F172A), blurRadius: 4, offset: Offset(0, 1)),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      dayName,
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                        color: isSelected ? const Color(0xFFCBD5E1) : const Color(0xFF94A3B8),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      dateNum,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: isSelected ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+

@@ -621,3 +621,82 @@ type Timesheet struct {
 	CreatedAt               time.Time       `firestore:"createdAt" json:"createdAt"`
 	UpdatedAt               time.Time       `firestore:"updatedAt" json:"updatedAt"`
 }
+
+// PayrollProfile stores bank, NI and holiday pay eligibility for a practitioner (Phase 8).
+type PayrollProfile struct {
+	UID                           string    `firestore:"uid" json:"uid"`
+	BankAccountName               string    `firestore:"bankAccountName,omitempty" json:"bankAccountName,omitempty"`
+	BankAccountNumberMasked       string    `firestore:"bankAccountNumberMasked,omitempty" json:"bankAccountNumberMasked,omitempty"`
+	BankAccountNumberEnc          string    `firestore:"bankAccountNumberEnc,omitempty" json:"bankAccountNumberEnc,omitempty"`
+	BankSortCode                  string    `firestore:"bankSortCode,omitempty" json:"bankSortCode,omitempty"`
+	NationalInsuranceNumberEnc    string    `firestore:"nationalInsuranceNumberEnc,omitempty" json:"nationalInsuranceNumberEnc,omitempty"`
+	NationalInsuranceNumberMasked string    `firestore:"nationalInsuranceNumberMasked,omitempty" json:"nationalInsuranceNumberMasked,omitempty"`
+	EligibleForRolledUpHolidayPay bool      `firestore:"eligibleForRolledUpHolidayPay" json:"eligibleForRolledUpHolidayPay"`
+	UpdatedAt                     time.Time `firestore:"updatedAt" json:"updatedAt"`
+	UpdatedBy                     string    `firestore:"updatedBy" json:"updatedBy"`
+}
+
+// PayrollPeriodStatus represents the lifecycle of a payroll run (Phase 8).
+type PayrollPeriodStatus string
+
+const (
+	PayrollPeriodDraft     PayrollPeriodStatus = "draft"
+	PayrollPeriodApproved  PayrollPeriodStatus = "approved"
+	PayrollPeriodProcessed PayrollPeriodStatus = "processed"
+	PayrollPeriodPaid      PayrollPeriodStatus = "paid"
+)
+
+// PayrollPeriod records an aggregated pay period (e.g. weekly or monthly) (Phase 8).
+type PayrollPeriod struct {
+	ID                   string              `firestore:"-" json:"id"`
+	PeriodName           string              `firestore:"periodName" json:"periodName"`
+	StartDate            time.Time           `firestore:"startDate" json:"startDate"`
+	EndDate              time.Time           `firestore:"endDate" json:"endDate"`
+	Status               PayrollPeriodStatus `firestore:"status" json:"status"`
+	TotalPractitioners   int                 `firestore:"totalPractitioners" json:"totalPractitioners"`
+	TotalBillableMinutes int64               `firestore:"totalBillableMinutes" json:"totalBillableMinutes"`
+	TotalBasicPayPence   int64               `firestore:"totalBasicPayPence" json:"totalBasicPayPence"`
+	TotalHolidayPayPence int64               `firestore:"totalHolidayPayPence" json:"totalHolidayPayPence"`
+	TotalGrossPayPence   int64               `firestore:"totalGrossPayPence" json:"totalGrossPayPence"`
+	ProcessedAt          *time.Time          `firestore:"processedAt,omitempty" json:"processedAt,omitempty"`
+	PaidAt               *time.Time          `firestore:"paidAt,omitempty" json:"paidAt,omitempty"`
+	CreatedBy            string              `firestore:"createdBy" json:"createdBy"`
+	CreatedAt            time.Time           `firestore:"createdAt" json:"createdAt"`
+	UpdatedAt            time.Time           `firestore:"updatedAt" json:"updatedAt"`
+}
+
+// PayrollLine records one practitioner's aggregate earnings in a payroll period (Phase 8).
+type PayrollLine struct {
+	ID                            string     `firestore:"-" json:"id"`
+	PeriodID                      string     `firestore:"periodId" json:"periodId"`
+	PractitionerID                string     `firestore:"practitionerId" json:"practitionerId"`
+	PractitionerName              string     `firestore:"practitionerName" json:"practitionerName"`
+	NationalInsuranceNumberMasked string     `firestore:"nationalInsuranceNumberMasked,omitempty" json:"nationalInsuranceNumberMasked,omitempty"`
+	BankAccountName               string     `firestore:"bankAccountName,omitempty" json:"bankAccountName,omitempty"`
+	BankAccountNumberMasked       string     `firestore:"bankAccountNumberMasked,omitempty" json:"bankAccountNumberMasked,omitempty"`
+	BankSortCode                  string     `firestore:"bankSortCode,omitempty" json:"bankSortCode,omitempty"`
+	CompletedShiftCount           int        `firestore:"completedShiftCount" json:"completedShiftCount"`
+	TotalBillableMinutes          int64      `firestore:"totalBillableMinutes" json:"totalBillableMinutes"`
+	BasicPayPence                 int64      `firestore:"basicPayPence" json:"basicPayPence"`
+	HolidayPayPence               int64      `firestore:"holidayPayPence" json:"holidayPayPence"`
+	GrossPayPence                 int64      `firestore:"grossPayPence" json:"grossPayPence"`
+	EligibleForRolledUpHolidayPay bool       `firestore:"eligibleForRolledUpHolidayPay" json:"eligibleForRolledUpHolidayPay"`
+	TimesheetIDs                  []string   `firestore:"timesheetIds" json:"timesheetIds"`
+	Status                        string     `firestore:"status" json:"status"`
+	PayrollReference              string     `firestore:"payrollReference" json:"payrollReference"`
+	PaidAt                        *time.Time `firestore:"paidAt,omitempty" json:"paidAt,omitempty"`
+	CreatedAt                     time.Time  `firestore:"createdAt" json:"createdAt"`
+	UpdatedAt                     time.Time  `firestore:"updatedAt" json:"updatedAt"`
+}
+
+// Payslip links an admin-uploaded payslip PDF to a practitioner (Phase 8).
+type Payslip struct {
+	ID             string    `firestore:"-" json:"id"`
+	PractitionerID string    `firestore:"practitionerId" json:"practitionerId"`
+	PeriodID       string    `firestore:"periodId" json:"periodId"`
+	PeriodName     string    `firestore:"periodName" json:"periodName"`
+	StoragePath    string    `firestore:"storagePath" json:"storagePath"`
+	FileName       string    `firestore:"fileName" json:"fileName"`
+	UploadedBy     string    `firestore:"uploadedBy" json:"uploadedBy"`
+	UploadedAt     time.Time `firestore:"uploadedAt" json:"uploadedAt"`
+}

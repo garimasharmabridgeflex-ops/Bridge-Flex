@@ -266,4 +266,48 @@ describe("ratings / chat / documents / notifications / transactions rules", () =
     await assertFails(setDoc(doc(asStaffA, "timesheets/ts2"), { shiftId: "shift2" }));
     await assertFails(updateDoc(doc(asNurseryA, "timesheets/ts1"), { status: "approved" }));
   });
+
+  it("Phase 8: payrollProfiles and payrollPeriods are role-gated, clients cannot write directly", async () => {
+    await seed(testEnv, async (db) => {
+      await setDoc(doc(db, "payrollProfiles/staffA"), {
+        uid: "staffA",
+        eligibleForRolledUpHolidayPay: true,
+      });
+      await setDoc(doc(db, "payrollPeriods/p1"), {
+        periodName: "Week 44",
+        status: "draft",
+      });
+      await setDoc(doc(db, "payrollPeriods/p1/lines/lineA"), {
+        practitionerId: "staffA",
+        grossPayPence: 1700,
+      });
+      await setDoc(doc(db, "payslips/ps1"), {
+        practitionerId: "staffA",
+        periodName: "Week 44",
+      });
+    });
+
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    const asStaffB = testEnv.authenticatedContext("staffB").firestore();
+    const asFinance = testEnv.authenticatedContext("financeUser", { role: "finance" }).firestore();
+
+    // Staff can read own payroll profile
+    await assertSucceeds(getDoc(doc(asStaffA, "payrollProfiles/staffA")));
+    // Other staff cannot read staffA's payroll profile
+    await assertFails(getDoc(doc(asStaffB, "payrollProfiles/staffA")));
+    // Finance admin can read
+    await assertSucceeds(getDoc(doc(asFinance, "payrollProfiles/staffA")));
+
+    // Staff cannot write to payrollProfile directly
+    await assertFails(updateDoc(doc(asStaffA, "payrollProfiles/staffA"), { eligibleForRolledUpHolidayPay: false }));
+
+    // Staff cannot read general payrollPeriods, but can read own line
+    await assertFails(getDoc(doc(asStaffA, "payrollPeriods/p1")));
+    await assertSucceeds(getDoc(doc(asStaffA, "payrollPeriods/p1/lines/lineA")));
+    await assertSucceeds(getDoc(doc(asFinance, "payrollPeriods/p1")));
+
+    // Staff can read own payslip, not others
+    await assertSucceeds(getDoc(doc(asStaffA, "payslips/ps1")));
+    await assertFails(getDoc(doc(asStaffB, "payslips/ps1")));
+  });
 });

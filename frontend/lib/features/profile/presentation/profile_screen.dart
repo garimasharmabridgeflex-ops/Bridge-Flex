@@ -189,12 +189,18 @@ class ProfileScreen extends ConsumerWidget {
                         label: 'Manage Branches / Locations',
                         onTap: () => context.push('/profile/branches'),
                       ),
-                    if (profile.role == UserRole.staff)
+                    if (profile.role == UserRole.staff) ...[
+                      _ActionTile(
+                        icon: Icons.payments_outlined,
+                        label: 'Earnings & Payslips',
+                        onTap: () => context.push('/earnings'),
+                      ),
                       _ActionTile(
                         icon: Icons.description_outlined,
                         label: 'DBS Certificate & Compliance',
                         onTap: () => context.push('/profile/dbs'),
                       ),
+                    ],
                     _ActionTile(
                       icon: Icons.shield_outlined,
                       label: 'Settings, Legal & Support',

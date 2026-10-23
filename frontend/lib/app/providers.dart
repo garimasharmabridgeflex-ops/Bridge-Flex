@@ -17,6 +17,7 @@ import '../features/profile/domain/profile.dart';
 import '../features/ratings/data/ratings_repository.dart';
 import '../features/shifts/data/shift_repository.dart';
 import '../features/timesheets/data/timesheet_repository.dart';
+import '../features/payroll/data/payroll_repository.dart';
 import 'firestore_provider.dart';
 
 final firebaseAuthProvider = Provider<FirebaseAuth>((ref) => FirebaseAuth.instance);
@@ -38,6 +39,10 @@ final shiftRepositoryProvider = Provider<ShiftRepository>(
 
 final timesheetRepositoryProvider = Provider<TimesheetRepository>(
   (ref) => TimesheetRepository(ref.watch(apiClientProvider)),
+);
+
+final payrollRepositoryProvider = Provider<PayrollRepository>(
+  (ref) => PayrollRepository(ref.watch(apiClientProvider)),
 );
 
 final notificationsRepositoryProvider = Provider<NotificationsRepository>(

@@ -131,6 +131,17 @@ deploy_http DisputeTimesheet
 deploy_http AdminApproveTimesheet
 deploy_http EscalateUnresponsiveTimesheets
 
+# Practitioner Payroll (Phase 8)
+deploy_http GetPayrollProfile
+deploy_http UpdatePayrollProfile
+deploy_http GeneratePayrollPeriod
+deploy_http ListPayrollPeriods
+deploy_http GetPayrollPeriodDetail
+deploy_http ExportPayrollCSV
+deploy_http MarkPayrollPeriodPaid
+deploy_http GetPractitionerEarnings
+deploy_http LinkPayslip
+
 # Training modules (Bridge Flex Training & Onboarding Modules spec). The three
 # admin endpoints are gated by the admin custom claim inside the handler, same
 # as the admin dashboard functions above.

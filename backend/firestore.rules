@@ -218,6 +218,48 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------------
+    // payrollProfiles/{uid} (Phase 8)
+    // Bank details and holiday pay eligibility. Read allowed by owner practitioner
+    // or finance/superadmin. Direct client writes forbidden (managed by functions).
+    // ---------------------------------------------------------------------
+    match /payrollProfiles/{uid} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == uid ||
+        request.auth.token.role in ['admin', 'superadmin', 'finance']
+      );
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // payrollPeriods/{periodId} and lines (Phase 8)
+    // Server-managed payroll runs. Accessible by finance/superadmin; practitioners read own lines.
+    // ---------------------------------------------------------------------
+    match /payrollPeriods/{periodId} {
+      allow read: if isSignedIn() && request.auth.token.role in ['admin', 'superadmin', 'finance'];
+      allow write: if false;
+
+      match /lines/{lineId} {
+        allow read: if isSignedIn() && (
+          resource.data.practitionerId == request.auth.uid ||
+          request.auth.token.role in ['admin', 'superadmin', 'finance']
+        );
+        allow write: if false;
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // payslips/{payslipId} (Phase 8)
+    // Metadata linking admin-uploaded payslips to practitioners.
+    // ---------------------------------------------------------------------
+    match /payslips/{payslipId} {
+      allow read: if isSignedIn() && (
+        resource.data.practitionerId == request.auth.uid ||
+        request.auth.token.role in ['admin', 'superadmin', 'finance']
+      );
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------------
     // ratings/{ratingId} — create-only from clients, immutable after that.
     // ---------------------------------------------------------------------
     match /ratings/{ratingId} {

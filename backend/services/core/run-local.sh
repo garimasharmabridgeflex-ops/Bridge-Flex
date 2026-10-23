@@ -78,6 +78,15 @@ declare -A FUNCS=(
   [DisputeTimesheet]=8190
   [AdminApproveTimesheet]=8191
   [EscalateUnresponsiveTimesheets]=8192
+  [GetPayrollProfile]=8193
+  [UpdatePayrollProfile]=8194
+  [GeneratePayrollPeriod]=8195
+  [ListPayrollPeriods]=8196
+  [GetPayrollPeriodDetail]=8197
+  [ExportPayrollCSV]=8198
+  [MarkPayrollPeriodPaid]=8199
+  [GetPractitionerEarnings]=8201
+  [LinkPayslip]=8202
 )
 
 pids=()

@@ -93,7 +93,18 @@ enum ApiFunction {
   requestTimesheetCorrection(8189),
   disputeTimesheet(8190),
   adminApproveTimesheet(8191),
-  escalateUnresponsiveTimesheets(8192);
+  escalateUnresponsiveTimesheets(8192),
+
+  // Phase 8: Practitioner Payroll
+  getPayrollProfile(8193),
+  updatePayrollProfile(8194),
+  generatePayrollPeriod(8195),
+  listPayrollPeriods(8196),
+  getPayrollPeriodDetail(8197),
+  exportPayrollCSV(8198),
+  markPayrollPeriodPaid(8199),
+  getPractitionerEarnings(8201),
+  linkPayslip(8202);
 
   const ApiFunction(this.localPort);
   final int localPort;

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 )
 
 func main() {
@@ -24,11 +25,15 @@ func main() {
 		req.Host = cloudTarget.Host
 	}
 	cloudProxy.ModifyResponse = func(resp *http.Response) error {
-		// Clean up any existing CORS headers from upstream to avoid duplicates
-		resp.Header.Del("Access-Control-Allow-Origin")
-		resp.Header.Del("Access-Control-Allow-Methods")
-		resp.Header.Del("Access-Control-Allow-Headers")
-		resp.Header.Del("Access-Control-Allow-Credentials")
+		// Clean up any existing CORS headers from upstream (case-insensitive)
+		for k := range resp.Header {
+			if strings.EqualFold(k, "Access-Control-Allow-Origin") ||
+				strings.EqualFold(k, "Access-Control-Allow-Methods") ||
+				strings.EqualFold(k, "Access-Control-Allow-Headers") ||
+				strings.EqualFold(k, "Access-Control-Allow-Credentials") {
+				delete(resp.Header, k)
+			}
+		}
 
 		resp.Header.Set("Access-Control-Allow-Origin", "*")
 		resp.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")

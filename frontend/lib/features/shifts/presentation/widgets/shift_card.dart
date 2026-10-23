@@ -73,7 +73,14 @@ class ShiftCard extends ConsumerWidget {
 
     final totalMinutes = shift.duration.inMinutes;
     final payableMinutes = (totalMinutes - shift.unpaidBreakMinutes).clamp(0, totalMinutes);
-    final payableHours = (payableMinutes / 60.0).toStringAsFixed(1);
+    final hoursFormatted = payableMinutes % 60 == 0
+        ? '${payableMinutes ~/ 60}h'
+        : '${(payableMinutes / 60.0).toStringAsFixed(1)}h';
+    final breakFormatted = shift.unpaidBreakMinutes <= 0
+        ? 'No break'
+        : (shift.unpaidBreakMinutes % 60 == 0
+            ? '${shift.unpaidBreakMinutes ~/ 60}h break'
+            : '${shift.unpaidBreakMinutes}m break');
 
     final displayTitle = shift.title.isNotEmpty ? shift.title : 'Early Years Practitioner Cover';
     final String? ownerArea = (ownProfile?.city.isNotEmpty == true)
@@ -369,7 +376,7 @@ class ShiftCard extends ConsumerWidget {
                                           style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
                                         ),
                                         Text(
-                                          '${payableHours}h (${shift.unpaidBreakMinutes}m break)',
+                                          '$hoursFormatted ($breakFormatted)',
                                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -391,44 +398,50 @@ class ShiftCard extends ConsumerWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.baseline,
-                                textBaseline: TextBaseline.alphabetic,
-                                children: [
-                                  Text(
-                                    '£${shift.payRate.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                      fontSize: 19,
-                                      fontWeight: FontWeight.w900,
-                                      color: Color(0xFF0F172A),
-                                      letterSpacing: -0.3,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                                  textBaseline: TextBaseline.alphabetic,
+                                  children: [
+                                    Text(
+                                      '£${shift.payRate.toStringAsFixed(2)}',
+                                      style: const TextStyle(
+                                        fontSize: 19,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF0F172A),
+                                        letterSpacing: -0.3,
+                                      ),
                                     ),
-                                  ),
-                                  const Text(
-                                    ' /hr',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF64748B),
+                                    const Text(
+                                      ' /hr',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF64748B),
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '£${shift.effectiveGrossPay.toStringAsFixed(2)} Total est. (inc. holiday pay)',
-                                style: const TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF64748B),
+                                  ],
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 2),
+                                Text(
+                                  '£${shift.effectiveGrossPay.toStringAsFixed(2)} total est.',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               if (isPendingApproval)
                                 Container(

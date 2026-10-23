@@ -149,24 +149,31 @@ class NurserySubscriptionCard extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            !isApproved
-                                ? Icons.hourglass_top_rounded
-                                : (isExpired ? Icons.timer_off_outlined : Icons.timer_outlined),
-                            color: color,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            !isApproved
-                                ? '14-Day Free Trial'
-                                : (isExpired ? 'Free Trial Expired' : '14-Day Free Trial'),
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: color),
-                          ),
-                        ],
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Icon(
+                              !isApproved
+                                  ? Icons.hourglass_top_rounded
+                                  : (isExpired ? Icons.timer_off_outlined : Icons.timer_outlined),
+                              color: color,
+                              size: 19,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                !isApproved
+                                    ? '14-Day Free Trial'
+                                    : (isExpired ? 'Free Trial Expired' : '14-Day Free Trial'),
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: color),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
@@ -175,9 +182,9 @@ class NurserySubscriptionCard extends ConsumerWidget {
                         ),
                         child: Text(
                           !isApproved
-                              ? 'Activates on verification'
+                              ? 'Pending Approval'
                               : (isExpired ? 'Expired' : '${trial.daysRemaining} days left'),
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
+                          style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: color),
                         ),
                       ),
                     ],

@@ -229,11 +229,6 @@ class ProfileScreen extends ConsumerWidget {
                         label: 'DBS Certificate & Compliance',
                         onTap: () => context.push('/profile/dbs'),
                       ),
-                      _ActionTile(
-                        icon: Icons.card_membership_rounded,
-                        label: 'Membership & Subscriptions',
-                        onTap: () => context.push('/billing/subscriptions'),
-                      ),
                     ],
                     _ActionTile(
                       icon: Icons.shield_outlined,

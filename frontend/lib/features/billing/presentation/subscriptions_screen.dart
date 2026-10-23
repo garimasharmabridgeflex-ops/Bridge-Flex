@@ -23,14 +23,21 @@ class SubscriptionsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: true,
+        leading: Navigator.of(context).canPop()
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                tooltip: 'Back',
+                onPressed: () => context.pop(),
+              )
+            : null,
         backgroundColor: const Color(0xFFF8FAFC),
         elevation: 0,
         scrolledUnderElevation: 0,
         iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
-        title: const Text(
-          'Membership & Subscriptions',
-          style: TextStyle(
+        title: Text(
+          isNursery ? 'Membership & Subscriptions' : 'Practitioner Access',
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w800,
             color: Color(0xFF0F172A),
@@ -114,22 +121,22 @@ class SubscriptionsScreen extends ConsumerWidget {
                     'Practitioners do not pay platform subscriptions on Bridge-Flex. You keep your full hourly earnings plus accrued 12.07% statutory holiday pay.',
               ),
             ],
-            const SizedBox(height: 24),
+            if (isNursery) ...[
+              const SizedBox(height: 24),
 
-            // ── Section Header ─────────────────────────────────────────────
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'NURSERY MEMBERSHIP PLANS',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF64748B),
-                    letterSpacing: 0.8,
+              // ── Section Header ─────────────────────────────────────────────
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'NURSERY MEMBERSHIP PLANS',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF64748B),
+                      letterSpacing: 0.8,
+                    ),
                   ),
-                ),
-                if (isNursery)
                   InkWell(
                     onTap: () => context.push('/billing/invoices'),
                     child: const Text(
@@ -141,93 +148,141 @@ class SubscriptionsScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // ── Plans List ─────────────────────────────────────────────────
-            plansAsync.when(
-              loading: () => const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32),
-                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF1B2A4A)),
-                ),
-              ),
-              error: (_, __) => _FallbackPlansList(isNursery: isNursery),
-              data: (plans) {
-                if (plans.isEmpty) {
-                  return _FallbackPlansList(isNursery: isNursery);
-                }
-                return Column(
-                  children: plans.map((plan) {
-                    return _PlanCard(
-                      plan: plan,
-                      isNursery: isNursery,
-                    );
-                  }).toList(),
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-
-            // ── Invoicing & Settlement Explanation ─────────────────────────
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.receipt_long_outlined, color: Color(0xFF1B2A4A), size: 20),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text(
-                          'Invoicing & Payment Terms',
-                          style: TextStyle(
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'All plans and staffing hours are invoiced on weekly cycles. Official sequential VAT invoices (INV-YYYY-XXXX) are downloadable in PDF and settled via BACS / Bank Transfer directly to Bridge-Flex Client Escrow.',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: Color(0xFF475569),
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  OutlinedButton.icon(
-                    onPressed: () => context.push('/billing/invoices'),
-                    icon: const Icon(Icons.receipt_outlined, size: 16),
-                    label: const Text('View Nursery Invoices & Receipts', style: TextStyle(fontWeight: FontWeight.w700)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF1B2A4A),
-                      side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
                 ],
               ),
-            ),
+              const SizedBox(height: 12),
+
+              // ── Plans List ─────────────────────────────────────────────────
+              plansAsync.when(
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF1B2A4A)),
+                  ),
+                ),
+                error: (_, __) => _FallbackPlansList(isNursery: isNursery),
+                data: (plans) {
+                  if (plans.isEmpty) {
+                    return _FallbackPlansList(isNursery: isNursery);
+                  }
+                  return Column(
+                    children: plans.map((plan) {
+                      return _PlanCard(
+                        plan: plan,
+                        isNursery: isNursery,
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // ── Invoicing & Settlement Explanation ─────────────────────────
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.receipt_long_outlined, color: Color(0xFF1B2A4A), size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Invoicing & Payment Terms',
+                            style: TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'All plans and staffing hours are invoiced on weekly cycles. Official sequential VAT invoices (INV-YYYY-XXXX) are downloadable in PDF and settled via BACS / Bank Transfer directly to Bridge-Flex Client Escrow.',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: Color(0xFF475569),
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    OutlinedButton.icon(
+                      onPressed: () => context.push('/billing/invoices'),
+                      icon: const Icon(Icons.receipt_outlined, size: 16),
+                      label: const Text('View Nursery Invoices & Receipts', style: TextStyle(fontWeight: FontWeight.w700)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF1B2A4A),
+                        side: const BorderSide(color: Color(0xFFCBD5E1)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Practitioner Access Benefits',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _PractitionerBenefitRow(
+                      icon: Icons.money_off_rounded,
+                      title: 'Zero Platform Commission',
+                      desc: 'You keep 100% of your hourly rate with no hidden fees.',
+                    ),
+                    const SizedBox(height: 12),
+                    _PractitionerBenefitRow(
+                      icon: Icons.beach_access_rounded,
+                      title: '12.07% Statutory Holiday Pay',
+                      desc: 'Accrued automatically on every completed shift and clearly itemized on weekly payslips.',
+                    ),
+                    const SizedBox(height: 12),
+                    _PractitionerBenefitRow(
+                      icon: Icons.school_outlined,
+                      title: 'Complimentary EYFS Modules',
+                      desc: 'Unlimited free access to continuous professional development modules and certificates.',
+                    ),
+                    const SizedBox(height: 12),
+                    _PractitionerBenefitRow(
+                      icon: Icons.verified_user_outlined,
+                      title: 'Direct Weekly Payouts',
+                      desc: 'Settled directly via bank transfer every Friday upon nursery timesheet sign-off.',
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -551,6 +606,61 @@ class _FallbackPlansList extends StatelessWidget {
 
     return Column(
       children: defaultSeedPlans.map((p) => _PlanCard(plan: p, isNursery: isNursery)).toList(),
+    );
+  }
+}
+
+class _PractitionerBenefitRow extends StatelessWidget {
+  const _PractitionerBenefitRow({
+    required this.icon,
+    required this.title,
+    required this.desc,
+  });
+
+  final IconData icon;
+  final String title;
+  final String desc;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: const Color(0xFF10B981).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: const Color(0xFF059669), size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                desc,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF64748B),
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

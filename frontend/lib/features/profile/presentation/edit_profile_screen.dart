@@ -330,6 +330,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       }
     } on ApiException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update profile: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

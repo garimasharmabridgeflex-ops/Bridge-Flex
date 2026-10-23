@@ -188,6 +188,11 @@ class ProfileScreen extends ConsumerWidget {
                       const NurserySubscriptionCard(),
                       const SizedBox(height: AppSpacing.sm),
                       _ActionTile(
+                        icon: Icons.card_membership_rounded,
+                        label: 'Membership & Subscriptions',
+                        onTap: () => context.push('/billing/subscriptions'),
+                      ),
+                      _ActionTile(
                         icon: Icons.account_tree_outlined,
                         label: 'Manage Branches / Locations',
                         onTap: () => context.push('/profile/branches'),
@@ -199,6 +204,8 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                     ],
                     if (profile.role == UserRole.staff) ...[
+                      const _StaffMembershipCard(),
+                      const SizedBox(height: AppSpacing.sm),
                       _ActionTile(
                         icon: Icons.payments_outlined,
                         label: 'Earnings & Payslips',
@@ -208,6 +215,11 @@ class ProfileScreen extends ConsumerWidget {
                         icon: Icons.description_outlined,
                         label: 'DBS Certificate & Compliance',
                         onTap: () => context.push('/profile/dbs'),
+                      ),
+                      _ActionTile(
+                        icon: Icons.card_membership_rounded,
+                        label: 'Membership & Subscriptions',
+                        onTap: () => context.push('/billing/subscriptions'),
                       ),
                     ],
                     _ActionTile(
@@ -358,6 +370,59 @@ class _StatRow extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _StaffMembershipCard extends StatelessWidget {
+  const _StaffMembershipCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1B2A4A).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.verified_outlined, color: Color(0xFF1B2A4A), size: 22),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Practitioner Membership · Free Forever',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1B2A4A)),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'No fees for staff. Nurseries cover booking & subscription costs.',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  ),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: () => context.push('/billing/subscriptions'),
+              child: const Text('Plans', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF2563EB))),
+            ),
+          ],
+        ),
       ),
     );
   }

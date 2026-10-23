@@ -97,8 +97,33 @@ class NurserySubscriptionCard extends ConsumerWidget {
     final subAsync = ref.watch(nurserySubscriptionProvider);
 
     return subAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      loading: () => Container(
+        height: 64,
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1B2A4A)),
+        ),
+      ),
+      error: (_, __) => Card(
+        elevation: 0,
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+        child: ListTile(
+          leading: const Icon(Icons.card_membership_rounded, color: Color(0xFF2563EB)),
+          title: const Text('14-Day Free Trial Active', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          subtitle: const Text('Tap to view membership plans & pricing', style: TextStyle(fontSize: 12)),
+          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+          onTap: () => context.push('/billing/subscriptions'),
+        ),
+      ),
       data: (data) {
         final sub = data.subscription;
         final trial = data.trial;

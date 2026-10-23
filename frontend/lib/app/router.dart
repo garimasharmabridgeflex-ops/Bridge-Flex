@@ -25,6 +25,7 @@ import '../features/profile/presentation/edit_profile_screen.dart';
 import '../features/profile/presentation/public_profile_screen.dart';
 import '../features/payroll/presentation/practitioner_earnings_screen.dart';
 import '../features/billing/presentation/invoices_screen.dart';
+import '../features/billing/presentation/subscriptions_screen.dart';
 import '../features/shifts/presentation/post_shift_screen.dart';
 import '../features/shifts/presentation/shift_detail_screen.dart';
 import '../core/analytics/analytics_service.dart';
@@ -134,6 +135,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/profile/branches', builder: (_, __) => const BranchesScreen()),
       GoRoute(path: '/earnings', builder: (_, __) => const PractitionerEarningsScreen()),
       GoRoute(path: '/billing/invoices', builder: (_, __) => const InvoicesScreen()),
+      GoRoute(path: '/billing/subscriptions', builder: (_, __) => const SubscriptionsScreen()),
+      GoRoute(path: '/subscriptions', builder: (_, __) => const SubscriptionsScreen()),
       GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
       GoRoute(
         path: '/settings/change-password',

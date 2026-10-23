@@ -79,8 +79,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final onRoleSelect = state.matchedLocation == '/role-select';
       final onOnboarding = state.matchedLocation == '/onboarding';
 
+      if (profileState.isLoading) return onSplash ? null : '/splash';
+      if (profileState.hasError) return onSplash ? null : '/splash';
+
       if (profile == null) {
-        if (profileState.isLoading) return onSplash ? null : '/splash';
         return onRoleSelect ? null : '/role-select';
       }
 

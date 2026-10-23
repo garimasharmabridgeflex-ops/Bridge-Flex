@@ -125,6 +125,24 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
                     onTap: () => _choose(UserRole.staff),
                   ).animate().fadeIn(delay: 200.ms, duration: 350.ms).slideY(begin: 0.05, end: 0),
 
+                  const SizedBox(height: 28),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        await ref.read(firebaseAuthProvider).signOut();
+                      },
+                      icon: const Icon(Icons.logout_rounded, size: 16, color: Color(0xFF64748B)),
+                      label: const Text(
+                        'Sign out / Use another account',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ),
+                  ),
+
                   if (_loading) ...[
                     const SizedBox(height: 28),
                     const Center(

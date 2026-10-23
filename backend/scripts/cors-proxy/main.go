@@ -24,6 +24,12 @@ func main() {
 		req.Host = cloudTarget.Host
 	}
 	cloudProxy.ModifyResponse = func(resp *http.Response) error {
+		// Clean up any existing CORS headers from upstream to avoid duplicates
+		resp.Header.Del("Access-Control-Allow-Origin")
+		resp.Header.Del("Access-Control-Allow-Methods")
+		resp.Header.Del("Access-Control-Allow-Headers")
+		resp.Header.Del("Access-Control-Allow-Credentials")
+
 		resp.Header.Set("Access-Control-Allow-Origin", "*")
 		resp.Header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		resp.Header.Set("Access-Control-Allow-Headers", "*")
@@ -31,15 +37,15 @@ func main() {
 	}
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "*")
 		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "*")
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 
-		// Forward all requests directly to live GCP Cloud Functions with CORS headers
+		// Forward requests directly to live GCP Cloud Functions
 		cloudProxy.ServeHTTP(w, r)
 	})
 

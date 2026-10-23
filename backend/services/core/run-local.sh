@@ -87,6 +87,15 @@ declare -A FUNCS=(
   [MarkPayrollPeriodPaid]=8199
   [GetPractitionerEarnings]=8201
   [LinkPayslip]=8202
+  [GetPlans]=8203
+  [UpsertPlan]=8204
+  [GetNurserySubscription]=8205
+  [AssignNurseryPlan]=8206
+  [GenerateWeeklyInvoices]=8207
+  [ListInvoices]=8208
+  [GetInvoice]=8209
+  [MarkInvoicePaid]=8210
+  [CreateLedgerEntry]=8211
 )
 
 pids=()

@@ -114,6 +114,31 @@ func createShift(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Trial expiration gate (Phase 9 item 3).
+	trialGate := GetGateMode(ctx, db, "trialExpired")
+	if trialGate != GateOff {
+		subSnap, err := db.Collection("subscriptions").Doc(uid).Get(ctx)
+		if err == nil {
+			var sub NurserySubscription
+			if subSnap.DataTo(&sub) == nil {
+				now := time.Now().UTC()
+				if sub.Status == SubTrialing && sub.TrialEndDate != nil && now.After(*sub.TrialEndDate) {
+					if trialGate == GateEnforce {
+						httpjson.WriteError(w, http.StatusForbidden, "TRIAL_EXPIRED", "Your 14-day free trial has expired. Please select a plan or use Pay As You Go to post shifts.")
+						return
+					}
+					log.Printf("trialExpired gate: trial expired for nursery %s", uid)
+				} else if sub.Status == SubExpired {
+					if trialGate == GateEnforce {
+						httpjson.WriteError(w, http.StatusForbidden, "TRIAL_EXPIRED", "Your subscription has expired. Please select a plan to post shifts.")
+						return
+					}
+					log.Printf("trialExpired gate: subscription expired for nursery %s", uid)
+				}
+			}
+		}
+	}
+
 	capacity := req.Capacity
 	if capacity <= 0 {
 		capacity = 1

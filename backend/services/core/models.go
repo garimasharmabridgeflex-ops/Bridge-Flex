@@ -700,3 +700,106 @@ type Payslip struct {
 	UploadedBy     string    `firestore:"uploadedBy" json:"uploadedBy"`
 	UploadedAt     time.Time `firestore:"uploadedAt" json:"uploadedAt"`
 }
+
+// Plan defines a membership tier (Phase 9).
+type Plan struct {
+	ID               string    `firestore:"-" json:"id"`
+	Name             string    `firestore:"name" json:"name"`
+	Description      string    `firestore:"description" json:"description"`
+	PricePence       int64     `firestore:"pricePence" json:"pricePence"` // ex-VAT
+	BillingInterval  string    `firestore:"billingInterval" json:"billingInterval"` // "month", "per_booking", "none"
+	BookingAllowance int       `firestore:"bookingAllowance" json:"bookingAllowance"` // 0 = unlimited
+	TrialDays        int       `firestore:"trialDays" json:"trialDays"`
+	Active           bool      `firestore:"active" json:"active"`
+	Benefits         []string  `firestore:"benefits" json:"benefits"`
+	CreatedAt        time.Time `firestore:"createdAt" json:"createdAt"`
+	UpdatedAt        time.Time `firestore:"updatedAt" json:"updatedAt"`
+}
+
+// SubscriptionStatus tracks the lifecycle of a nursery membership (Phase 9).
+type SubscriptionStatus string
+
+const (
+	SubTrialing  SubscriptionStatus = "trialing"
+	SubActive    SubscriptionStatus = "active"
+	SubPastDue   SubscriptionStatus = "past_due"
+	SubCancelled SubscriptionStatus = "cancelled"
+	SubExpired   SubscriptionStatus = "expired"
+)
+
+// NurserySubscription records a nursery's membership plan and trial countdown (Phase 9).
+type NurserySubscription struct {
+	NurseryID          string             `firestore:"nurseryId" json:"nurseryId"`
+	PlanID             string             `firestore:"planId" json:"planId"`
+	PlanName           string             `firestore:"planName" json:"planName"`
+	Status             SubscriptionStatus `firestore:"status" json:"status"`
+	TrialStartDate     *time.Time         `firestore:"trialStartDate,omitempty" json:"trialStartDate,omitempty"`
+	TrialEndDate       *time.Time         `firestore:"trialEndDate,omitempty" json:"trialEndDate,omitempty"`
+	CurrentPeriodStart time.Time          `firestore:"currentPeriodStart" json:"currentPeriodStart"`
+	CurrentPeriodEnd   time.Time          `firestore:"currentPeriodEnd" json:"currentPeriodEnd"`
+	CancelAtPeriodEnd  bool               `firestore:"cancelAtPeriodEnd" json:"cancelAtPeriodEnd"`
+	CancelledAt        *time.Time         `firestore:"cancelledAt,omitempty" json:"cancelledAt,omitempty"`
+	PaymentMethod      string             `firestore:"paymentMethod" json:"paymentMethod"` // "bank_transfer", "payg"
+	AssignedByAdmin    bool               `firestore:"assignedByAdmin" json:"assignedByAdmin"`
+	UpdatedAt          time.Time          `firestore:"updatedAt" json:"updatedAt"`
+}
+
+// InvoiceStatus tracks whether an invoice is issued, settled or voided (Phase 9).
+type InvoiceStatus string
+
+const (
+	InvoiceDraft   InvoiceStatus = "draft"
+	InvoiceIssued  InvoiceStatus = "issued"
+	InvoicePaid    InvoiceStatus = "paid"
+	InvoiceVoid    InvoiceStatus = "void"
+	InvoiceOverdue InvoiceStatus = "overdue"
+)
+
+// InvoiceLineItem separates staffing charges from membership fees (Phase 9).
+type InvoiceLineItem struct {
+	Type        string  `firestore:"type" json:"type"` // "staffing", "subscription", "booking_fee", "adjustment"
+	Description string  `firestore:"description" json:"description"`
+	Quantity    float64 `firestore:"quantity" json:"quantity"`
+	UnitPence   int64   `firestore:"unitPence" json:"unitPence"`
+	TotalPence  int64   `firestore:"totalPence" json:"totalPence"`
+	TimesheetID string  `firestore:"timesheetId,omitempty" json:"timesheetId,omitempty"`
+	ShiftID     string  `firestore:"shiftId,omitempty" json:"shiftId,omitempty"`
+}
+
+// Invoice records sequential billing for nurseries with bank transfer settlement (Phase 9).
+type Invoice struct {
+	ID               string            `firestore:"-" json:"id"`
+	InvoiceNumber    string            `firestore:"invoiceNumber" json:"invoiceNumber"` // e.g. INV-2026-0001
+	NurseryID        string            `firestore:"nurseryId" json:"nurseryId"`
+	NurseryName      string            `firestore:"nurseryName" json:"nurseryName"`
+	BillingAddress   string            `firestore:"billingAddress" json:"billingAddress"`
+	BillingEmail     string            `firestore:"billingEmail" json:"billingEmail"`
+	CompanyNumber    string            `firestore:"companyNumber,omitempty" json:"companyNumber,omitempty"`
+	IssueDate        time.Time         `firestore:"issueDate" json:"issueDate"`
+	DueDate          time.Time         `firestore:"dueDate" json:"dueDate"`
+	Status           InvoiceStatus     `firestore:"status" json:"status"`
+	Type             string            `firestore:"type" json:"type"` // "weekly_staffing", "subscription", "combined"
+	LineItems        []InvoiceLineItem `firestore:"lineItems" json:"lineItems"`
+	SubtotalPence    int64             `firestore:"subtotalPence" json:"subtotalPence"` // ex-VAT
+	VATRate          float64           `firestore:"vatRate" json:"vatRate"`
+	VATPence         int64             `firestore:"vatPence" json:"vatPence"`
+	TotalPence       int64             `firestore:"totalPence" json:"totalPence"` // inc-VAT
+	PaymentMethod    string            `firestore:"paymentMethod" json:"paymentMethod"`
+	PaidAt           *time.Time        `firestore:"paidAt,omitempty" json:"paidAt,omitempty"`
+	PaymentReference string            `firestore:"paymentReference,omitempty" json:"paymentReference,omitempty"`
+	Notes            string            `firestore:"notes,omitempty" json:"notes,omitempty"`
+	CreatedAt        time.Time         `firestore:"createdAt" json:"createdAt"`
+	UpdatedAt        time.Time         `firestore:"updatedAt" json:"updatedAt"`
+}
+
+// LedgerEntry records discounts, credits and refunds without money movement (Phase 9).
+type LedgerEntry struct {
+	ID          string    `firestore:"-" json:"id"`
+	NurseryID   string    `firestore:"nurseryId" json:"nurseryId"`
+	Type        string    `firestore:"type" json:"type"` // "discount", "refund", "credit"
+	AmountPence int64     `firestore:"amountPence" json:"amountPence"`
+	Reason      string    `firestore:"reason" json:"reason"`
+	InvoiceID   string    `firestore:"invoiceId,omitempty" json:"invoiceId,omitempty"`
+	ActorUID    string    `firestore:"actorUid" json:"actorUid"`
+	CreatedAt   time.Time `firestore:"createdAt" json:"createdAt"`
+}

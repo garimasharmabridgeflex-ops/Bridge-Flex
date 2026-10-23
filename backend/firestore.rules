@@ -260,6 +260,47 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------------
+    // plans/{planId} (Phase 9)
+    // Subscription tiers and pricing. Readable by signed-in users; client write forbidden.
+    // ---------------------------------------------------------------------
+    match /plans/{planId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // subscriptions/{nurseryId} (Phase 9)
+    // Nursery membership status and 14-day free trial countdown.
+    // ---------------------------------------------------------------------
+    match /subscriptions/{nurseryId} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == nurseryId ||
+        request.auth.token.role in ['admin', 'superadmin', 'finance']
+      );
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // invoices/{invoiceId} (Phase 9)
+    // Sequential weekly staffing & subscription invoices.
+    // ---------------------------------------------------------------------
+    match /invoices/{invoiceId} {
+      allow read: if isSignedIn() && (
+        resource.data.nurseryId == request.auth.uid ||
+        request.auth.token.role in ['admin', 'superadmin', 'finance']
+      );
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // ledger/{entryId} (Phase 9)
+    // Append-only adjustments, discounts, and refunds.
+    // ---------------------------------------------------------------------
+    match /ledger/{entryId} {
+      allow read, write: if false;
+    }
+
+    // ---------------------------------------------------------------------
     // ratings/{ratingId} — create-only from clients, immutable after that.
     // ---------------------------------------------------------------------
     match /ratings/{ratingId} {

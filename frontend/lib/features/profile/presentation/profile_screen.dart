@@ -8,6 +8,7 @@ import '../../../app/theme.dart';
 import '../../../shared/services/uk_geocoding.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../settings/presentation/delete_account_flow.dart';
+import '../../billing/presentation/nursery_subscription_card.dart';
 import '../domain/profile.dart';
 import 'public_profile_screen.dart';
 
@@ -183,12 +184,20 @@ class ProfileScreen extends ConsumerWidget {
                       label: 'Edit Profile Information',
                       onTap: () => context.push('/profile/edit'),
                     ),
-                    if (profile.role == UserRole.nursery)
+                    if (profile.role == UserRole.nursery) ...[
+                      const NurserySubscriptionCard(),
+                      const SizedBox(height: AppSpacing.sm),
                       _ActionTile(
                         icon: Icons.account_tree_outlined,
                         label: 'Manage Branches / Locations',
                         onTap: () => context.push('/profile/branches'),
                       ),
+                      _ActionTile(
+                        icon: Icons.receipt_long_outlined,
+                        label: 'Invoices & Billing',
+                        onTap: () => context.push('/billing/invoices'),
+                      ),
+                    ],
                     if (profile.role == UserRole.staff) ...[
                       _ActionTile(
                         icon: Icons.payments_outlined,

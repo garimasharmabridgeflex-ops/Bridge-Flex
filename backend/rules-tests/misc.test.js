@@ -310,4 +310,54 @@ describe("ratings / chat / documents / notifications / transactions rules", () =
     await assertSucceeds(getDoc(doc(asStaffA, "payslips/ps1")));
     await assertFails(getDoc(doc(asStaffB, "payslips/ps1")));
   });
+
+  it("Phase 9: plans, subscriptions, and invoices rules enforce security and role access", async () => {
+    await seed(testEnv, async (db) => {
+      await setDoc(doc(db, "plans/standard"), { name: "Standard", pricePence: 19900, active: true });
+      await setDoc(doc(db, "subscriptions/nurseryA"), {
+        nurseryId: "nurseryA",
+        planId: "trial",
+        status: "trialing",
+      });
+      await setDoc(doc(db, "invoices/inv1"), {
+        invoiceNumber: "INV-2026-0001",
+        nurseryId: "nurseryA",
+        subtotalPence: 15600,
+        status: "issued",
+      });
+      await setDoc(doc(db, "ledger/led1"), {
+        nurseryId: "nurseryA",
+        type: "credit",
+        amountPence: 2000,
+      });
+    });
+
+    const asNurseryA = testEnv.authenticatedContext("nurseryA").firestore();
+    const asNurseryB = testEnv.authenticatedContext("nurseryB").firestore();
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    const asAdmin = testEnv.authenticatedContext("adminUser", { role: "admin" }).firestore();
+
+    // Any signed-in user can read plans
+    await assertSucceeds(getDoc(doc(asStaffA, "plans/standard")));
+    // Client cannot write to plans
+    await assertFails(setDoc(doc(asNurseryA, "plans/custom"), { name: "Hack" }));
+
+    // Nursery can read own subscription, not other nurseries
+    await assertSucceeds(getDoc(doc(asNurseryA, "subscriptions/nurseryA")));
+    await assertFails(getDoc(doc(asNurseryB, "subscriptions/nurseryA")));
+    await assertSucceeds(getDoc(doc(asAdmin, "subscriptions/nurseryA")));
+    // Client cannot write to subscriptions
+    await assertFails(updateDoc(doc(asNurseryA, "subscriptions/nurseryA"), { status: "active" }));
+
+    // Nursery can read own invoices, not other nurseries
+    await assertSucceeds(getDoc(doc(asNurseryA, "invoices/inv1")));
+    await assertFails(getDoc(doc(asNurseryB, "invoices/inv1")));
+    await assertSucceeds(getDoc(doc(asAdmin, "invoices/inv1")));
+    // Client cannot write to invoices
+    await assertFails(updateDoc(doc(asNurseryA, "invoices/inv1"), { status: "paid" }));
+
+    // Ledger is deny-all for clients
+    await assertFails(getDoc(doc(asNurseryA, "ledger/led1")));
+    await assertFails(setDoc(doc(asNurseryA, "ledger/led2"), { amountPence: 100 }));
+  });
 });

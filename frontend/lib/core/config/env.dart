@@ -104,7 +104,18 @@ enum ApiFunction {
   exportPayrollCSV(8198),
   markPayrollPeriodPaid(8199),
   getPractitionerEarnings(8201),
-  linkPayslip(8202);
+  linkPayslip(8202),
+
+  // Phase 9: Subscriptions, Invoicing and Ledger without Stripe
+  getPlans(8203),
+  upsertPlan(8204),
+  getNurserySubscription(8205),
+  assignNurseryPlan(8206),
+  generateWeeklyInvoices(8207),
+  listInvoices(8208),
+  getInvoice(8209),
+  markInvoicePaid(8210),
+  createLedgerEntry(8211);
 
   const ApiFunction(this.localPort);
   final int localPort;

@@ -142,6 +142,17 @@ deploy_http MarkPayrollPeriodPaid
 deploy_http GetPractitionerEarnings
 deploy_http LinkPayslip
 
+# Subscriptions, Invoicing and Ledger without Stripe (Phase 9)
+deploy_http GetPlans
+deploy_http UpsertPlan
+deploy_http GetNurserySubscription
+deploy_http AssignNurseryPlan
+deploy_http GenerateWeeklyInvoices
+deploy_http ListInvoices
+deploy_http GetInvoice
+deploy_http MarkInvoicePaid
+deploy_http CreateLedgerEntry
+
 # Training modules (Bridge Flex Training & Onboarding Modules spec). The three
 # admin endpoints are gated by the admin custom claim inside the handler, same
 # as the admin dashboard functions above.

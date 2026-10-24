@@ -13,11 +13,11 @@ class DbsBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (color, label, icon) = switch (status) {
-      DbsStatus.verified => (AppColors.mint, 'DBS verified', Icons.verified_rounded),
-      DbsStatus.pending => (AppColors.amber, 'DBS pending', Icons.hourglass_top_rounded),
-      DbsStatus.unverified => (Colors.grey, 'DBS unverified', Icons.gpp_maybe_outlined),
+      DbsStatus.verified => (AppColors.mint, 'DBS Checked by K Flex', Icons.verified_rounded),
+      DbsStatus.pending => (AppColors.amber, 'Pending Verification', Icons.hourglass_top_rounded),
+      DbsStatus.unverified => (Colors.grey, 'Unverified', Icons.gpp_maybe_outlined),
     };
-    return _Pill(color: color, label: compact ? label.split(' ').last : label, icon: icon);
+    return _Pill(color: color, label: compact ? (status == DbsStatus.verified ? 'DBS Checked' : label) : label, icon: icon);
   }
 }
 

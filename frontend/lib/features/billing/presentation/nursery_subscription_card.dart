@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../core/constants/app_colors.dart';
@@ -198,18 +199,25 @@ class NurserySubscriptionCard extends ConsumerWidget {
                             : 'Explore available practitioners and post shifts. Staffing hours worked are billed separately at the standard rate.'),
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
+                  if (isApproved && !isExpired) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Trial Period: ${sub.trialStartDate != null ? DateFormat('d MMM yyyy').format(sub.trialStartDate!) : 'Active'} → ${sub.trialEndDate != null ? DateFormat('d MMM yyyy').format(sub.trialEndDate!) : '${trial.daysRemaining} days left'}',
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: FilledButton(
-                          onPressed: () => _showUpgradeSheet(context, ref),
+                          onPressed: () => context.push('/billing/subscriptions'),
                           style: FilledButton.styleFrom(
                             backgroundColor: color,
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: const Text('Choose Plan', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                          child: const Text('Subscription Options & Upgrade', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
                         ),
                       ),
                       const SizedBox(width: 8),

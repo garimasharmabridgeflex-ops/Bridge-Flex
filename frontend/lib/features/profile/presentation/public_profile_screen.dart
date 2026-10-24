@@ -424,8 +424,8 @@ class StaffDetails extends StatelessWidget {
                 avatar: const Icon(Icons.verified_user_rounded, color: AppColors.mint, size: 18),
                 label: Text(
                   profile.dbsExpiryDate != null
-                      ? 'DBS Verified by KFlex · expires ${profile.dbsExpiryDate!.day}/${profile.dbsExpiryDate!.month}/${profile.dbsExpiryDate!.year}'
-                      : 'DBS Verified by KFlex',
+                      ? 'DBS Checked by K Flex · expires ${profile.dbsExpiryDate!.day}/${profile.dbsExpiryDate!.month}/${profile.dbsExpiryDate!.year}'
+                      : 'DBS Checked by K Flex',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               )

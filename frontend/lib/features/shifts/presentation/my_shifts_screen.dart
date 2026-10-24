@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/providers.dart';
 import '../../../app/theme.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../billing/presentation/nursery_subscription_card.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../../shared/widgets/shimmer_box.dart';
 import '../../profile/domain/profile.dart';
@@ -104,6 +105,11 @@ class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
                 ],
               ),
             ),
+            if (isNursery)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 2),
+                child: NurserySubscriptionCard(),
+              ),
             const SizedBox(height: 10),
 
             // ── Modern Tab Selector ────────────────────────────────────────

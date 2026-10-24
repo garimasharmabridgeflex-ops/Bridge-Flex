@@ -1014,7 +1014,7 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                             icon: const Icon(Icons.arrow_forward_rounded, size: 15),
                             label: const Text('Complete Training Courses', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2563EB),
+                              backgroundColor: const Color(0xFF1B2A4A),
                               foregroundColor: Colors.white,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -1148,7 +1148,7 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                       icon: const Icon(Icons.edit_rounded, size: 18),
                       label: const Text('Edit shift details'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB),
+                        backgroundColor: const Color(0xFF1B2A4A),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

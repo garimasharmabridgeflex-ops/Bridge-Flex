@@ -168,3 +168,8 @@ final isAdminProvider = FutureProvider<bool>((ref) async {
     return false;
   }
 });
+
+/// Allows an administrator to preview the client marketplace (shifts, nursery, staff)
+/// without being force-redirected back to /admin.
+final adminMarketplacePreviewProvider = StateProvider<bool>((ref) => false);
+

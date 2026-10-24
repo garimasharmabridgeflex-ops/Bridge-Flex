@@ -42,7 +42,7 @@ class _KFlexAppState extends ConsumerState<KFlexApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.light,
       routerConfig: router,
       builder: (context, child) => InAppNotificationOverlay(
         child: child ?? const SizedBox.shrink(),

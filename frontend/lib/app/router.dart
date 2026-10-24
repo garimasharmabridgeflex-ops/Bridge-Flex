@@ -69,8 +69,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       // normal nursery/staff role-select and onboarding gate entirely —
       // they have no marketplace role at all, just the review queue.
       final isAdminState = ref.read(isAdminProvider);
+      final adminPreview = ref.read(adminMarketplacePreviewProvider);
       final onAdmin = state.matchedLocation.startsWith('/admin');
-      if (isAdminState.valueOrNull == true) {
+      if (isAdminState.valueOrNull == true && !adminPreview) {
         return onAdmin ? null : '/admin';
       }
       if (!isAdminState.hasValue) return onSplash ? null : '/splash';

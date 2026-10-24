@@ -38,7 +38,7 @@ class AdminReviewScreen extends ConsumerWidget {
       length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Admin'),
+          title: const Text('Admin Console'),
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Overview'),
@@ -48,11 +48,25 @@ class AdminReviewScreen extends ConsumerWidget {
             ],
           ),
           actions: [
+            OutlinedButton.icon(
+              icon: const Icon(Icons.visibility_outlined, size: 16),
+              label: const Text('Preview App', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                side: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              onPressed: () {
+                ref.read(adminMarketplacePreviewProvider.notifier).state = true;
+                context.go('/browse');
+              },
+            ),
+            const SizedBox(width: 8),
             IconButton(
               icon: const Icon(Icons.logout_rounded),
               tooltip: 'Sign out',
               onPressed: () => ref.read(authRepositoryProvider).signOut(),
             ),
+            const SizedBox(width: 8),
           ],
         ),
         body: const TabBarView(

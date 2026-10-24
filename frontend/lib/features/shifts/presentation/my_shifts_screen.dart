@@ -249,7 +249,8 @@ class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
                                       icon: const Icon(Icons.add_rounded),
                                       label: const Text('Post Shift Now'),
                                       style: FilledButton.styleFrom(
-                                        backgroundColor: const Color(0xFF2563EB),
+                                        backgroundColor: const Color(0xFF1B2A4A),
+                                        foregroundColor: Colors.white,
                                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                       ),

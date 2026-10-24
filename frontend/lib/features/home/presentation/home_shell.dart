@@ -83,17 +83,66 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final currentIndex = ref.watch(homeShellTabIndexProvider);
     final activeIndex = currentIndex >= tabs.length ? 0 : currentIndex;
 
+    final isAdminPreview = ref.watch(adminMarketplacePreviewProvider);
+
     return Scaffold(
       body: SafeArea(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          transitionBuilder: (child, animation) => FadeTransition(
-            opacity: animation,
-            child: child,
-          ),
-          child: KeyedSubtree(key: ValueKey(activeIndex), child: tabs[activeIndex]),
+        child: Column(
+          children: [
+            if (isAdminPreview)
+              Container(
+                color: const Color(0xFF1B2A4A),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.admin_panel_settings_outlined, color: Colors.white, size: 18),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Admin Preview Mode (Marketplace View)',
+                        style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () {
+                        ref.read(adminMarketplacePreviewProvider.notifier).state = false;
+                        context.go('/admin');
+                      },
+                      child: const Text('Back to Admin', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 16),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Sign out',
+                      onPressed: () {
+                        ref.read(adminMarketplacePreviewProvider.notifier).state = false;
+                        ref.read(authRepositoryProvider).signOut();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: child,
+                ),
+                child: KeyedSubtree(key: ValueKey(activeIndex), child: tabs[activeIndex]),
+              ),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: FloatingNavBar(

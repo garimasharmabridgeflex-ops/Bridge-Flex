@@ -224,7 +224,8 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
                       child: FilledButton(
                         onPressed: onAction,
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF2563EB),
+                          backgroundColor: const Color(0xFF1B2A4A),
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),

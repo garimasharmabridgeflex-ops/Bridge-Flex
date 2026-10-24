@@ -527,7 +527,7 @@ class _PlanCard extends StatelessWidget {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: isPremium ? const Color(0xFF2563EB) : const Color(0xFF1B2A4A),
+                backgroundColor: const Color(0xFF1B2A4A),
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 12),

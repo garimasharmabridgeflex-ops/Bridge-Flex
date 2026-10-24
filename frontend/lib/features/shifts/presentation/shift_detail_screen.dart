@@ -277,7 +277,11 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
               trainingOverview.totalCount > 0 &&
               !trainingOverview.allComplete;
           final isDbsVerified = profile?.dbsStatus == DbsStatus.verified;
-          final isEligible = !hasIncompleteCourses && isDbsVerified;
+          final isRightToWorkVerified = profile?.rightToWorkVerified == true;
+          final isFirstAidVerified = (profile?.skills.any((s) => s.toLowerCase().contains('first aid')) ?? false) ||
+              (profile?.qualifications.any((q) => q.toLowerCase().contains('first aid')) ?? false);
+          final isQualPassed = profile != null && profile.qualificationLevel != QualificationLevel.none;
+          final isEligible = !hasIncompleteCourses && isDbsVerified && isRightToWorkVerified;
 
           final canAccept = !isOwner &&
               !alreadyAccepted &&
@@ -297,6 +301,11 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
           final payableHours = (payableMinutes / 60.0).toStringAsFixed(1);
           final dateStr = DateFormat('EEEE, d MMMM yyyy').format(shift.startTime);
           final timeStr = '${DateFormat('HH:mm').format(shift.startTime)} – ${DateFormat('HH:mm').format(shift.endTime)}';
+          final breakDisplay = shift.unpaidBreakMinutes > 0
+              ? (shift.unpaidBreakMinutes % 60 == 0
+                  ? '${shift.unpaidBreakMinutes ~/ 60}h unpaid break'
+                  : '${shift.unpaidBreakMinutes}m unpaid break')
+              : 'No break (fully paid)';
 
           final nurseryProfile = isOwner
               ? null
@@ -655,7 +664,7 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              '$timeStr • ${shift.unpaidBreakMinutes}m unpaid break',
+                              '$timeStr • $breakDisplay',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Color(0xFF64748B),
@@ -770,7 +779,7 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                             label: shift.requiredQualification.isNotEmpty
                                 ? shift.requiredQualification
                                 : 'Level 3 Early Years',
-                            isPassed: true,
+                            isPassed: isQualPassed,
                           ),
                           _CompliancePill(
                             label: 'Enhanced DBS Active',
@@ -778,15 +787,15 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                           ),
                           _CompliancePill(
                             label: 'Paediatric 1st Aid',
-                            isPassed: true,
+                            isPassed: isFirstAidVerified,
                           ),
                           _CompliancePill(
                             label: 'Right to Work UK',
-                            isPassed: true,
+                            isPassed: isRightToWorkVerified,
                           ),
                           _CompliancePill(
                             label: hasIncompleteCourses
-                                ? 'Courses (${trainingOverview.completedCount}/${trainingOverview.totalCount})'
+                                ? 'Courses (${trainingOverview!.completedCount}/${trainingOverview.totalCount})'
                                 : 'Training Complete',
                             isPassed: !hasIncompleteCourses,
                           ),
@@ -1022,7 +1031,7 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                       loading: false,
                       onPressed: null,
                     ),
-                  ] else if (!isDbsVerified) ...[
+                  ] else if (!isDbsVerified || !isRightToWorkVerified) ...[
                     Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(14),
@@ -1033,14 +1042,14 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Icon(Icons.verified_user_outlined, color: Color(0xFFD97706), size: 18),
-                          SizedBox(width: 8),
+                        children: [
+                          const Icon(Icons.verified_user_outlined, color: Color(0xFFD97706), size: 18),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
+                                const Text(
                                   'Vetting Verification Pending',
                                   style: TextStyle(
                                     fontSize: 13.5,
@@ -1048,10 +1057,14 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                                     color: Color(0xFF92400E),
                                   ),
                                 ),
-                                SizedBox(height: 4),
+                                const SizedBox(height: 4),
                                 Text(
-                                  'Your Enhanced DBS and identity documents must be approved by the admin team before you can apply for shifts.',
-                                  style: TextStyle(
+                                  !isDbsVerified && !isRightToWorkVerified
+                                      ? 'Your Enhanced DBS certificate and Right to Work documents must be approved before you can apply for shifts.'
+                                      : (!isDbsVerified
+                                          ? 'Your Enhanced DBS certificate must be approved before you can apply for shifts.'
+                                          : 'Your Right to Work verification must be approved before you can apply for shifts.'),
+                                  style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFFB45309),
                                     height: 1.4,
@@ -1507,6 +1520,8 @@ class _EditShiftSheetState extends ConsumerState<_EditShiftSheet> {
   late TimeOfDay _startTime;
   late TimeOfDay _endTime;
   late String _ageGroup;
+  late int _unpaidBreakMinutes;
+  late String _requiredQualification;
   bool _saving = false;
 
   @override
@@ -1524,6 +1539,8 @@ class _EditShiftSheetState extends ConsumerState<_EditShiftSheet> {
     _startTime = TimeOfDay.fromDateTime(widget.shift.startTime);
     _endTime = TimeOfDay.fromDateTime(widget.shift.endTime);
     _ageGroup = widget.shift.ageGroup.isNotEmpty ? widget.shift.ageGroup : 'Toddlers (2-3 yrs)';
+    _unpaidBreakMinutes = widget.shift.unpaidBreakMinutes;
+    _requiredQualification = widget.shift.requiredQualification;
   }
 
   @override
@@ -1615,6 +1632,8 @@ class _EditShiftSheetState extends ConsumerState<_EditShiftSheet> {
             ageGroup: _ageGroup,
             numberOfChildren: numChildren,
             description: _descriptionController.text.trim(),
+            unpaidBreakMinutes: _unpaidBreakMinutes,
+            requiredQualification: _requiredQualification,
           );
 
       ref.invalidate(shiftDetailProvider(widget.shift.id));
@@ -1848,6 +1867,56 @@ class _EditShiftSheetState extends ConsumerState<_EditShiftSheet> {
                       },
                     ),
                     const SizedBox(height: 14),
+                    // Unpaid Break Dropdown
+                    DropdownButtonFormField<int>(
+                      value: [0, 15, 30, 45, 60].contains(_unpaidBreakMinutes) ? _unpaidBreakMinutes : 0,
+                      decoration: const InputDecoration(
+                        labelText: 'Unpaid Break Time',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.coffee_outlined),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 0, child: Text('No break (fully paid)')),
+                        DropdownMenuItem(value: 15, child: Text('15 minutes unpaid')),
+                        DropdownMenuItem(value: 30, child: Text('30 minutes unpaid')),
+                        DropdownMenuItem(value: 45, child: Text('45 minutes unpaid')),
+                        DropdownMenuItem(value: 60, child: Text('1 hour unpaid')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setState(() => _unpaidBreakMinutes = val);
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    // Minimum Qualification Required
+                    DropdownButtonFormField<String>(
+                      value: [
+                        '',
+                        'unqualified',
+                        'level_2',
+                        'level_3',
+                        'level_4_plus',
+                        'eyts_qts',
+                      ].contains(_requiredQualification)
+                          ? _requiredQualification
+                          : '',
+                      decoration: const InputDecoration(
+                        labelText: 'Required Qualification',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.school_outlined),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: '', child: Text('Any / No Minimum')),
+                        DropdownMenuItem(value: 'unqualified', child: Text('Unqualified / Nursery Assistant')),
+                        DropdownMenuItem(value: 'level_2', child: Text('Level 2 Early Years Practitioner')),
+                        DropdownMenuItem(value: 'level_3', child: Text('Level 3 Early Years Educator')),
+                        DropdownMenuItem(value: 'level_4_plus', child: Text('Level 4+ / Deputy / Room Leader')),
+                        DropdownMenuItem(value: 'eyts_qts', child: Text('EYTS / QTS Qualified Teacher')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setState(() => _requiredQualification = val);
+                      },
+                    ),
+                    const SizedBox(height: 14),
                     // Additional Details / Notes
                     TextFormField(
                       controller: _descriptionController,
@@ -1870,7 +1939,7 @@ class _EditShiftSheetState extends ConsumerState<_EditShiftSheet> {
               child: FilledButton(
                 onPressed: _saving ? null : _save,
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
+                  backgroundColor: const Color(0xFF1B2A4A),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: _saving

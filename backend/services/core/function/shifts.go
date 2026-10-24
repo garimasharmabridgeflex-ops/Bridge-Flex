@@ -233,6 +233,9 @@ type updateShiftRequest struct {
 	NumberOfChildren *int64    `json:"numberOfChildren,omitempty"`
 	ExpectedDuties   *[]string `json:"expectedDuties,omitempty"`
 	Requirements     *[]string `json:"requirements,omitempty"`
+	UnpaidBreakMinutes    *int64  `json:"unpaidBreakMinutes,omitempty"`
+	RequiredQualification *string `json:"requiredQualification,omitempty"`
+	Description           *string `json:"description,omitempty"`
 }
 
 // updateShift — POST /updateShift. Nursery may only edit their own shift's
@@ -312,6 +315,15 @@ func updateShift(w http.ResponseWriter, r *http.Request) {
 		}
 		if req.Requirements != nil {
 			updates = append(updates, firestore.Update{Path: "requirements", Value: *req.Requirements})
+		}
+		if req.Description != nil {
+			updates = append(updates, firestore.Update{Path: "description", Value: *req.Description})
+		}
+		if req.UnpaidBreakMinutes != nil {
+			updates = append(updates, firestore.Update{Path: "unpaidBreakMinutes", Value: *req.UnpaidBreakMinutes})
+		}
+		if req.RequiredQualification != nil {
+			updates = append(updates, firestore.Update{Path: "requiredQualification", Value: QualificationLevel(*req.RequiredQualification)})
 		}
 		if len(updates) == 0 {
 			return nil

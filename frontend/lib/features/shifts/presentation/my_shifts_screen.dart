@@ -133,13 +133,12 @@ class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
                       selected: _selectedTab == _ShiftTab.cancelled,
                       onTap: () => setState(() => _selectedTab = _ShiftTab.cancelled),
                     ),
-                    if (!isNursery)
-                      _ShiftTabTile(
-                        label: 'Saved',
-                        icon: Icons.bookmark_rounded,
-                        selected: _selectedTab == _ShiftTab.saved,
-                        onTap: () => setState(() => _selectedTab = _ShiftTab.saved),
-                      ),
+                    _ShiftTabTile(
+                      label: 'Saved',
+                      icon: Icons.bookmark_rounded,
+                      selected: _selectedTab == _ShiftTab.saved,
+                      onTap: () => setState(() => _selectedTab = _ShiftTab.saved),
+                    ),
                   ],
                 ),
               ),

@@ -69,7 +69,6 @@ class ShiftCard extends ConsumerWidget {
 
     final startFmt = DateFormat('HH:mm').format(shift.startTime);
     final endFmt = DateFormat('HH:mm').format(shift.endTime);
-    final dateFmt = DateFormat('EEE, d MMM').format(shift.startTime);
 
     final totalMinutes = shift.duration.inMinutes;
     final payableMinutes = (totalMinutes - shift.unpaidBreakMinutes).clamp(0, totalMinutes);
@@ -94,10 +93,11 @@ class ShiftCard extends ConsumerWidget {
     final settingName = (shift.nurseryName?.isNotEmpty ?? false)
         ? shift.nurseryName!
         : (isOwner ? ownProfile?.name : nurseryProfile?.name) ?? '';
-    final nurseryArea = settingName.isNotEmpty && rawArea != 'Early Years Setting' && !rawArea.contains(settingName)
-        ? '$settingName • $rawArea'
-        : (settingName.isNotEmpty ? settingName : rawArea);
-    final roomName = shift.room.isNotEmpty ? shift.room : 'EYFS Room';
+    final branchText = shift.branchName.trim().isNotEmpty ? ' • ${shift.branchName.trim()}' : '';
+    final settingDisplay = settingName.isNotEmpty ? '$settingName$branchText' : (shift.branchName.isNotEmpty ? shift.branchName : '');
+    final nurseryArea = settingDisplay.isNotEmpty && rawArea != 'Early Years Setting' && !rawArea.contains(settingName)
+        ? '$settingDisplay • $rawArea'
+        : (settingDisplay.isNotEmpty ? settingDisplay : rawArea);
 
     // Role-aware context action label (replaces misleading "Book Shift")
     String defaultActionLabel;
@@ -182,7 +182,10 @@ class ShiftCard extends ConsumerWidget {
                       Positioned(
                         top: 10,
                         left: 12,
-                        child: Row(
+                        right: 48,
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
                           children: [
                             if (shift.requiredQualification.isNotEmpty)
                               Container(
@@ -202,8 +205,7 @@ class ShiftCard extends ConsumerWidget {
                                   ),
                                 ),
                               ),
-                            if (shift.branchName.isNotEmpty) ...[
-                              const SizedBox(width: 6),
+                            if (shift.branchName.isNotEmpty)
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
@@ -226,7 +228,6 @@ class ShiftCard extends ConsumerWidget {
                                   ],
                                 ),
                               ),
-                            ],
                           ],
                         ),
                       ),
@@ -445,7 +446,7 @@ class ShiftCard extends ConsumerWidget {
                             children: [
                               if (isPendingApproval)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   margin: const EdgeInsets.only(right: 6),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFFEF3C7),
@@ -455,12 +456,12 @@ class ShiftCard extends ConsumerWidget {
                                     'Pending',
                                     style: TextStyle(
                                       color: Color(0xFFB45309),
-                                      fontSize: 11,
+                                      fontSize: 10.5,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 )
-                              else if (shift.status != ShiftStatus.open)
+                              else if (shift.status != ShiftStatus.open && isStaff)
                                 Padding(
                                   padding: const EdgeInsets.only(right: 6),
                                   child: ShiftStatusBadge(status: shift.status),
@@ -470,7 +471,8 @@ class ShiftCard extends ConsumerWidget {
                                 style: FilledButton.styleFrom(
                                   backgroundColor: const Color(0xFF1B2A4A),
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  minimumSize: const Size(0, 36),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(AppRadius.pill),
                                   ),
@@ -495,31 +497,6 @@ class ShiftCard extends ConsumerWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  static Widget _chip(IconData icon, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 11.5, color: const Color(0xFF64748B)),
-          const SizedBox(width: 3.5),
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF475569),
-            ),
-          ),
-        ],
       ),
     );
   }

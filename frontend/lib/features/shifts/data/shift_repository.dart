@@ -90,6 +90,8 @@ class ShiftRepository {
     List<String>? expectedDuties,
     List<String>? requirements,
     String? description,
+    int? unpaidBreakMinutes,
+    String? requiredQualification,
   }) {
     return _api.post(ApiFunction.updateShift, body: {
       'shiftId': shiftId,
@@ -104,6 +106,8 @@ class ShiftRepository {
       if (expectedDuties != null) 'expectedDuties': expectedDuties,
       if (requirements != null) 'requirements': requirements,
       if (description != null) 'description': description,
+      if (unpaidBreakMinutes != null) 'unpaidBreakMinutes': unpaidBreakMinutes,
+      if (requiredQualification != null) 'requiredQualification': requiredQualification,
     });
   }
 

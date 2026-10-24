@@ -419,6 +419,8 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
                         Expanded(
                           child: TextField(
                             controller: _searchController,
+                            style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                            cursorColor: const Color(0xFF1B2A4A),
                             onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
                             decoration: const InputDecoration(
                               hintText: 'Search shifts, rooms, nurseries…',
@@ -592,7 +594,9 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
                 duration: const Duration(milliseconds: 280),
                 curve: Curves.easeOutCubic,
                 child: _showFilters
-                    ? _FilterPanel(
+                    ? ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 310),
+                        child: _FilterPanel(
                         nearMeOnly: _nearMeOnly,
                         ownAreaAsync: ownAreaAsync,
                         locationLabel: _displayLocation(profile),
@@ -623,7 +627,7 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
                         onPayRateChange: (v) => setState(() => _minPayRate = v),
                         onSortChange: (s) => setState(() => _sortOrder = s),
                         onClear: _clearFilters,
-                      )
+                      ))
                     : const SizedBox.shrink(),
               ),
             ),

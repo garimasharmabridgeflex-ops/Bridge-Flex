@@ -425,9 +425,20 @@ class _StaffMembershipCard extends StatelessWidget {
                 ],
               ),
             ),
-            TextButton(
-              onPressed: () => context.push('/billing/subscriptions'),
-              child: const Text('Plans', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF2563EB))),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF059669).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+              child: const Text(
+                'Free Forever',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                  color: Color(0xFF059669),
+                ),
+              ),
             ),
           ],
         ),

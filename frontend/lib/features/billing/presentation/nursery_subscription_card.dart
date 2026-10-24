@@ -207,8 +207,9 @@ class NurserySubscriptionCard extends ConsumerWidget {
                           style: FilledButton.styleFrom(
                             backgroundColor: color,
                             padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: const Text('Select Membership Plan', style: TextStyle(fontSize: 13)),
+                          child: const Text('Choose Plan', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                         ),
                       ),
                       const SizedBox(width: 8),

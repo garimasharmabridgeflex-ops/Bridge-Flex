@@ -24,22 +24,38 @@ class ChatListScreen extends ConsumerWidget {
     final selfUid = ref.watch(authStateProvider).valueOrNull?.uid ?? '';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Messages')),
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF8FAFC),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
+        title: const Text(
+          'Messages',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F172A),
+          ),
+        ),
+      ),
       body: sessionsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(
+          child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF1B2A4A)),
+        ),
         error: (e, _) => Center(child: Text('$e')),
         data: (sessions) {
           if (sessions.isEmpty) {
             return const EmptyState(
               icon: Icons.chat_bubble_outline_rounded,
               title: 'No conversations yet',
-              subtitle: 'A chat opens automatically once a shift is booked.',
+              subtitle: 'A chat thread opens automatically once a shift booking is confirmed.',
             );
           }
           return ListView.separated(
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
             itemCount: sessions.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 6),
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (context, i) {
               final session = sessions[i];
               final otherUid = session.otherParticipant(selfUid);
@@ -67,23 +83,54 @@ class _SessionTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final peer = ref.watch(_peerNameProvider(otherUid));
-    final scheme = Theme.of(context).colorScheme;
     final name = peer.valueOrNull?.name ?? '…';
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: scheme.primary.withValues(alpha: 0.12),
-          child: Text(
-            name.isNotEmpty ? name[0].toUpperCase() : '?',
-            style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary),
-          ),
+    return GestureDetector(
+      onTap: () => context.push('/chats/${session.id}'),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x060F172A),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text(DateFormat('d MMM · HH:mm').format(session.lastMessageAt)),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () => context.push('/chats/${session.id}'),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: const Color(0xFF1B2A4A).withValues(alpha: 0.08),
+              child: Text(
+                name.isNotEmpty ? name[0].toUpperCase() : '?',
+                style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1B2A4A), fontSize: 16),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5, color: Color(0xFF0F172A)),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    DateFormat('d MMM · HH:mm').format(session.lastMessageAt),
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1), size: 20),
+          ],
+        ),
       ),
     );
   }

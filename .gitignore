@@ -8,3 +8,7 @@
 
 # LibreOffice lock files
 .~lock.*#
+
+# Firebase CLI cache
+.firebase/
+*-debug.log

@@ -733,6 +733,8 @@
       document.getElementById('login-view').style.display = 'none';
       document.getElementById('app-view').style.display = 'block';
       loadPlatformStats();
+      loadPendingQueue();
+      loadLiveUsers();
     }
 
     async function handleLogin() {
@@ -804,12 +806,21 @@
         document.getElementById('view-title').innerText = titles[tabId][0];
         document.getElementById('view-sub').innerText = titles[tabId][1];
       }
+
+      if (tabId === 'vetting' || tabId === 'dashboard') {
+        loadPendingQueue();
+      } else if (tabId === 'nurseries') {
+        loadLiveUsers();
+      }
     }
 
     function refreshCurrentView() {
       loadPlatformStats();
+      loadPendingQueue();
       loadLiveUsers();
     }
+
+    let liveUsersCache = [];
 
     // API Callers
     async function loadPlatformStats() {
@@ -831,21 +842,79 @@
       }
     }
 
-    async function loadLiveUsers() {
+    async function loadPendingQueue() {
       if (!authToken) return;
       try {
-        const res = await fetch('/ListAllUsers', {
+        const res = await fetch('/ListPendingDocuments', {
           headers: { 'Authorization': 'Bearer ' + authToken }
         });
         if (!res.ok) return;
         const data = await res.json();
-        const users = data.users || [];
+        const docs = data.documents || [];
 
-        // Populate Vetting Table
+        // Also fetch users if cache is empty
+        if (liveUsersCache.length === 0) {
+          const uRes = await fetch('/ListAllUsers', { headers: { 'Authorization': 'Bearer ' + authToken } });
+          if (uRes.ok) {
+            const uData = await uRes.json();
+            liveUsersCache = uData.users || [];
+          }
+        }
+
+        const queueBody = document.getElementById('urgent-queue-body');
+        if (queueBody) {
+          if (docs.length === 0) {
+            queueBody.innerHTML = `
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                  No pending documents in the verification queue. All accounts are up to date!
+                </td>
+              </tr>
+            `;
+          } else {
+            queueBody.innerHTML = docs.map(d => {
+              const u = liveUsersCache.find(x => x.uid === d.uid) || { name: 'Practitioner (' + d.uid.substring(0, 8) + ')', email: '' };
+              const dateStr = d.uploadedAt ? new Date(d.uploadedAt).toLocaleString() : 'Recently';
+              return `
+                <tr>
+                  <td><span class="badge badge-amber">DBS Certificate</span></td>
+                  <td><strong>${d.docId}</strong></td>
+                  <td>${u.name} <span style="font-size: 11px; color: var(--text-muted);">(${u.phone || u.email || d.uid})</span></td>
+                  <td><span class="badge badge-amber">Awaiting Approval</span></td>
+                  <td>
+                    <button class="btn btn-primary btn-sm" onclick="switchTab('vetting')">Review in Vetting Hub</button>
+                  </td>
+                </tr>
+              `;
+            }).join('');
+          }
+        }
+
+        // Also render into Vetting Table
         const vettingBody = document.getElementById('vetting-table-body');
-        const staffUsers = users.filter(u => u.role === 'staff');
-        if (staffUsers.length > 0 && vettingBody) {
-          vettingBody.innerHTML = staffUsers.map(u => {
+        if (vettingBody) {
+          const pendingRows = docs.map(d => {
+            const u = liveUsersCache.find(x => x.uid === d.uid) || { name: 'Practitioner', email: '', phone: '' };
+            const dateStr = d.uploadedAt ? new Date(d.uploadedAt).toLocaleDateString() : '';
+            return `
+              <tr style="background: #FFFBEB;">
+                <td><strong>${u.name}</strong> <span class="badge badge-amber" style="font-size: 9px; margin-left: 4px;">NEW UPLOAD</span></td>
+                <td>${u.email || u.phone || d.uid.substring(0, 10)}</td>
+                <td>Practitioner</td>
+                <td><code>${d.docId}</code></td>
+                <td><span class="badge badge-amber">Pending Check</span></td>
+                <td><span class="badge badge-amber">Needs Approval</span></td>
+                <td style="white-space: nowrap;">
+                  <button class="btn btn-emerald btn-sm" onclick="reviewPendingDoc('${d.docId}', true)">Approve DBS</button>
+                  <button class="btn btn-outline btn-sm" style="color: var(--rose);" onclick="reviewPendingDoc('${d.docId}', false)">Reject</button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+
+          // Append existing staff
+          const staffUsers = liveUsersCache.filter(u => u.role === 'staff');
+          const staffRows = staffUsers.map(u => {
             const isVerified = u.dbsStatus === 'verified';
             const badgeClass = isVerified ? 'badge-green' : (u.dbsStatus === 'pending' ? 'badge-amber' : 'badge-red');
             const badgeText = isVerified ? 'Verified Active' : (u.dbsStatus === 'pending' ? 'Pending Review' : 'Unverified');
@@ -860,13 +929,53 @@
                 <td>
                   ${isVerified 
                     ? '<span class="badge badge-green">Approved ✓</span>'
-                    : `<button class="btn btn-emerald btn-sm" onclick="approveStaffBadge('${u.uid}')">Verify & Approve</button>`
+                    : `<button class="btn btn-emerald btn-sm" onclick="approveStaffBadge('${u.uid}')">Verify Badge</button>`
                   }
                 </td>
               </tr>
             `;
           }).join('');
+
+          vettingBody.innerHTML = pendingRows + staffRows;
         }
+
+      } catch (e) {
+        console.warn("Failed loading pending queue:", e);
+      }
+    }
+
+    async function reviewPendingDoc(docId, approve) {
+      if (!authToken) return;
+      try {
+        const res = await fetch('/ReviewDocument', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ docId: docId, approve: approve, note: approve ? 'Verified by Administrator' : 'Document rejected' })
+        });
+        if (res.ok) {
+          alert(approve ? 'Document approved! Practitioner DBS status updated to Verified.' : 'Document rejected.');
+          loadPendingQueue();
+          loadPlatformStats();
+          loadLiveUsers();
+        } else {
+          const err = await res.json();
+          alert('Failed to review document: ' + (err.error?.message || res.statusText));
+        }
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    async function loadLiveUsers() {
+      if (!authToken) return;
+      try {
+        const res = await fetch('/ListAllUsers', {
+          headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        liveUsersCache = data.users || [];
+        const users = liveUsersCache;
 
         // Populate Nursery Table
         const nurseryBody = document.getElementById('nursery-table-body');

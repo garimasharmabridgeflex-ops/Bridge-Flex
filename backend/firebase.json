@@ -12,6 +12,14 @@
         "function": { "functionId": "GetPlatformStats", "region": "europe-west2" }
       },
       {
+        "source": "/ListPendingDocuments",
+        "function": { "functionId": "ListPendingDocuments", "region": "europe-west2" }
+      },
+      {
+        "source": "/ReviewDocument",
+        "function": { "functionId": "ReviewDocument", "region": "europe-west2" }
+      },
+      {
         "source": "/ListAllUsers",
         "function": { "functionId": "ListAllUsers", "region": "europe-west2" }
       },

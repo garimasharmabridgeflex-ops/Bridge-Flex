@@ -5,6 +5,28 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/GetPlatformStats",
+        "function": { "functionId": "GetPlatformStats", "region": "europe-west2" }
+      },
+      {
+        "source": "/ListAllUsers",
+        "function": { "functionId": "ListAllUsers", "region": "europe-west2" }
+      },
+      {
+        "source": "/GetUserDetail",
+        "function": { "functionId": "GetUserDetail", "region": "europe-west2" }
+      },
+      {
+        "source": "/SetVerificationBadge",
+        "function": { "functionId": "SetVerificationBadge", "region": "europe-west2" }
+      },
+      {
+        "source": "/SetUserSuspended",
+        "function": { "functionId": "SetUserSuspended", "region": "europe-west2" }
+      }
     ]
   },
   "firestore": {

@@ -49,6 +49,8 @@ func main() {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 	}
 
+	fileServer := http.FileServer(http.Dir("/home/brainiac/Bridge-Flex/backend/public"))
+
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -58,11 +60,17 @@ func main() {
 			return
 		}
 
-		// Forward requests directly to live GCP Cloud Functions
+		// Serve static frontend assets for admin portal and web pages
+		if strings.HasPrefix(r.URL.Path, "/admin") || r.URL.Path == "/" || strings.HasSuffix(r.URL.Path, ".html") || strings.HasSuffix(r.URL.Path, ".png") || strings.HasSuffix(r.URL.Path, ".css") || strings.HasSuffix(r.URL.Path, ".js") {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		// Forward API requests directly to live GCP Cloud Functions
 		cloudProxy.ServeHTTP(w, r)
 	})
 
-	log.Println("CORS Proxy listening on 0.0.0.0:8089 (Forwarding 100% to live GCP Cloud Functions)")
+	log.Println("CORS Proxy & Hosted Admin Portal listening on 0.0.0.0:8089 (Forwarding 100% to live GCP Cloud Functions)")
 	if err := http.ListenAndServe("0.0.0.0:8089", handler); err != nil {
 		log.Fatalf("listen error: %v", err)
 	}

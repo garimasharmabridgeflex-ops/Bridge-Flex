@@ -705,9 +705,6 @@
     // Initialize Firebase
     try {
       firebase.initializeApp(FIREBASE_CONFIG);
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        firebase.auth().useEmulator('http://127.0.0.1:9099');
-      }
     } catch (e) {
       console.warn("Firebase Init fallback:", e);
     }
@@ -811,12 +808,13 @@
 
     function refreshCurrentView() {
       loadPlatformStats();
+      loadLiveUsers();
     }
 
     // API Callers
     async function loadPlatformStats() {
       try {
-        const res = await fetch('/getPlatformStats', {
+        const res = await fetch('/GetPlatformStats', {
           headers: authToken ? { 'Authorization': 'Bearer ' + authToken } : {}
         });
         if (res.ok) {
@@ -829,7 +827,112 @@
           document.getElementById('kpi-pending-docs').innerText = d.pendingDocuments || 0;
         }
       } catch (e) {
-        console.warn("Offline/Mock mode for platform stats:", e);
+        console.warn("Failed loading live platform stats:", e);
+      }
+    }
+
+    async function loadLiveUsers() {
+      if (!authToken) return;
+      try {
+        const res = await fetch('/ListAllUsers', {
+          headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const users = data.users || [];
+
+        // Populate Vetting Table
+        const vettingBody = document.getElementById('vetting-table-body');
+        const staffUsers = users.filter(u => u.role === 'staff');
+        if (staffUsers.length > 0 && vettingBody) {
+          vettingBody.innerHTML = staffUsers.map(u => {
+            const isVerified = u.dbsStatus === 'verified';
+            const badgeClass = isVerified ? 'badge-green' : (u.dbsStatus === 'pending' ? 'badge-amber' : 'badge-red');
+            const badgeText = isVerified ? 'Verified Active' : (u.dbsStatus === 'pending' ? 'Pending Review' : 'Unverified');
+            return `
+              <tr>
+                <td><strong>${u.name || 'Unnamed Staff'}</strong></td>
+                <td>${u.email || u.phone || u.uid.substring(0, 8)}</td>
+                <td>Practitioner</td>
+                <td><code>${u.dbsCertificateNumber || 'DBS-ON-FILE'}</code></td>
+                <td><span class="badge ${isVerified ? 'badge-green' : 'badge-amber'}">${isVerified ? 'Update Svc Active' : 'Consent Pending'}</span></td>
+                <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+                <td>
+                  ${isVerified 
+                    ? '<span class="badge badge-green">Approved ✓</span>'
+                    : `<button class="btn btn-emerald btn-sm" onclick="approveStaffBadge('${u.uid}')">Verify & Approve</button>`
+                  }
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        // Populate Nursery Table
+        const nurseryBody = document.getElementById('nursery-table-body');
+        const nurseryUsers = users.filter(u => u.role === 'nursery');
+        if (nurseryUsers.length > 0 && nurseryBody) {
+          nurseryBody.innerHTML = nurseryUsers.map(u => {
+            const isApproved = u.ofstedVerified || false;
+            return `
+              <tr>
+                <td><strong>${u.name || 'Unnamed Nursery'}</strong></td>
+                <td>${u.email || u.phone || 'Setting'}</td>
+                <td>Active Setting</td>
+                <td>${u.postcode || 'UK'}</td>
+                <td><span class="badge ${isApproved ? 'badge-green' : 'badge-amber'}">${isApproved ? 'Approved' : 'Pending Verification'}</span></td>
+                <td>
+                  ${isApproved
+                    ? '<span class="badge badge-green">Trial Active (14d)</span>'
+                    : `<button class="btn btn-emerald btn-sm" onclick="approveNurserySetting('${u.uid}')">Approve & Start Trial</button>`
+                  }
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (e) {
+        console.warn("Failed loading live users:", e);
+      }
+    }
+
+    async function approveStaffBadge(uid) {
+      if (!authToken) return;
+      try {
+        const res = await fetch('/SetVerificationBadge', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: uid, badge: 'identity', verified: true })
+        });
+        if (res.ok) {
+          alert('Staff member verified and approved!');
+          loadLiveUsers();
+          loadPlatformStats();
+        } else {
+          alert('Failed to update verification badge.');
+        }
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    async function approveNurserySetting(uid) {
+      if (!authToken) return;
+      try {
+        const res = await fetch('/SetVerificationBadge', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: uid, badge: 'ofsted', verified: true })
+        });
+        if (res.ok) {
+          alert('Nursery approved! 14-day free trial activated.');
+          loadLiveUsers();
+          loadPlatformStats();
+        } else {
+          alert('Failed to approve nursery.');
+        }
+      } catch (e) {
+        alert('Error: ' + e.message);
       }
     }
 

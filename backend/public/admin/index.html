@@ -117,6 +117,7 @@
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
 </head>
 <body>
 
@@ -653,6 +654,54 @@
     </div>
   </div>
 
+  <!-- ==================== MODAL: DOCUMENT INSPECTION & VERIFICATION ==================== -->
+  <div class="modal-backdrop" id="doc-inspection-modal">
+    <div class="modal-card" style="max-width: 780px;">
+      <div class="modal-header">
+        <h3 id="inspect-doc-title">Inspect Compliance Document</h3>
+        <button class="modal-close" onclick="closeModal('doc-inspection-modal')">×</button>
+      </div>
+      <div style="margin-bottom: 16px; font-size: 13px; color: var(--text-muted);" id="inspect-doc-subtitle">
+        Review original document scan against statutory DBS and safeguarding standards.
+      </div>
+
+      <div style="background: #0F172A; border-radius: 12px; border: 1px solid var(--border); padding: 16px; text-align: center; min-height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 18px; overflow: hidden; position: relative;">
+        <div id="inspect-loading" style="color: white; font-weight: 600;">Loading document preview from secure storage...</div>
+        <img id="inspect-img" src="" alt="Certificate Preview" style="max-width: 100%; max-height: 480px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); display: none;">
+        <div id="inspect-pdf-fallback" style="display: none; color: white;">
+          <p style="font-weight: 700; margin-bottom: 12px; font-size: 15px;">PDF Document Ready</p>
+          <a id="inspect-pdf-link" href="#" target="_blank" class="btn btn-blue btn-sm">Open PDF in New Tab ↗</a>
+        </div>
+      </div>
+
+      <div style="background: #F8FAFC; border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 18px; font-size: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <div><strong>Applicant:</strong> <span id="inspect-applicant-name">-</span></div>
+        <div><strong>Document Type:</strong> <span id="inspect-doc-type">Enhanced DBS Certificate</span></div>
+        <div><strong>DBS Certificate #:</strong> <code id="inspect-dbs-number">-</code></div>
+        <div><strong>Uploaded At:</strong> <span id="inspect-upload-time">-</span></div>
+        <div style="grid-column: span 2; margin-top: 4px;">
+          <a id="inspect-raw-link" href="#" target="_blank" style="color: var(--slate-blue); font-weight: 700; text-decoration: underline;">
+            Open full resolution image in separate window ↗
+          </a>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Review / Rejection Note (Required if rejecting, optional if approving)</label>
+        <input type="text" id="inspect-review-note" class="form-input" placeholder="e.g. Original certificate verified against DBS Update Service.">
+      </div>
+
+      <input type="hidden" id="inspect-active-doc-id" value="">
+      <input type="hidden" id="inspect-active-uid" value="">
+
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+        <button class="btn btn-outline" onclick="closeModal('doc-inspection-modal')">Close</button>
+        <button class="btn btn-outline" style="color: var(--rose); border-color: #FECACA;" onclick="submitDocReview(false)">Reject Document</button>
+        <button class="btn btn-emerald" onclick="submitDocReview(true)">✓ Approve & Mark DBS Verified</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== MODAL: BANK SETTLEMENT ==================== -->
   <div class="modal-backdrop" id="bank-settlement-modal">
     <div class="modal-card">
@@ -821,6 +870,7 @@
     }
 
     let liveUsersCache = [];
+    let pendingDocsCache = {};
 
     // API Callers
     async function loadPlatformStats() {
@@ -851,6 +901,7 @@
         if (!res.ok) return;
         const data = await res.json();
         const docs = data.documents || [];
+        docs.forEach(d => { pendingDocsCache[d.docId] = d; });
 
         // Also fetch users if cache is empty
         if (liveUsersCache.length === 0) {
@@ -874,15 +925,15 @@
           } else {
             queueBody.innerHTML = docs.map(d => {
               const u = liveUsersCache.find(x => x.uid === d.uid) || { name: 'Practitioner (' + d.uid.substring(0, 8) + ')', email: '' };
-              const dateStr = d.uploadedAt ? new Date(d.uploadedAt).toLocaleString() : 'Recently';
               return `
                 <tr>
                   <td><span class="badge badge-amber">DBS Certificate</span></td>
                   <td><strong>${d.docId}</strong></td>
                   <td>${u.name} <span style="font-size: 11px; color: var(--text-muted);">(${u.phone || u.email || d.uid})</span></td>
                   <td><span class="badge badge-amber">Awaiting Approval</span></td>
-                  <td>
-                    <button class="btn btn-primary btn-sm" onclick="switchTab('vetting')">Review in Vetting Hub</button>
+                  <td style="white-space: nowrap;">
+                    <button class="btn btn-blue btn-sm" onclick="openDocModalById('${d.docId}')">Inspect ↗</button>
+                    <button class="btn btn-primary btn-sm" onclick="switchTab('vetting')">Vetting Hub</button>
                   </td>
                 </tr>
               `;
@@ -890,12 +941,11 @@
           }
         }
 
-        // Also render into Vetting Table
+        // Render into Vetting Table
         const vettingBody = document.getElementById('vetting-table-body');
         if (vettingBody) {
           const pendingRows = docs.map(d => {
             const u = liveUsersCache.find(x => x.uid === d.uid) || { name: 'Practitioner', email: '', phone: '' };
-            const dateStr = d.uploadedAt ? new Date(d.uploadedAt).toLocaleDateString() : '';
             return `
               <tr style="background: #FFFBEB;">
                 <td><strong>${u.name}</strong> <span class="badge badge-amber" style="font-size: 9px; margin-left: 4px;">NEW UPLOAD</span></td>
@@ -905,42 +955,184 @@
                 <td><span class="badge badge-amber">Pending Check</span></td>
                 <td><span class="badge badge-amber">Needs Approval</span></td>
                 <td style="white-space: nowrap;">
-                  <button class="btn btn-emerald btn-sm" onclick="reviewPendingDoc('${d.docId}', true)">Approve DBS</button>
+                  <button class="btn btn-blue btn-sm" onclick="openDocModalById('${d.docId}')">Inspect ↗</button>
+                  <button class="btn btn-emerald btn-sm" onclick="reviewPendingDoc('${d.docId}', true)">Approve</button>
                   <button class="btn btn-outline btn-sm" style="color: var(--rose);" onclick="reviewPendingDoc('${d.docId}', false)">Reject</button>
                 </td>
               </tr>
             `;
           }).join('');
 
-          // Append existing staff
+          // Append all staff users
           const staffUsers = liveUsersCache.filter(u => u.role === 'staff');
           const staffRows = staffUsers.map(u => {
             const isVerified = u.dbsStatus === 'verified';
             const badgeClass = isVerified ? 'badge-green' : (u.dbsStatus === 'pending' ? 'badge-amber' : 'badge-red');
             const badgeText = isVerified ? 'Verified Active' : (u.dbsStatus === 'pending' ? 'Pending Review' : 'Unverified');
+            const qLevel = u.qualificationLevel ? u.qualificationLevel.replace(/_/g, ' ').toUpperCase() : 'Practitioner';
             return `
               <tr>
-                <td><strong>${u.name || 'Unnamed Staff'}</strong></td>
+                <td><strong>${u.name || 'Staff Member'}</strong></td>
                 <td>${u.email || u.phone || u.uid.substring(0, 8)}</td>
-                <td>Practitioner</td>
+                <td>${qLevel}</td>
                 <td><code>${u.dbsCertificateNumber || 'DBS-ON-FILE'}</code></td>
                 <td><span class="badge ${isVerified ? 'badge-green' : 'badge-amber'}">${isVerified ? 'Update Svc Active' : 'Consent Pending'}</span></td>
                 <td><span class="badge ${badgeClass}">${badgeText}</span></td>
-                <td>
+                <td style="white-space: nowrap;">
+                  <button class="btn btn-outline btn-sm" onclick="inspectUserDocs('${u.uid}', '${(u.name||'Staff').replace(/'/g, "\\'")}', '${u.dbsCertificateNumber || ''}')">Inspect Doc ↗</button>
                   ${isVerified 
-                    ? '<span class="badge badge-green">Approved ✓</span>'
-                    : `<button class="btn btn-emerald btn-sm" onclick="approveStaffBadge('${u.uid}')">Verify Badge</button>`
+                    ? '<span class="badge badge-green" style="margin-left: 6px;">Approved ✓</span>'
+                    : `<button class="btn btn-emerald btn-sm" style="margin-left: 6px;" onclick="approveStaffBadge('${u.uid}')">Verify Badge</button>`
                   }
                 </td>
               </tr>
             `;
           }).join('');
 
-          vettingBody.innerHTML = pendingRows + staffRows;
+          vettingBody.innerHTML = (pendingRows || '') + (staffRows || '');
         }
 
       } catch (e) {
         console.warn("Failed loading pending queue:", e);
+      }
+    }
+
+    async function openDocModalById(docId) {
+      const doc = pendingDocsCache[docId];
+      if (!doc) {
+        alert('Document metadata not found. Refreshing queue...');
+        loadPendingQueue();
+        return;
+      }
+      const u = liveUsersCache.find(x => x.uid === doc.uid) || { name: 'Practitioner' };
+      openDocModal(doc, u.name, doc.docId, doc.uid);
+    }
+
+    async function inspectUserDocs(uid, name, dbsNum) {
+      if (!authToken) {
+        alert('Admin authentication required.');
+        return;
+      }
+      try {
+        const res = await fetch('/GetUserDetail', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: uid })
+        });
+        if (!res.ok) {
+          alert('Could not retrieve user details: ' + res.statusText);
+          return;
+        }
+        const data = await res.json();
+        const docs = data.documents || [];
+        if (docs.length === 0) {
+          alert(`No documents uploaded yet for ${name}.`);
+          return;
+        }
+        // Take the latest document
+        const latest = docs[0];
+        latest.uid = uid;
+        openDocModal(latest, name, dbsNum || data.profile?.dbsCertificateNumber, uid);
+      } catch (e) {
+        alert('Error inspecting documents: ' + e.message);
+      }
+    }
+
+    async function openDocModal(doc, applicantName, dbsNumber, uid) {
+      document.getElementById('inspect-doc-title').innerText = `Inspect Compliance Document (${(doc.type || 'DBS Certificate').replace(/_/g, ' ')})`;
+      document.getElementById('inspect-applicant-name').innerText = applicantName || 'Practitioner';
+      document.getElementById('inspect-doc-type').innerText = (doc.type || 'dbs_certificate').replace(/_/g, ' ').toUpperCase();
+      document.getElementById('inspect-dbs-number').innerText = dbsNumber || 'On Record';
+      document.getElementById('inspect-upload-time').innerText = doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleString() : 'N/A';
+      document.getElementById('inspect-active-doc-id').value = doc.docId || '';
+      document.getElementById('inspect-active-uid').value = uid || doc.uid || '';
+      document.getElementById('inspect-review-note').value = doc.reviewNote || '';
+
+      const loadingEl = document.getElementById('inspect-loading');
+      const imgEl = document.getElementById('inspect-img');
+      const pdfFallback = document.getElementById('inspect-pdf-fallback');
+      const rawLink = document.getElementById('inspect-raw-link');
+
+      loadingEl.style.display = 'block';
+      loadingEl.innerText = 'Loading document preview from secure storage...';
+      imgEl.style.display = 'none';
+      pdfFallback.style.display = 'none';
+      rawLink.style.display = 'inline';
+
+      openModal('doc-inspection-modal');
+
+      if (!doc.storagePath) {
+        loadingEl.innerText = 'No storage file path associated with this record.';
+        rawLink.style.display = 'none';
+        return;
+      }
+
+      try {
+        const storageRef = firebase.storage().ref(doc.storagePath);
+        const downloadUrl = await storageRef.getDownloadURL();
+        loadingEl.style.display = 'none';
+
+        if (doc.storagePath.toLowerCase().endsWith('.pdf')) {
+          pdfFallback.style.display = 'block';
+          document.getElementById('inspect-pdf-link').href = downloadUrl;
+        } else {
+          imgEl.src = downloadUrl;
+          imgEl.style.display = 'block';
+        }
+        rawLink.href = downloadUrl;
+        rawLink.innerText = 'Open full resolution image in separate window ↗';
+      } catch (err) {
+        console.warn('Storage getDownloadURL failed, fallback to direct gateway:', err);
+        const encoded = encodeURIComponent(doc.storagePath);
+        const fallbackUrl = `https://firebasestorage.googleapis.com/v0/b/${FIREBASE_CONFIG.storageBucket}/o/${encoded}?alt=media`;
+        loadingEl.innerText = 'Document scan stored securely. Click below to inspect file:';
+        rawLink.href = fallbackUrl;
+        rawLink.innerText = 'Open document scan in new tab ↗';
+      }
+    }
+
+    async function submitDocReview(approve) {
+      const docId = document.getElementById('inspect-active-doc-id').value;
+      const uid = document.getElementById('inspect-active-uid').value;
+      const note = document.getElementById('inspect-review-note').value;
+      if (!docId && !uid) return;
+
+      try {
+        if (docId) {
+          const res = await fetch('/ReviewDocument', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ docId: docId, approve: approve, note: note || (approve ? 'Verified by Administrator' : 'Document rejected') })
+          });
+          if (!res.ok) {
+            const err = await res.json();
+            alert('Review failed: ' + (err.error?.message || res.statusText));
+            return;
+          }
+        }
+
+        if (uid) {
+          await fetch('/SetVerificationBadge', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: uid, badge: 'dbs', verified: approve })
+          });
+          if (approve) {
+            await fetch('/SetVerificationBadge', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ uid: uid, badge: 'identity', verified: true })
+            });
+          }
+        }
+
+        alert(approve ? '✓ Document approved! Practitioner DBS marked verified.' : 'Document rejected.');
+        closeModal('doc-inspection-modal');
+        loadPendingQueue();
+        loadPlatformStats();
+        loadLiveUsers();
+      } catch (e) {
+        alert('Error submitting review: ' + e.message);
       }
     }
 
@@ -953,7 +1145,15 @@
           body: JSON.stringify({ docId: docId, approve: approve, note: approve ? 'Verified by Administrator' : 'Document rejected' })
         });
         if (res.ok) {
-          alert(approve ? 'Document approved! Practitioner DBS status updated to Verified.' : 'Document rejected.');
+          const doc = pendingDocsCache[docId];
+          if (doc && doc.uid) {
+            await fetch('/SetVerificationBadge', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ uid: doc.uid, badge: 'dbs', verified: approve })
+            });
+          }
+          alert(approve ? '✓ Document approved! Practitioner DBS status updated to Verified.' : 'Document rejected.');
           loadPendingQueue();
           loadPlatformStats();
           loadLiveUsers();
@@ -978,22 +1178,22 @@
         const users = liveUsersCache;
 
         // Populate Nursery Table
-        const nurseryBody = document.getElementById('nursery-table-body');
+        const nurseryBody = document.getElementById('nurseries-table-body') || document.getElementById('nursery-table-body');
         const nurseryUsers = users.filter(u => u.role === 'nursery');
         if (nurseryUsers.length > 0 && nurseryBody) {
           nurseryBody.innerHTML = nurseryUsers.map(u => {
             const isApproved = u.ofstedVerified || false;
             return `
               <tr>
-                <td><strong>${u.name || 'Unnamed Nursery'}</strong></td>
-                <td>${u.email || u.phone || 'Setting'}</td>
-                <td>Active Setting</td>
-                <td>${u.postcode || 'UK'}</td>
-                <td><span class="badge ${isApproved ? 'badge-green' : 'badge-amber'}">${isApproved ? 'Approved' : 'Pending Verification'}</span></td>
+                <td><strong>${u.name || u.registeredCompanyName || 'Setting (' + u.uid.substring(0, 6) + ')'}</strong></td>
+                <td><code>${u.ofstedRegNumber || u.companyNumber || 'EY-' + u.uid.substring(0, 6).toUpperCase()}</code></td>
+                <td>${u.email || u.phone || 'Setting Contact'}</td>
+                <td>${u.postcode || '1 Location'}</td>
+                <td><span class="badge ${isApproved ? 'badge-green' : 'badge-amber'}">${isApproved ? 'Active (Trial)' : 'Pending Verification'}</span></td>
                 <td>
                   ${isApproved
                     ? '<span class="badge badge-green">Trial Active (14d)</span>'
-                    : `<button class="btn btn-emerald btn-sm" onclick="approveNurserySetting('${u.uid}')">Approve & Start Trial</button>`
+                    : `<button class="btn btn-emerald btn-sm" onclick="approveNurserySetting('${u.uid}')">Approve & Start 14d Trial</button>`
                   }
                 </td>
               </tr>
@@ -1034,7 +1234,7 @@
           body: JSON.stringify({ uid: uid, badge: 'ofsted', verified: true })
         });
         if (res.ok) {
-          alert('Nursery approved! 14-day free trial activated.');
+          alert('Nursery setting approved! 14-day free trial activated.');
           loadLiveUsers();
           loadPlatformStats();
         } else {

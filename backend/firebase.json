@@ -34,6 +34,58 @@
       {
         "source": "/SetUserSuspended",
         "function": { "functionId": "SetUserSuspended", "region": "europe-west2" }
+      },
+      {
+        "source": "/ListTimesheets",
+        "function": { "functionId": "ListTimesheets", "region": "europe-west2" }
+      },
+      {
+        "source": "/AdminApproveTimesheet",
+        "function": { "functionId": "AdminApproveTimesheet", "region": "europe-west2" }
+      },
+      {
+        "source": "/ListInvoices",
+        "function": { "functionId": "ListInvoices", "region": "europe-west2" }
+      },
+      {
+        "source": "/MarkInvoicePaid",
+        "function": { "functionId": "MarkInvoicePaid", "region": "europe-west2" }
+      },
+      {
+        "source": "/ListPayrollPeriods",
+        "function": { "functionId": "ListPayrollPeriods", "region": "europe-west2" }
+      },
+      {
+        "source": "/GeneratePayrollPeriod",
+        "function": { "functionId": "GeneratePayrollPeriod", "region": "europe-west2" }
+      },
+      {
+        "source": "/ExportPayrollCSV",
+        "function": { "functionId": "ExportPayrollCSV", "region": "europe-west2" }
+      },
+      {
+        "source": "/GetVettingChecklist",
+        "function": { "functionId": "GetVettingChecklist", "region": "europe-west2" }
+      },
+      {
+        "source": "/ApprovePractitionerVetting",
+        "function": { "functionId": "ApprovePractitionerVetting", "region": "europe-west2" }
+      },
+      {
+        "source": "/RejectPractitionerVetting",
+        "function": { "functionId": "RejectPractitionerVetting", "region": "europe-west2" }
+      },
+      {
+        "source": "/ApproveNurseryRegistration",
+        "function": { "functionId": "ApproveNurseryRegistration", "region": "europe-west2" }
+      },
+      {
+        "source": "/RejectNurseryRegistration",
+        "function": { "functionId": "RejectNurseryRegistration", "region": "europe-west2" }
+      },
+      {
+        "source": "/ListBranches",
+        "function": { "functionId": "ListBranches", "region": "europe-west2" }
       }
     ]
   },

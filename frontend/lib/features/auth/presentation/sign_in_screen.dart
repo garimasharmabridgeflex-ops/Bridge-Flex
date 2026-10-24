@@ -46,6 +46,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       // Navigation happens automatically via authStateProvider + router redirect.
     } on FirebaseAuthException catch (e) {
       setState(() => _error = _friendlyAuthError(e.code));
+    } catch (e) {
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

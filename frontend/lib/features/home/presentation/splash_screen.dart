@@ -59,9 +59,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             const AppBrandMark(size: 64)
                 // Entrance: pop in from small + faded, then settle —
                 // distinct from the (barely-visible) 12%-scale idle pulse
@@ -112,6 +113,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

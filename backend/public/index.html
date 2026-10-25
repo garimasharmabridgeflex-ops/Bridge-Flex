@@ -2,37 +2,99 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KFlex — Staffing for Nurseries and Early-Years Practitioners</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="KFlex">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <title>KFlex</title>
   <style>
-    body { margin: 0; background: #fff; color: #222; font-family: system-ui, sans-serif; min-height: 100vh; }
-    .wrap { max-width: 680px; margin: 40px auto; padding: 0 20px; text-align: center; }
-    h1 { font-size: 28px; margin-bottom: 4px; }
-    .tagline { color: #555; margin-bottom: 32px; }
-    .download-btn { display: inline-block; background: #1a73e8; color: #fff; padding: 14px 28px; border-radius: 6px; font-size: 18px; font-weight: 500; text-decoration: none; margin: 12px; }
-    .download-btn:hover { background: #1557b2; }
-    .admin-btn { display: inline-block; background: #6c757d; color: #fff; padding: 14px 28px; border-radius: 6px; font-size: 16px; text-decoration: none; margin: 8px 12px 12px; }
-    .admin-btn:hover { background: #5a6268; }
-    .features { margin-top: 40px; text-align: left; max-width: 500px; margin-left: auto; margin-right: auto; }
-    .feature { margin: 12px 0; line-height: 1.6; }
-    code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-family: ui-monospace, monospace; font-size: 12px; }
+    :root {
+      --oxford: #1B2A4A;
+      --oxford-dark: #0F172A;
+      --slate-blue: #2563EB;
+      --slate-blue-light: #EFF6FF;
+      --emerald: #059669;
+      --emerald-bg: #ECFDF5;
+      --amber: #D97706;
+      --amber-bg: #FFFBEB;
+      --rose: #DC2626;
+      --rose-bg: #FEF2F2;
+      --canvas: #F8FAFC;
+      --surface: #FFFFFF;
+      --text: #0F172A;
+      --text-muted: #64748B;
+      --border: #E2E8F0;
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-pill: 9999px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--surface); color: var(--text); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; min-height: 100vh; }
+    .wrap { max-width: 680px; margin: 0 auto; padding: 40px 20px; text-align: center; }
+    .logo { width: 80px; height: 80px; margin: 0 auto 32px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
+    h1 { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+    .tagline { color: var(--text-muted); margin-bottom: 40px; font-size: 15px; }
+    .section { margin: 32px 0; text-align: left; max-width: 520px; margin-left: auto; margin-right: auto; }
+    .section h2 { color: var(--oxford); font-size: 18px; font-weight: 600; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .feature { margin: 8px 0; line-height: 1.6; }
+    .link-group { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+    .btn { display: inline-block; background: var(--slate-blue); color: white; padding: 12px 24px; border-radius: var(--radius-md); font-size: 15px; font-weight: 500; text-decoration: none; transition: background 0.2s; }
+    .btn:hover { background: #2c5aa0; }
+    .btn-secondary { background: var(--text-muted); color: var(--surface); }
+    .btn-secondary:hover { background: #94a3b8; }
+    .code { background: var(--oxford-dark); color: var(--amber); padding: 2px 6px; border-radius: var(--radius-sm); font-family: ui-monospace, monospace; font-size: 12px; }
+    @media (prefers-color-scheme: dark) {
+      body { background: var(--oxford); color: var(--oxford-light, #e2e8f0); }
+      .wrap { background: var(--oxford); }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
+    <img class="logo" src="icon.png" alt="KFlex">
     <h1>KFlex</h1>
     <p class="tagline">Staffing for nurseries and early-years practitioners</p>
 
-    <div>
-      <a href="app-release.apk" class="download-btn" download>Download Android APK</a>
-      <a href="/admin" class="admin-btn">Admin Console</a>
+    <div class="section">
+      <h2>For practitioners</h2>
+      <div class="feature">Browse and accept shifts</div>
+      <div class="feature">Log ratings and feedback</div>
+      <div class="feature">Submit timesheets</div>
+      <div class="feature">View payroll profiles and earnings</div>
     </div>
 
-    <div class="features">
-      <div class="feature"><strong>For practitioners:</> Browse and accept shifts, log ratings, submit timesheets, view payroll profiles and earnings.</div>
-      <div class="feature"><strong>For nursery admins:</> Manage staff scheduling, approve shift applicants, run vetting checklists, assign nursery plans, generate invoices and payroll periods, view audit logs.</div>
-      <div class="feature"><strong>Distribution:</> Direct APK download — the app is not on Google Play. Side-load the APK on Android devices.</div>
+    <div class="section">
+      <h2>For nursery admins</h2>
+      <div class="feature">Manage staff scheduling</div>
+      <div class="feature">Approve shift applicants</div>
+      <div class="feature">Run vetting checklists</div>
+      <div class="feature">Assign nursery plans</div>
+      <div class="feature">Generate invoices and payroll periods</div>
+      <div class="feature">View audit logs</div>
+    </div>
+
+    <div class="link-group">
+      <a href="app-release.apk" class="btn">Download Android APK</a>
+      <a href="/admin" class="btn btn-secondary">Admin Console</a>
     </div>
   </div>
+
+  <div style="margin-top: 40px; padding: 20px; background: var(--oxford-dark); border-radius: var(--radius-md); color: var(--amber);">
+    <p><strong>Distribution:</strong> Direct APK download — the app is not on Google Play. Side-load on Android devices.</p>
+    <p class="code">https://kvision-503115.web.app/app-release.apk</p>
+  </div>
+
+  <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 12px;">
+    <div>
+      <a href="/terms" style="margin-right: 24px;">Terms of Service</a>
+      <a href="/privacy">Privacy Policy</a>
+    </div>
+    <div style="margin-top: 12px;">
+      <span>© 2026 KFlex. All rights reserved.</span>
+    </div>
+  </footer>
 </body>
 </html>

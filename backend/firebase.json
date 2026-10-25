@@ -9,7 +9,11 @@
     "rewrites": [
       {
         "source": "/admin",
-        "destination": "/index.html"
+        "destination": "/admin/index.html"
+      },
+      {
+        "source": "/admin/**",
+        "destination": "/admin/index.html"
       },
       {
         "source": "/GetPlatformStats",
@@ -764,6 +768,20 @@
         "source": "/UpdateSensitiveProfile",
         "function": {
           "functionId": "UpdateSensitiveProfile",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UpdateShift",
+        "function": {
+          "functionId": "UpdateShift",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UpsertTrainingModule",
+        "function": {
+          "functionId": "UpsertTrainingModule",
           "region": "europe-west2"
         }
       }

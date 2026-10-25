@@ -39,6 +39,15 @@ describe("profiles / profilesPublic rules", () => {
         rating: { average: 0, count: 0 },
         dbsBadge: "unverified",
       });
+      // The Phase 5 registration test updates a nursery's own profile, which
+      // has to exist first — update() on a missing document is denied by the
+      // rules regardless of what fields are being written.
+      await setDoc(doc(db, "profiles/nurseryA"), {
+        role: "nursery",
+        name: "Acorn Nursery",
+        dbsStatus: "unverified",
+        rating: { average: 0, count: 0 },
+      });
     });
   });
 

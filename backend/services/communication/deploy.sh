@@ -56,4 +56,8 @@ deploy_pubsub_trigger OnRatingReceived rating-received
 deploy_pubsub_trigger OnShiftMatched shift-matched
 deploy_pubsub_trigger OnShiftCancelled shift-cancelled
 
-echo "functions-communication: all 12 functions deployed."
+# Email consumer (Phase 2). Requires the send-email topic to exist:
+#   gcloud pubsub topics create send-email --project="$PROJECT_ID"
+deploy_pubsub_trigger OnSendEmail send-email
+
+echo "functions-communication: all HTTP and Pub/Sub functions deployed."

@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: {{communicationBaseUrl}}:8124/?sessionId=session-1
+  url: {{communicationBaseUrl}}:8124/?sessionId=chat_nursery-acorn_staff-jane
   body: none
   auth: none
 }
 
 params:query {
-  sessionId: session-1
+  sessionId: chat_nursery-acorn_staff-jane
 }
 
 headers {
@@ -19,7 +19,7 @@ headers {
 }
 
 docs {
-  functions-communication: ListChatMessages (port 8124). session-1 is
+  functions-communication: ListChatMessages (port 8124). chat_nursery-acorn_staff-jane is
   pre-seeded (see seed/main.go seedCommunicationData) for shift-booked-1's
   participants (nursery-acorn, staff-jane), standing in for what
   onShiftBooked would have created — that Pub/Sub trigger doesn't fire

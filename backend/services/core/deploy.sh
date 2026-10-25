@@ -120,6 +120,8 @@ deploy_http GetActiveRateCard
 deploy_http ListRateCards
 deploy_http UpsertRateCard
 deploy_http CancelShiftStructured
+deploy_http GetCancellationPolicy
+deploy_http UpdateCancellationPolicy
 
 # Timesheets (Phase 7)
 deploy_http SubmitTimesheet
@@ -163,10 +165,40 @@ deploy_http ListTrainingModulesAdmin
 deploy_http UpsertTrainingModule
 deploy_http DeleteTrainingModule
 
+
+# Platform settings, audit and subscription workflow (post-launch fixes)
+deploy_http GetFeatureFlags
+deploy_http UpdateFeatureFlags
+deploy_http ListAuditLogs
+deploy_http RequestPlanChange
+deploy_http CancelSubscription
+deploy_http ListSubscriptionRequests
+
+# Legal policy authoring (Phase 3) — must be deployed for the admin console
+deploy_http ListPolicies
+deploy_http AdminSavePolicyDraft
+deploy_http AdminApprovePolicy
+deploy_http AdminPublishPolicy
+
+# Scheduled jobs (Cloud Scheduler calls the Scheduler* endpoints with OIDC;
+# the Run* twins are admin-triggered from the console)
+deploy_http SchedulerTrialReminders
+deploy_http SchedulerRecheckReminders
+deploy_http RunTrialReminders
+deploy_http RunRecheckReminders
+
+# Invoices, discount codes and admin broadcast (owner brief §2 "downloadable
+# invoices", §10 "create discount codes" / "send notifications")
+deploy_http GetInvoiceDocument
+deploy_http CreateDiscountCode
+deploy_http ListDiscountCodes
+deploy_http SetDiscountCodeActive
+deploy_http SendAdminNotification
+
 # Eventarc triggers — same 4 functions covered by triggers_test.go.
 deploy_auth_trigger InitProfileOnSignUp
 deploy_firestore_trigger SyncProfilePublic google.cloud.firestore.document.v1.written "profiles/{uid}"
 deploy_firestore_trigger RecomputeRating google.cloud.firestore.document.v1.created "ratings/{ratingId}"
 deploy_firestore_trigger MatchNewShift google.cloud.firestore.document.v1.created "shifts/{shiftId}"
 
-echo "functions-core: all 35 functions deployed."
+echo "functions-core: all HTTP functions and triggers deployed."

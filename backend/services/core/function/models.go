@@ -185,19 +185,21 @@ type Profile struct {
 	BillingContactPerson   string                `firestore:"billingContactPerson,omitempty" json:"billingContactPerson,omitempty"`
 	PreferredPaymentMethod string                `firestore:"preferredPaymentMethod,omitempty" json:"preferredPaymentMethod,omitempty"`
 	LocationCount          int64                 `firestore:"locationCount,omitempty" json:"locationCount,omitempty"`
-	StaffingRequirements  string                `firestore:"staffingRequirements,omitempty" json:"staffingRequirements,omitempty"`
+	StaffingRequirements   string                `firestore:"staffingRequirements,omitempty" json:"staffingRequirements,omitempty"`
 	NurseryApprovalStatus  NurseryApprovalStatus `firestore:"nurseryApprovalStatus,omitempty" json:"nurseryApprovalStatus,omitempty"`
 	ActivationDate         *time.Time            `firestore:"activationDate,omitempty" json:"activationDate,omitempty"`
 	NurseryRejectionReason string                `firestore:"nurseryRejectionReason,omitempty" json:"nurseryRejectionReason,omitempty"`
 
 	// Vetting status and DBS verification fields (Phase 4).
-	VettingStatus          VettingStatus `firestore:"vettingStatus,omitempty" json:"vettingStatus,omitempty"`
-	DBSCheckedByKFlex      bool          `firestore:"dbsCheckedByKFlex,omitempty" json:"dbsCheckedByKFlex,omitempty"`
-	DBSVerifiedAt          *time.Time    `firestore:"dbsVerifiedAt,omitempty" json:"dbsVerifiedAt,omitempty"`
-	DBSRecheckDue          *time.Time    `firestore:"dbsRecheckDue,omitempty" json:"dbsRecheckDue,omitempty"`
-	DBSWorkforce           string        `firestore:"dbsWorkforce,omitempty" json:"dbsWorkforce,omitempty"`
-	DBSUpdateServiceStatus string        `firestore:"dbsUpdateServiceStatus,omitempty" json:"dbsUpdateServiceStatus,omitempty"`
-	DBSConsentGiven        bool          `firestore:"dbsConsentGiven,omitempty" json:"dbsConsentGiven,omitempty"`
+	VettingStatus            VettingStatus `firestore:"vettingStatus,omitempty" json:"vettingStatus,omitempty"`
+	DBSCheckedByKFlex        bool          `firestore:"dbsCheckedByKFlex,omitempty" json:"dbsCheckedByKFlex,omitempty"`
+	DBSVerifiedAt            *time.Time    `firestore:"dbsVerifiedAt,omitempty" json:"dbsVerifiedAt,omitempty"`
+	DBSRecheckDue            *time.Time    `firestore:"dbsRecheckDue,omitempty" json:"dbsRecheckDue,omitempty"`
+	DBSWorkforce             string        `firestore:"dbsWorkforce,omitempty" json:"dbsWorkforce,omitempty"`
+	DBSUpdateServiceStatus   string        `firestore:"dbsUpdateServiceStatus,omitempty" json:"dbsUpdateServiceStatus,omitempty"`
+	DBSConsentGiven          bool          `firestore:"dbsConsentGiven,omitempty" json:"dbsConsentGiven,omitempty"`
+	DBSIssueDate             *time.Time    `firestore:"dbsIssueDate,omitempty" json:"dbsIssueDate,omitempty"`
+	DBSRecheckReminderSentAt *time.Time    `firestore:"dbsRecheckReminderSentAt,omitempty" json:"dbsRecheckReminderSentAt,omitempty"`
 }
 
 // TrainingQuestion is one multiple-choice item on a module's knowledge check.
@@ -322,7 +324,7 @@ type ProfilePublic struct {
 	// Mirrored from Profile by syncProfilePublic so a nursery can see which
 	// training a shift applicant has completed before approving them. Only
 	// the module ids are exposed — scores and attempt counts stay private.
-	TrainingCompletedModuleIDs []string `firestore:"trainingCompletedModuleIds,omitempty" json:"trainingCompletedModuleIds,omitempty"`
+	TrainingCompletedModuleIDs []string      `firestore:"trainingCompletedModuleIds,omitempty" json:"trainingCompletedModuleIds,omitempty"`
 	VettingStatus              VettingStatus `firestore:"vettingStatus,omitempty" json:"vettingStatus,omitempty"`
 	DBSCheckedByKFlex          bool          `firestore:"dbsCheckedByKFlex,omitempty" json:"dbsCheckedByKFlex,omitempty"`
 	DBSRecheckDue              *time.Time    `firestore:"dbsRecheckDue,omitempty" json:"dbsRecheckDue,omitempty"`
@@ -706,8 +708,8 @@ type Plan struct {
 	ID               string    `firestore:"-" json:"id"`
 	Name             string    `firestore:"name" json:"name"`
 	Description      string    `firestore:"description" json:"description"`
-	PricePence       int64     `firestore:"pricePence" json:"pricePence"` // ex-VAT
-	BillingInterval  string    `firestore:"billingInterval" json:"billingInterval"` // "month", "per_booking", "none"
+	PricePence       int64     `firestore:"pricePence" json:"pricePence"`             // ex-VAT
+	BillingInterval  string    `firestore:"billingInterval" json:"billingInterval"`   // "month", "per_booking", "none"
 	BookingAllowance int       `firestore:"bookingAllowance" json:"bookingAllowance"` // 0 = unlimited
 	TrialDays        int       `firestore:"trialDays" json:"trialDays"`
 	Active           bool      `firestore:"active" json:"active"`
@@ -720,6 +722,7 @@ type Plan struct {
 type SubscriptionStatus string
 
 const (
+	SubPending   SubscriptionStatus = "pending"
 	SubTrialing  SubscriptionStatus = "trialing"
 	SubActive    SubscriptionStatus = "active"
 	SubPastDue   SubscriptionStatus = "past_due"
@@ -728,8 +731,12 @@ const (
 )
 
 // NurserySubscription records a nursery's membership plan and trial countdown (Phase 9).
+// No payment provider is integrated at launch: plans are assigned by an admin
+// and invoices are settled outside the app. The fields below model that state
+// without ever charging a card.
 type NurserySubscription struct {
 	NurseryID          string             `firestore:"nurseryId" json:"nurseryId"`
+	CompanyNumber      string             `firestore:"companyNumber,omitempty" json:"companyNumber,omitempty"`
 	PlanID             string             `firestore:"planId" json:"planId"`
 	PlanName           string             `firestore:"planName" json:"planName"`
 	Status             SubscriptionStatus `firestore:"status" json:"status"`
@@ -739,9 +746,18 @@ type NurserySubscription struct {
 	CurrentPeriodEnd   time.Time          `firestore:"currentPeriodEnd" json:"currentPeriodEnd"`
 	CancelAtPeriodEnd  bool               `firestore:"cancelAtPeriodEnd" json:"cancelAtPeriodEnd"`
 	CancelledAt        *time.Time         `firestore:"cancelledAt,omitempty" json:"cancelledAt,omitempty"`
-	PaymentMethod      string             `firestore:"paymentMethod" json:"paymentMethod"` // "bank_transfer", "payg"
+	PaymentMethod      string             `firestore:"paymentMethod" json:"paymentMethod"` // "none" until a provider is added
 	AssignedByAdmin    bool               `firestore:"assignedByAdmin" json:"assignedByAdmin"`
-	UpdatedAt          time.Time          `firestore:"updatedAt" json:"updatedAt"`
+
+	// RequestedPlanID is set when a nursery asks to move plan. Nothing is
+	// charged and the plan does not change until an admin assigns it.
+	RequestedPlanID string     `firestore:"requestedPlanId,omitempty" json:"requestedPlanId,omitempty"`
+	RequestedAt     *time.Time `firestore:"requestedAt,omitempty" json:"requestedAt,omitempty"`
+	RequestNote     string     `firestore:"requestNote,omitempty" json:"requestNote,omitempty"`
+
+	// TrialReminderSentAt prevents duplicate "trial ending" notifications.
+	TrialReminderSentAt *time.Time `firestore:"trialReminderSentAt,omitempty" json:"trialReminderSentAt,omitempty"`
+	UpdatedAt           time.Time  `firestore:"updatedAt" json:"updatedAt"`
 }
 
 // InvoiceStatus tracks whether an invoice is issued, settled or voided (Phase 9).
@@ -794,12 +810,24 @@ type Invoice struct {
 
 // LedgerEntry records discounts, credits and refunds without money movement (Phase 9).
 type LedgerEntry struct {
-	ID          string    `firestore:"-" json:"id"`
-	NurseryID   string    `firestore:"nurseryId" json:"nurseryId"`
-	Type        string    `firestore:"type" json:"type"` // "discount", "refund", "credit"
-	AmountPence int64     `firestore:"amountPence" json:"amountPence"`
-	Reason      string    `firestore:"reason" json:"reason"`
-	InvoiceID   string    `firestore:"invoiceId,omitempty" json:"invoiceId,omitempty"`
-	ActorUID    string    `firestore:"actorUid" json:"actorUid"`
-	CreatedAt   time.Time `firestore:"createdAt" json:"createdAt"`
+	ID           string    `firestore:"-" json:"id"`
+	NurseryID    string    `firestore:"nurseryId" json:"nurseryId"`
+	Type         string    `firestore:"type" json:"type"` // "discount", "refund", "credit"
+	AmountPence  int64     `firestore:"amountPence" json:"amountPence"`
+	Reason       string    `firestore:"reason" json:"reason"`
+	InvoiceID    string    `firestore:"invoiceId,omitempty" json:"invoiceId,omitempty"`
+	DiscountCode string    `firestore:"discountCode,omitempty" json:"discountCode,omitempty"`
+	ActorUID     string    `firestore:"actorUid" json:"actorUid"`
+	CreatedAt    time.Time `firestore:"createdAt" json:"createdAt"`
+}
+
+// CancellationPolicy is platformConfig/cancellationPolicy. Fees ship at zero
+// and only apply once an admin explicitly publishes a non-zero policy.
+type CancellationPolicy struct {
+	Version         int       `firestore:"version" json:"version"`
+	NoticeHours     int       `firestore:"noticeHours" json:"noticeHours"`
+	NurseryFeePence int64     `firestore:"nurseryFeePence" json:"nurseryFeePence"`
+	Published       bool      `firestore:"published" json:"published"`
+	Notes           string    `firestore:"notes,omitempty" json:"notes,omitempty"`
+	UpdatedAt       time.Time `firestore:"updatedAt" json:"updatedAt"`
 }

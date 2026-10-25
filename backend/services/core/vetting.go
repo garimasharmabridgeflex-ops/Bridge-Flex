@@ -3,6 +3,7 @@ package function
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -54,7 +55,7 @@ func getVettingChecklist(w http.ResponseWriter, r *http.Request) {
 	if status.Code(err) == codes.NotFound {
 		// Return empty pending checklist
 		checklist := VettingChecklist{
-			UID: targetUID,
+			UID:                 targetUID,
 			Identity:            VettingCheckItem{Result: CheckPending},
 			OriginalCertificate: VettingCheckItem{Result: CheckPending},
 			Suitability:         VettingCheckItem{Result: CheckPending},
@@ -105,6 +106,14 @@ func recordVettingCheck(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.UID == "" || req.CheckName == "" {
 		httpjson.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "uid and checkName are required")
+		return
+	}
+	if !allowedVettingChecks[req.CheckName] {
+		httpjson.WriteError(w, http.StatusBadRequest, "UNKNOWN_CHECK", "checkName is not a recognised vetting check")
+		return
+	}
+	if req.Result != CheckPending && req.Result != CheckPassed && req.Result != CheckFailed {
+		httpjson.WriteError(w, http.StatusBadRequest, "BAD_RESULT", "result must be passed, failed or pending")
 		return
 	}
 
@@ -202,6 +211,9 @@ func requestMoreDocuments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_ = notifyInApp(ctx, db, req.UID, "vetting_documents_requested", "More information needed",
+		req.Message, map[string]any{"docTypes": req.DocTypes})
+
 	_ = audit.WriteAudit(ctx, db, audit.Entry{
 		Action:    "requestMoreDocuments",
 		TargetUID: req.UID,
@@ -238,18 +250,38 @@ func approvePractitionerVetting(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// DBS verification is only complete when an authorised person has recorded
+	// every required check. Uploading a certificate or typing a number never
+	// approves anyone.
+	checkSnap, err := db.Collection("vetting").Doc(req.UID).Get(ctx)
+	if err != nil && status.Code(err) != codes.NotFound {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+	var checklist VettingChecklist
+	if checkSnap != nil && checkSnap.Exists() {
+		_ = checkSnap.DataTo(&checklist)
+	}
+	missing := missingVettingChecks(checklist)
+	if len(missing) > 0 {
+		httpjson.WriteError(w, http.StatusConflict, "VETTING_INCOMPLETE",
+			"Record every required vetting check before approving: "+strings.Join(missing, ", "))
+		return
+	}
+
 	now := time.Now().UTC()
 	recheckDue := now.AddDate(1, 0, 0) // 12-month recheck interval per owner rule
 
 	err = db.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
 		profileRef := db.Collection("profiles").Doc(req.UID)
 		if err := tx.Set(profileRef, map[string]any{
-			"vettingStatus":     string(VettingApproved),
-			"dbsCheckedByKFlex": true,
-			"dbsVerifiedAt":     now,
-			"dbsRecheckDue":     recheckDue,
-			"dbsStatus":         string(DBSVerified),
-			"updatedAt":         now,
+			"vettingStatus":       string(VettingApproved),
+			"dbsCheckedByKFlex":   true,
+			"dbsVerifiedAt":       now,
+			"dbsRecheckDue":       recheckDue,
+			"dbsStatus":           string(DBSVerified),
+			"rightToWorkVerified": true,
+			"updatedAt":           now,
 		}, firestore.MergeAll); err != nil {
 			return err
 		}
@@ -287,6 +319,12 @@ func approvePractitionerVetting(w http.ResponseWriter, r *http.Request) {
 		TargetUID: req.UID,
 		Fields:    []string{"vettingStatus", "dbsCheckedByKFlex", "dbsRecheckDue"},
 	})
+
+	_ = notifyInApp(ctx, db, req.UID, "vetting_approved", "DBS Checked by K Flex",
+		"Your verification is complete. You can now apply for shifts.",
+		map[string]any{"dbsRecheckDue": recheckDue.Format(time.RFC3339)})
+	sendTransactionalEmail(ctx, db, req.UID, "vetting_approved",
+		map[string]string{"recheckDue": recheckDue.Format("02 Jan 2006")}, true)
 
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
 		"uid":           req.UID,
@@ -331,6 +369,16 @@ func rejectPractitionerVetting(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 		return
 	}
+
+	_, _ = db.Collection("profilesPublic").Doc(req.UID).Set(ctx, map[string]any{
+		"vettingStatus": string(VettingRejectedFurtherInfo),
+		"updatedAt":     now,
+	}, firestore.MergeAll)
+
+	_ = notifyInApp(ctx, db, req.UID, "vetting_rejected", "Verification needs attention",
+		req.Reason, map[string]any{"reason": req.Reason})
+	sendTransactionalEmail(ctx, db, req.UID, "vetting_rejected",
+		map[string]string{"reason": req.Reason}, true)
 
 	_ = audit.WriteAudit(ctx, db, audit.Entry{
 		Action:    "rejectPractitionerVetting",
@@ -500,4 +548,39 @@ func getSensitiveProfile(w http.ResponseWriter, r *http.Request) {
 		"dbsCertificate":    dbs,
 		"updatedAt":         sp.UpdatedAt,
 	})
+}
+
+var allowedVettingChecks = map[string]bool{
+	"identity": true, "originalCertificate": true, "suitability": true,
+	"workforce": true, "barredList": true, "updateService": true,
+	"rightToWork": true, "qualification": true, "references": true,
+	"safeguarding": true, "firstAid": true,
+}
+
+// requiredVettingChecks are the safeguarding checks that must be signed off
+// before a practitioner can be approved. References, safeguarding training
+// and first aid remain recorded but do not block approval; they are part of
+// the wider recruitment file.
+var requiredVettingChecks = []struct {
+	name string
+	item func(VettingChecklist) VettingCheckItem
+}{
+	{"identity", func(c VettingChecklist) VettingCheckItem { return c.Identity }},
+	{"originalCertificate", func(c VettingChecklist) VettingCheckItem { return c.OriginalCertificate }},
+	{"suitability", func(c VettingChecklist) VettingCheckItem { return c.Suitability }},
+	{"workforce", func(c VettingChecklist) VettingCheckItem { return c.Workforce }},
+	{"barredList", func(c VettingChecklist) VettingCheckItem { return c.BarredList }},
+	{"updateService", func(c VettingChecklist) VettingCheckItem { return c.UpdateService }},
+	{"rightToWork", func(c VettingChecklist) VettingCheckItem { return c.RightToWork }},
+	{"qualification", func(c VettingChecklist) VettingCheckItem { return c.Qualification }},
+}
+
+func missingVettingChecks(c VettingChecklist) []string {
+	var missing []string
+	for _, check := range requiredVettingChecks {
+		if check.item(c).Result != CheckPassed {
+			missing = append(missing, check.name)
+		}
+	}
+	return missing
 }

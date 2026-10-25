@@ -22,6 +22,8 @@ import (
 
 	"github.com/cloudevents/sdk-go/v2/event"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func pubsubEvent(t *testing.T, eventType string, payload any) event.Event {
@@ -42,6 +44,32 @@ func pubsubEvent(t *testing.T, eventType string, payload any) event.Event {
 
 func testUID(prefix string) string {
 	return fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
+}
+
+// deleteSession removes a chat session and its messages — Firestore does not
+// cascade deletes into subcollections.
+func deleteSession(t *testing.T, sessionID string) {
+	t.Helper()
+	ctx := context.Background()
+	db, err := fsDB(ctx)
+	if err != nil {
+		t.Fatalf("fsDB: %v", err)
+	}
+	session := db.Collection("chatSessions").Doc(sessionID)
+	iter := session.Collection("messages").Documents(ctx)
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			iter.Stop()
+			return
+		}
+		_, _ = doc.Ref.Delete(ctx)
+	}
+	iter.Stop()
+	_, _ = session.Delete(ctx)
 }
 
 func notificationsForUID(t *testing.T, uid string) []map[string]any {
@@ -85,13 +113,15 @@ func TestOnShiftBooked(t *testing.T) {
 		t.Fatalf("onShiftBooked: %v", err)
 	}
 
-	iter := db.Collection("chatSessions").Where("shiftId", "==", shiftID).Limit(1).Documents(ctx)
-	defer iter.Stop()
-	doc, err := iter.Next()
+	sessionID := chatSessionID(nurseryUID, staffUID)
+	doc, err := db.Collection("chatSessions").Doc(sessionID).Get(ctx)
 	if err != nil {
-		t.Fatalf("expected a chat session for shift %s, got error: %v", shiftID, err)
+		t.Fatalf("expected chat session %s for shift %s, got error: %v", sessionID, shiftID, err)
 	}
-	t.Cleanup(func() { _, _ = doc.Ref.Delete(ctx) })
+	t.Cleanup(func() { deleteSession(t, sessionID) })
+	if got := doc.Data()["lastShiftId"]; got != shiftID {
+		t.Errorf("lastShiftId = %v, want %q", got, shiftID)
+	}
 	participants, _ := doc.Data()["participantIds"].([]any)
 	if !containsUID(participants, nurseryUID) || !containsUID(participants, staffUID) {
 		t.Errorf("participantIds = %v, want both %q and %q", participants, nurseryUID, staffUID)
@@ -269,4 +299,185 @@ func TestOnShiftCancelled(t *testing.T) {
 			t.Errorf("notification type = %v, want shift_cancelled", notifs[0]["type"])
 		}
 	})
+}
+
+// TestOnShiftBookedReusesPairConversation is the pair-scoped chat rule: a
+// second booking between the same nursery and practitioner must land in the
+// conversation already there, with its history intact, rather than opening a
+// fresh thread per shift.
+func TestOnShiftBookedReusesPairConversation(t *testing.T) {
+	ctx := context.Background()
+	db, err := fsDB(ctx)
+	if err != nil {
+		t.Fatalf("fsDB: %v", err)
+	}
+
+	nurseryUID := testUID("pair-test-nursery")
+	staffUID := testUID("pair-test-staff")
+	sessionID := chatSessionID(nurseryUID, staffUID)
+	t.Cleanup(func() { deleteSession(t, sessionID) })
+	t.Cleanup(func() {
+		for _, uid := range []string{nurseryUID, staffUID} {
+			iter := db.Collection("notifications").Where("uid", "==", uid).Documents(ctx)
+			for {
+				d, err := iter.Next()
+				if err == iterator.Done {
+					break
+				}
+				if err == nil {
+					_, _ = d.Ref.Delete(ctx)
+				}
+			}
+			iter.Stop()
+		}
+	})
+
+	firstShift := testUID("pair-test-shift-a")
+	secondShift := testUID("pair-test-shift-b")
+
+	for _, shiftID := range []string{firstShift, secondShift} {
+		e := pubsubEvent(t, "shift-booked", shiftBookedPayload{
+			ShiftID: shiftID, NurseryID: nurseryUID, StaffID: staffUID,
+		})
+		if err := onShiftBooked(ctx, e); err != nil {
+			t.Fatalf("onShiftBooked(%s): %v", shiftID, err)
+		}
+	}
+
+	// A message written after the first booking survives the second one.
+	if _, _, err := db.Collection("chatSessions").Doc(sessionID).Collection("messages").
+		Add(ctx, map[string]any{"senderId": staffUID, "text": "hello", "createdAt": time.Now()}); err != nil {
+		t.Fatalf("seed message: %v", err)
+	}
+
+	e := pubsubEvent(t, "shift-booked", shiftBookedPayload{
+		ShiftID: secondShift, NurseryID: nurseryUID, StaffID: staffUID,
+	})
+	if err := onShiftBooked(ctx, e); err != nil {
+		t.Fatalf("onShiftBooked(third): %v", err)
+	}
+
+	iter := db.Collection("chatSessions").Where("participantIds", "array-contains", nurseryUID).Documents(ctx)
+	defer iter.Stop()
+	var matching int
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			t.Fatalf("iterate chat sessions: %v", err)
+		}
+		participants, _ := doc.Data()["participantIds"].([]any)
+		if containsUID(participants, staffUID) {
+			matching++
+		}
+	}
+	if matching != 1 {
+		t.Errorf("chat sessions for pair = %d, want exactly 1", matching)
+	}
+
+	snap, err := db.Collection("chatSessions").Doc(sessionID).Get(ctx)
+	if err != nil {
+		t.Fatalf("get canonical session: %v", err)
+	}
+	if got := snap.Data()["lastShiftId"]; got != secondShift {
+		t.Errorf("lastShiftId = %v, want %q", got, secondShift)
+	}
+
+	msgIter := db.Collection("chatSessions").Doc(sessionID).Collection("messages").Documents(ctx)
+	defer msgIter.Stop()
+	var messages int
+	for {
+		_, err := msgIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			t.Fatalf("iterate messages: %v", err)
+		}
+		messages++
+	}
+	if messages != 1 {
+		t.Errorf("messages in conversation = %d, want 1", messages)
+	}
+}
+
+// TestOnShiftBookedMergesLegacySessions covers existing installs: threads
+// created before the pair-scoped change are keyed by shiftId with a random
+// document ID. Booking again must fold them into the pair's conversation
+// instead of leaving two threads against the same person.
+func TestOnShiftBookedMergesLegacySessions(t *testing.T) {
+	ctx := context.Background()
+	db, err := fsDB(ctx)
+	if err != nil {
+		t.Fatalf("fsDB: %v", err)
+	}
+
+	nurseryUID := testUID("merge-test-nursery")
+	staffUID := testUID("merge-test-staff")
+	sessionID := chatSessionID(nurseryUID, staffUID)
+	t.Cleanup(func() { deleteSession(t, sessionID) })
+	t.Cleanup(func() {
+		iter := db.Collection("notifications").Where("uid", "==", nurseryUID).Documents(ctx)
+		for {
+			d, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err == nil {
+				_, _ = d.Ref.Delete(ctx)
+			}
+		}
+		iter.Stop()
+	})
+
+	legacyRef, _, err := db.Collection("chatSessions").Add(ctx, map[string]any{
+		"shiftId":        testUID("legacy-shift"),
+		"participantIds": []string{nurseryUID, staffUID},
+		"createdAt":      time.Now().Add(-time.Hour),
+		"lastMessageAt":  time.Now().Add(-time.Hour),
+	})
+	if err != nil {
+		t.Fatalf("seed legacy session: %v", err)
+	}
+	legacyID := legacyRef.ID
+	t.Cleanup(func() { deleteSession(t, legacyID) })
+
+	if _, _, err := legacyRef.Collection("messages").Add(ctx, map[string]any{
+		"senderId": nurseryUID, "text": "from before the change", "createdAt": time.Now().Add(-time.Hour),
+	}); err != nil {
+		t.Fatalf("seed legacy message: %v", err)
+	}
+
+	newShift := testUID("merge-test-shift")
+	e := pubsubEvent(t, "shift-booked", shiftBookedPayload{
+		ShiftID: newShift, NurseryID: nurseryUID, StaffID: staffUID,
+	})
+	if err := onShiftBooked(ctx, e); err != nil {
+		t.Fatalf("onShiftBooked: %v", err)
+	}
+
+	if _, err := db.Collection("chatSessions").Doc(legacyID).Get(ctx); status.Code(err) != codes.NotFound {
+		t.Errorf("legacy session %s should be gone, got err = %v", legacyID, err)
+	}
+
+	msgIter := db.Collection("chatSessions").Doc(sessionID).Collection("messages").Documents(ctx)
+	defer msgIter.Stop()
+	var texts []string
+	for {
+		doc, err := msgIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			t.Fatalf("iterate messages: %v", err)
+		}
+		if text, ok := doc.Data()["text"].(string); ok {
+			texts = append(texts, text)
+		}
+	}
+	if len(texts) != 1 || texts[0] != "from before the change" {
+		t.Errorf("merged messages = %v, want the legacy message preserved", texts)
+	}
 }

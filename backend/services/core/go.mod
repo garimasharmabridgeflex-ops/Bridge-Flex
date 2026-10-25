@@ -11,6 +11,7 @@ require (
 	firebase.google.com/go/v4 v4.21.0
 	github.com/GoogleCloudPlatform/functions-framework-go v1.9.2
 	github.com/cloudevents/sdk-go/v2 v2.16.2
+	github.com/go-pdf/fpdf v0.9.0
 	github.com/googleapis/google-cloudevents-go v0.10.0
 	google.golang.org/api v0.287.1
 	google.golang.org/genproto v0.0.0-20260511170946-3700d4141b60

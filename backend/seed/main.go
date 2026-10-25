@@ -103,14 +103,17 @@ func main() {
 
 func seedCommunicationData(ctx context.Context, db *firestore.Client) error {
 	now := time.Now()
-	_, err := db.Collection("chatSessions").Doc("session-1").Set(ctx, map[string]any{
-		"shiftId":        "shift-booked-1",
+	// One conversation per nursery/practitioner pair, keyed the same way the
+	// communication service keys it (sorted UIDs), so repeated bookings reuse
+	// the thread instead of creating one per shift.
+	_, err := db.Collection("chatSessions").Doc("chat_nursery-acorn_staff-jane").Set(ctx, map[string]any{
+		"lastShiftId":    "shift-booked-1",
 		"participantIds": []string{"nursery-acorn", "staff-jane"},
 		"createdAt":      now,
 		"lastMessageAt":  now,
 	})
 	if err != nil {
-		return fmt.Errorf("write chatSessions/session-1: %w", err)
+		return fmt.Errorf("write chatSessions/chat_nursery-acorn_staff-jane: %w", err)
 	}
 
 	_, err = db.Collection("notifications").Doc("notif-1").Set(ctx, map[string]any{

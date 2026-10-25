@@ -45,7 +45,7 @@ frontend/lib/
     notifications/          in-app notification list
     ratings/                post-shift star rating bottom sheet
     documents/              DBS certificate photo upload
-    chat/                   per-shift chat (session list + thread)
+    chat/                   pair-scoped chat (one thread per peer, list + thread)
     home/                    bottom-nav shell (role-aware tabs) + splash screen
   shared/widgets/          PrimaryButton, AppTextField, status badges, empty states, skeletons
 ```
@@ -75,8 +75,10 @@ review status:
 - **`ListMyShifts`** (`functions-core`, port `8113` locally) — returns shifts the caller posted
   (nursery) or has booked (staff), determined server-side from the caller's own profile role.
   `backend/services/core/function/shifts.go`.
-- **`ListChatSessions`** (`functions-communication`, port `8127` locally) — returns chat sessions
-  the caller participates in. `backend/services/communication/function/chat.go`.
+- **`ListChatSessions`** (`functions-communication`, port `8127` locally) — returns the caller's
+  conversations, one per nursery/practitioner pair regardless of how many shifts they've shared
+  (any legacy per-shift threads are folded into the pair's conversation on read).
+  `backend/services/communication/chat.go`.
 - **`GetDocumentStatus`** (`functions-core`, port `8114` locally) — the caller's own most recent
   DBS document (status, rejection note if any), or `{"status":"none"}` if they've never uploaded
   one — the DBS upload screen needs this for a status badge instead of a bare upload button.
@@ -165,6 +167,38 @@ flutter run -d <device> --dart-define=DEV_HOST=<this-machine's-LAN-IP>
 Seeded accounts (password `password123` for all): `acorn@example.com` / `willow@example.com`
 (nurseries), `jane@example.com` (staff, DBS verified) / `sam@example.com` (staff, DBS pending) —
 see `backend/seed/main.go`.
+
+### Release build (APK)
+
+The app defaults to `USE_LOCAL_BACKEND=true`, so a plain release build calls `localhost` and every
+request times out. Always pass both defines for a device build:
+
+```bash
+cd frontend
+flutter build apk --release --split-per-abi \
+  --dart-define=USE_LOCAL_BACKEND=false \
+  --dart-define=PROJECT_ID=kvision-503115
+# outputs:
+#   build/app/outputs/flutter-apk/app-arm64-v8a-release.apk   (most phones)
+#   build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk (older 32-bit)
+#   build/app/outputs/flutter-apk/app-x86_64-release.apk      (emulators)
+```
+
+The project version comes from `pubspec.yaml` (`version: 1.7.0+12`); bump the `+build` number for
+every install-over-the-top test. A local release build is signed with the debug key unless
+`android/key.properties` and a keystore are present — fine for internal testing, not for Play
+Store distribution.
+
+Publish the split builds with the site so the download page serves the same version:
+
+```bash
+cp build/app/outputs/flutter-apk/app-*-release.apk ../backend/public/
+cd ../backend && firebase deploy --only hosting --project kvision-503115
+```
+
+`backend/public/index.html` links the arm64 build as the primary download and offers the 32-bit
+and x86 builds underneath. Keep the filenames identical — Firebase Hosting serves them as static
+files.
 
 ### Local trigger dispatch (`backend/services/*/devharness`)
 

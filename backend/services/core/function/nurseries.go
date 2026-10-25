@@ -414,6 +414,8 @@ func approveNurseryRegistration(w http.ResponseWriter, r *http.Request) {
 			{Path: "nurseryApprovalStatus", Value: NurseryApproved},
 			{Path: "activationDate", Value: now},
 			{Path: "nurseryRejectionReason", Value: firestore.Delete},
+			// Keep the legacy badge in step for older clients that still read it.
+			{Path: "ofstedVerified", Value: true},
 		}
 
 		if err := tx.Update(ref, updates); err != nil {
@@ -446,17 +448,28 @@ func approveNurseryRegistration(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Starting the one free trial here (not on first page view) is what makes
+	// the countdown match the approval date the owner asked for. The helper is
+	// idempotent and refuses a second trial for the same company number.
+	trial, _ := ensureTrialSubscription(ctx, db, req.NurseryID)
+
 	_ = audit.WriteAudit(ctx, db, audit.Entry{
 		Action:    "approveNurseryRegistration",
 		ActorUID:  callerUID,
 		TargetUID: req.NurseryID,
 		Metadata:  map[string]any{"details": "Nursery registration approved and activation date set"},
 	})
+	_ = notifyInApp(ctx, db, req.NurseryID, "nursery_approved", "Nursery approved",
+		"Your nursery is approved and your 14-day free trial has started. You can now post shifts.",
+		map[string]any{"activationDate": now.Format(time.RFC3339)})
+	sendTransactionalEmail(ctx, db, req.NurseryID, "nursery_approved",
+		map[string]string{"trialStart": now.Format("02 Jan 2006")}, true)
 
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
 		"status":         "approved",
 		"nurseryId":      req.NurseryID,
 		"activationDate": now,
+		"subscription":   trial,
 	})
 }
 
@@ -548,6 +561,10 @@ func rejectNurseryRegistration(w http.ResponseWriter, r *http.Request) {
 		TargetUID: req.NurseryID,
 		Metadata:  map[string]any{"reason": req.Reason},
 	})
+	_ = notifyInApp(ctx, db, req.NurseryID, "nursery_rejected", "Nursery registration needs attention",
+		req.Reason, map[string]any{"reason": req.Reason})
+	sendTransactionalEmail(ctx, db, req.NurseryID, "nursery_rejected",
+		map[string]string{"reason": req.Reason}, true)
 
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
 		"status":    "rejected",

@@ -236,7 +236,7 @@ type updateProfileRequest struct {
 	BillingContactPerson   *string `json:"billingContactPerson,omitempty"`
 	PreferredPaymentMethod *string `json:"preferredPaymentMethod,omitempty"`
 	LocationCount          *int64  `json:"locationCount,omitempty"`
-	StaffingRequirements  *string `json:"staffingRequirements,omitempty"`
+	StaffingRequirements   *string `json:"staffingRequirements,omitempty"`
 }
 
 // updateProfile — POST /updateProfile. Owner-only (enforced by authed()
@@ -434,6 +434,11 @@ func updateProfile(w http.ResponseWriter, r *http.Request) {
 			updates = append(updates, firestore.Update{Path: "role", Value: role})
 			if role == RoleNursery && existing.NurseryApprovalStatus == "" {
 				updates = append(updates, firestore.Update{Path: "nurseryApprovalStatus", Value: NurseryPendingApproval})
+			}
+			if role == RoleStaff && existing.VettingStatus == "" {
+				// New practitioners start in the vetting queue; an existing
+				// practitioner keeps whatever status the verification team set.
+				updates = append(updates, firestore.Update{Path: "vettingStatus", Value: VettingPendingVerification})
 			}
 		}
 		if !creating && len(updates) == 0 {

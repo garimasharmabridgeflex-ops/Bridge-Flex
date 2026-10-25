@@ -145,6 +145,81 @@ gcloud auth login
 PROJECT_ID=YOUR_PROJECT_ID ./deploy.sh
 ```
 
+## 8a. Deploy the operations console, then wire scheduled jobs
+
+The console is static Firebase Hosting content in `backend/public/admin/index.html`. It talks to
+the deployed functions through the hosting rewrites in `backend/firebase.json`, so it must be
+deployed **after** the functions it calls:
+
+```bash
+cd backend
+firebase deploy --only hosting --project YOUR_PROJECT_ID
+```
+
+Open `https://YOUR_PROJECT_ID.web.app/admin/` and sign in with the admin account from §9. The
+console is the supported path for: nursery approval/rejection (which starts the 14-day trial),
+vetting checklist sign-off and practitioner approval, plan assignment, plan/rate-card/company/
+cancellation-policy editing, feature gates, legal policy drafting/approval/publishing, invoices,
+payroll and the audit log. There is no separate deploy step for it beyond hosting.
+
+Two scheduled jobs keep time-based notifications working. Create them once with Cloud Scheduler
+(the functions verify the OIDC token themselves):
+
+```bash
+PROJECT=YOUR_PROJECT_ID
+REGION=europe-west2
+SERVICE_ACCOUNT="$(gcloud projects describe $PROJECT --format='value(projectNumber)')-compute@developer.gserviceaccount.com"
+
+# Trial ending reminders — daily at 08:00 UK time
+gcloud scheduler jobs create http trial-reminders \
+  --project=$PROJECT --location=$REGION --schedule="0 8 * * *" \
+  --uri="https://$REGION-$PROJECT.cloudfunctions.net/SchedulerTrialReminders" \
+  --http-method=POST --oidc-service-account-email=$SERVICE_ACCOUNT \
+  --oidc-token-audience="https://$REGION-$PROJECT.cloudfunctions.net/SchedulerTrialReminders"
+
+# DBS recheck reminders — daily at 08:15
+gcloud scheduler jobs create http recheck-reminders \
+  --project=$PROJECT --location=$REGION --schedule="15 8 * * *" \
+  --uri="https://$REGION-$PROJECT.cloudfunctions.net/SchedulerRecheckReminders" \
+  --http-method=POST --oidc-service-account-email=$SERVICE_ACCOUNT \
+  --oidc-token-audience="https://$REGION-$PROJECT.cloudfunctions.net/SchedulerRecheckReminders"
+```
+
+The console also exposes **Run now** equivalents (`RunTrialReminders`, `RunRecheckReminders`) for
+testing, and the 48-hour timesheet escalation can be run on demand (`EscalateUnresponsiveTimesheets`).
+
+## 8b. Enable transactional email (optional, but recommended)
+
+`OnSendEmail` is a Pub/Sub consumer: `functions-core` publishes an `EmailMessage` to the
+`send-email` topic whenever an approval, rejection, invoice or trial reminder happens, and the
+consumer renders the template and delivers it over SMTP.
+
+The topic must exist **before** `OnSendEmail` is deployed (a `--trigger-topic` deploy fails
+validation against a missing topic):
+
+```bash
+gcloud pubsub topics create send-email --project=YOUR_PROJECT_ID
+```
+
+Then give the consumer its transport. Nothing is hardcoded in this repository — set the
+variables as secrets on the function:
+
+```bash
+gcloud functions deploy OnSendEmail --gen2 --region=europe-west2 --project=YOUR_PROJECT_ID \
+  --source=. --entry-point=OnSendEmail --trigger-topic=send-email \
+  --update-secrets=SMTP_HOST=smtp-host:latest,SMTP_PORT=smtp-port:latest,\
+SMTP_USER=smtp-user:latest,SMTP_PASS=smtp-pass:latest,SMTP_FROM=smtp-from:latest,\
+SMTP_FROM_NAME=smtp-from-name:latest
+```
+
+With no `SMTP_HOST` the consumer still runs: it logs `email skipped: SMTP not configured`,
+records the message as `skipped_no_transport` in `sentEmails`, and the platform keeps working
+with in-app notifications only. Templates live in `services/communication/email.go`; the send
+path is `services/communication/smtp.go`.
+
+Emails sent today: nursery approved/rejected, practitioner verification approved/rejected,
+invoice generated, membership updated, trial ending (owner brief §12).
+
 ## 9. Create an admin account
 
 There is no self-service admin role — it's a Firebase Auth **custom claim**, set out of band:

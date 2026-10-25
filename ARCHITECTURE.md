@@ -95,8 +95,9 @@ see `backend/services/*/deploy.sh` for the exact deploy commands and trigger con
 
 - **Booking → Communication:** `acceptShift` (core) commits the Firestore transaction, then
   publishes to `shift-booked`. `onShiftBooked` (communication) sends FCM pushes to both parties,
-  writes a `notifications/{id}` doc for each, and initializes `chatSessions/{sessionId}` if one
-  doesn't already exist for that shift.
+  writes a `notifications/{id}` doc for each, and ensures the pair's conversation exists —
+  `chatSessions/chat_<lowerUid>_<higherUid>` is one thread per nursery/practitioner pair, reused by
+  every later booking instead of a new thread per shift.
 - **Cancellation → Communication:** `cancelShift` (core) publishes to `shift-cancelled` when a
   *staff member* cancels a booked shift (nursery-initiated cancellation doesn't need to notify the
   nursery itself). `onShiftCancelled` (communication) notifies the nursery that coverage was
@@ -226,10 +227,16 @@ client-side.**
 (ownership-checked against the shift's `nurseryId`/booked-staff pair). Immutable after creation.
 
 ### `chatSessions/{sessionId}/messages/{messageId}` — owned by communication service
-`chatSessions/{sessionId}`: `shiftId`, `participantIds`, `createdAt`, `lastMessageAt`.
-`messages/{messageId}`: `senderId`, `text`, `createdAt`, `readBy`. Session is created by
-`onShiftBooked`, not by a client, so a chat session can't exist for a shift that was never booked.
-Participants read/write messages within sessions they're a member of.
+`chatSessions/{sessionId}`: `participantIds`, `createdAt`, `lastMessageAt`, `lastShiftId`.
+`messages/{messageId}`: `senderId`, `text`, `createdAt`, `readBy`.
+
+There is **one conversation per nursery/practitioner pair**, not one per shift: the document ID is
+deterministic (`chat_<lowerUid>_<higherUid>`), so every later booking reuses the same thread. The
+session is still created only by `onShiftBooked`, not by a client, so a conversation can't exist
+for a pair that never booked together. `lastShiftId` is context only. Legacy per-shift threads are
+merged into the pair's canonical conversation (messages copied, old thread deleted) the first time
+that pair books again, and lazily when the session list is read. Participants read/write messages
+within conversations they are a member of.
 
 ### `transactions/{transactionId}` — owned by payments service, reserved name only
 `shiftId`, `payerId`, `payeeId`, `amount`, `stripeStatus`, Stripe Connect account refs, `createdAt`.
@@ -255,7 +262,7 @@ design):
 | `profilesPublic` | read any doc, any authenticated user | 100% — every field, every write |
 | `shifts` | read open shifts; nursery writes own open-shift fields | `status`, booked-staff fields (booking/cancel endpoints) |
 | `ratings` | create (with ownership check) | recompute of `profiles.rating` (cascades to `profilesPublic`) |
-| `chatSessions/messages` | read/write within own session | session creation |
+| `chatSessions/messages` | read/write within own conversation (one per nursery/practitioner pair) | session creation |
 | `transactions` | none | everything (payments codebase only; unused today) |
 | `documents` | create own, read own | `status`, `reviewNote` (review endpoint) |
 | `notifications` | read own, update own `read` flag | creation of the doc itself |
@@ -285,8 +292,9 @@ literal, current rules (source of truth); the shape:
   open, never touching booking fields.
 - `ratings/{ratingId}`: create only by the actual rater on a shift they were actually party to; no
   update/delete via client rules ever.
-- `chatSessions/{sessionId}`: read/write on `messages` gated by session membership; no client
-  create of the parent doc.
+- `chatSessions/{sessionId}`: read/write on `messages` gated by membership; no client create of
+  the parent doc. One conversation per nursery/practitioner pair (`chat_<lowerUid>_<higherUid>`),
+  so history follows the pair across shifts.
 - `documents/{docId}`: create/read owner-only; `status`/`reviewNote` frozen from client writes.
 - `notifications/{notificationId}`: read owner-only; update owner-only and only the `read` boolean.
 

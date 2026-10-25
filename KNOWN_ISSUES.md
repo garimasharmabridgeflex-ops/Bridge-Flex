@@ -8,26 +8,27 @@ Current state as of this handover. Production runs on Firebase project `kvision-
 
 - **Android is not on the Play Store.** It's distributed as a direct APK download from the Firebase-hosted website. No Google Play Console account/listing exists.
 
-- **No custom/branded domain.** The download site and API both run on Firebase's default domain (`kvision-503115.web.app` / `.firebaseapp.com`), which is permanently tied to the project ID. A branded domain requires purchasing one and adding it via Firebase Hosting's custom-domain feature.
+- **No custom/branded domain.** The download site and API both run on Firebase's default domain (`kvision-503115.web.app` / `.firebaseapp.com`), which is permanently tied to the project ID. A branded domain requires purchasing one and adding it via Firebase Hosting's custom-domain feature.## Payments
 
-
-## Payments
-
-- **`CreatePayout` is a stub that always returns HTTP 501.** No Stripe integration, no real charge/payout logic exists. See `backend/services/payments/TODO.md`. Nothing in the Flutter app calls this endpoint yet.
+- **No payment provider is integrated yet.** This is deliberate for the current release: nurseries request a plan, an administrator assigns it in the operations console, weekly invoices are generated from approved timesheets and settled by bank transfer. No card details are collected anywhere. `CreatePayout` remains a stub that returns HTTP 501, and `backend/services/payments/TODO.md` is the place to start when Stripe (or another provider) is added.
 
 ## Product gaps
 
-- **No profile-setup wizard.** Sign-up goes straight from role selection into the app — there's no staff experience/qualifications/bio step, no nursery description/photos/opening-hours/Ofsted step. Public profile screens are correspondingly minimal (name, role, DBS badge, rating) because the richer data doesn't exist yet to show. This is the largest remaining product gap.
+- **DBS verification is manual.** A practitioner uploads their certificate; an administrator records the eight required vetting checks (identity, original certificate, suitability, workforce, barred list, Update Service, right to work, qualification) before approval. There is no integration with a real DBS-checking service, so the certificate is checked by eye against the Update Service.
 
-- **DBS verification is manual/self-reported.** A staff member uploads a photo of their DBS certificate; an admin approves/rejects it by eye (`ReviewDocument`). There's no integration with a real DBS-checking service.
+- **Onboarding collects the profile, but optional depth is still thin.** Staff experience/qualifications/bio and nursery description/photos/opening hours are editable and shown on public profiles; richer media and a guided completion score are still to come.
 
 - **Shift matching is a placeholder.** `matchNewShift`'s geo-matching radius and minimum shift-notice logic are both simplified placeholders pending real product decisions (see `ARCHITECTURE.md` v2 §8) — not a bug, but not the final intended behavior either.
 
-- **Chat and shift-detail screens poll rather than push-update live** (chat polls every 4s while a thread is open; other screens refetch on pull-to-refresh or after a mutation). This was a deliberate choice after `cloud\_firestore`'s gRPC/HTTP2 streaming connection proved unreliable over NAT'd/tunnelled dev networks — see `README.md`'s "How screens read data" section. Push notifications (FCM) do work for the events that trigger them; this is specifically about screens auto-refreshing their content while open.
+- **Chat and shift-detail screens poll rather than push-update live** (chat polls every 4s while a thread is open; other screens refetch on pull-to-refresh or after a mutation). This was a deliberate choice after `cloud\_firestore`'s gRPC/HTTP2 streaming connection proved unreliable over NAT'd/tunnelled dev networks — see `README.md`'s "How screens read data" section. Push notifications (FCM) do work for the events that trigger them; this is specifically about screens auto-refreshing their content while open.## Operational
 
-## Operational
+- **Scheduled jobs need to be created once per project.** `SchedulerTrialReminders` and `SchedulerRecheckReminders` are deployed HTTP functions; Cloud Scheduler must be pointed at them with OIDC (see `backend/PRODUCTION_SETUP.md` §8a). Until that is done, trial-ending and DBS-recheck notifications only run when an admin presses the corresponding button in the console.
 
-- **No monitoring/alerting is set up** beyond default GCP Cloud Functions logs (`gcloud logging read` / GCP Console → Cloud Functions → Logs). No error-tracking service (e.g. Sentry), no uptime checks, no alert policies.
+- **Email needs SMTP credentials before it sends anything.** The producer now exists: approvals, vetting decisions, plan changes, invoice generation and trial reminders all publish to the `send-email` topic, and `OnSendEmail` renders and sends them over SMTP (`services/communication/smtp.go`). Without `SMTP_HOST` set on that function the send is skipped and recorded as `skipped_no_transport` in `sentEmails`, so in-app notifications remain the only channel until credentials are added — see `backend/PRODUCTION_SETUP.md` §8b. Until then, approvals, vetting decisions, plan changes, invoices and reminders all write in-app notifications (and push, where a token is registered).
+
+- **Feature gates start at launch defaults**: nursery approval and trial expiry are `enforce`; practitioner vetting and terms acceptance are `warn` (so legacy practitioners and unpublished policies do not lock accounts out). Change them in the console under Settings → Feature gates. The settings live in `platformConfig/featureFlags` and are cached server-side for 60 seconds.
+
+- **No monitoring/alerting is set up** beyond default GCP Cloud Functions logs (`gcloud logging read` / GCP Console → Cloud Functions → Logs). No error-tracking service (e.g. Sentry), no uptime checks, no alert policies.
 
 - **No automated backups configured** beyond Firestore's own point-in-time recovery defaults (if enabled — verify in the GCP Console under Firestore → Backups).
 

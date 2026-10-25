@@ -931,7 +931,9 @@ func escalateUnresponsiveTimesheets(w http.ResponseWriter, r *http.Request) {
 		isScheduler = true
 	}
 
-	callerUID := auth.UID(ctx)
+	// This handler is intentionally callable by Cloud Scheduler (no Firebase
+	// auth middleware), so reading the uid must not panic on a bare context.
+	callerUID := safeCallerUID(ctx)
 	callerIsAdmin := auth.HasRole(ctx, auth.AdminRoleSuperAdmin, auth.AdminRoleSupport, auth.AdminRoleFinance) || isAdmin(ctx)
 
 	if !isScheduler && !callerIsAdmin {

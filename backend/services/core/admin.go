@@ -20,6 +20,7 @@ func init() {
 	functions.HTTP("GetUserDetail", authed(getUserDetail))
 	functions.HTTP("SetUserSuspended", authed(setUserSuspended))
 	functions.HTTP("SetVerificationBadge", authed(setVerificationBadge))
+	functions.HTTP("ListAuditLogs", authed(listAuditLogs))
 }
 
 // PlatformStats is the admin dashboard's platform-wide snapshot — full app
@@ -27,18 +28,33 @@ func init() {
 // statistics". Computed on read, same MVP tradeoff as stats.go's per-nursery
 // numbers (no trigger-maintained counters yet).
 type platformStats struct {
-	TotalNurseries   int64 `json:"totalNurseries"`
-	TotalStaff       int64 `json:"totalStaff"`
-	SuspendedUsers   int64 `json:"suspendedUsers"`
-	PendingDBS       int64 `json:"pendingDbs"`
-	TotalShifts      int64 `json:"totalShifts"`
-	OpenShifts       int64 `json:"openShifts"`
-	BookedShifts     int64 `json:"bookedShifts"`
+	TotalNurseries    int64 `json:"totalNurseries"`
+	TotalStaff        int64 `json:"totalStaff"`
+	SuspendedUsers    int64 `json:"suspendedUsers"`
+	PendingDBS        int64 `json:"pendingDbs"`
+	TotalShifts       int64 `json:"totalShifts"`
+	OpenShifts        int64 `json:"openShifts"`
+	BookedShifts      int64 `json:"bookedShifts"`
 	CompletedShifts   int64 `json:"completedShifts"`
 	CancelledShifts   int64 `json:"cancelledShifts"`
 	PendingTimesheets int64 `json:"pendingTimesheets,omitempty"`
 	PendingDocuments  int64 `json:"pendingDocuments"`
-	TotalRatings     int64 `json:"totalRatings"`
+	TotalRatings      int64 `json:"totalRatings"`
+
+	// Operational and financial counters the owner asked for. Money is in
+	// pence, every time; the admin console formats it.
+	ActiveSubscriptions       int64 `json:"activeSubscriptions"`
+	TrialAccounts             int64 `json:"trialAccounts"`
+	PendingNurseryApprovals   int64 `json:"pendingNurseryApprovals"`
+	VerifiedPractitioners     int64 `json:"verifiedPractitioners"`
+	PendingVetting            int64 `json:"pendingVetting"`
+	ApprovedHours             int64 `json:"approvedHours"`
+	MonthlySubscriptionPence  int64 `json:"monthlySubscriptionRevenuePence"`
+	TotalStaffingRevenuePence int64 `json:"totalStaffingRevenuePence"`
+	OutstandingPence          int64 `json:"outstandingPence"`
+	PractitionerGrossPence    int64 `json:"practitionerGrossWagesPence"`
+	PayrollPeriods            int64 `json:"payrollPeriods"`
+	SubscriptionRequests      int64 `json:"subscriptionRequests"`
 }
 
 func getQueryCount(ctx context.Context, q firestore.Query) (int64, error) {
@@ -99,6 +115,45 @@ func getPlatformStats(w http.ResponseWriter, r *http.Request) {
 	out.PendingDocuments, _ = getQueryCount(ctx, db.Collection("documents").Where("status", "==", string(DocPendingReview)))
 	out.TotalRatings, _ = getQueryCount(ctx, db.Collection("ratings").Query)
 
+	// Operational counters. Each one is best-effort: an unavailable aggregate
+	// must not blank the whole dashboard.
+	out.ActiveSubscriptions, _ = getQueryCount(ctx, db.Collection("subscriptions").Where("status", "==", string(SubActive)))
+	out.TrialAccounts, _ = getQueryCount(ctx, db.Collection("subscriptions").Where("status", "==", string(SubTrialing)))
+	out.PendingNurseryApprovals, _ = getQueryCount(ctx, db.Collection("profiles").Where("role", "==", string(RoleNursery)).Where("nurseryApprovalStatus", "==", string(NurseryPendingApproval)))
+	out.VerifiedPractitioners, _ = getQueryCount(ctx, db.Collection("profiles").Where("vettingStatus", "==", string(VettingApproved)))
+	out.PendingVetting, _ = getQueryCount(ctx, db.Collection("profiles").Where("role", "==", string(RoleStaff)).Where("vettingStatus", "==", string(VettingPendingVerification)))
+	out.SubscriptionRequests, _ = getQueryCount(ctx, db.Collection("subscriptions").Where("requestedPlanId", "!=", ""))
+
+	// Revenue and hours need sums rather than counts. These collections stay
+	// small for a launch-stage marketplace; cap each scan so a runaway
+	// collection cannot stall the dashboard.
+	invDocs, _ := db.Collection("invoices").Limit(1000).Documents(ctx).GetAll()
+	for _, doc := range invDocs {
+		var inv Invoice
+		if err := doc.DataTo(&inv); err != nil {
+			continue
+		}
+		switch inv.Status {
+		case InvoicePaid:
+			out.TotalStaffingRevenuePence += inv.SubtotalPence
+			out.MonthlySubscriptionPence += subscriptionLineTotal(inv.LineItems)
+		case InvoiceIssued, InvoiceOverdue:
+			out.OutstandingPence += inv.TotalPence
+		}
+	}
+	tsDocs, _ := db.Collection("timesheets").
+		Where("status", "in", []string{string(TimesheetApproved), string(TimesheetAdminApproved)}).
+		Limit(2000).Documents(ctx).GetAll()
+	for _, doc := range tsDocs {
+		var ts Timesheet
+		if err := doc.DataTo(&ts); err != nil {
+			continue
+		}
+		out.ApprovedHours += ts.BillableMinutes / 60
+		out.PractitionerGrossPence += ts.TotalGrossPayPence
+	}
+	out.PayrollPeriods, _ = getQueryCount(ctx, db.Collection("payrollPeriods").Query)
+
 	httpjson.WriteJSON(w, http.StatusOK, out)
 }
 
@@ -135,17 +190,29 @@ func listAllUsers(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		out = append(out, map[string]any{
-			"uid":              snap.Ref.ID,
-			"role":             p.Role,
-			"name":             p.Name,
-			"phone":            p.Phone,
-			"email":            p.Email,
-			"dbsStatus":        p.DBSStatus,
-			"suspended":        p.Suspended,
-			"identityVerified": p.IdentityVerified,
-			"ofstedVerified":   p.OfstedVerified,
-			"rating":           p.Rating,
-			"createdAt":        p.CreatedAt,
+			"uid":                   snap.Ref.ID,
+			"role":                  p.Role,
+			"name":                  p.Name,
+			"phone":                 p.Phone,
+			"email":                 p.Email,
+			"photoUrl":              p.PhotoURL,
+			"city":                  p.City,
+			"postcode":              p.Postcode,
+			"qualificationLevel":    p.QualificationLevel,
+			"dbsStatus":             p.DBSStatus,
+			"vettingStatus":         p.VettingStatus,
+			"dbsCheckedByKFlex":     p.DBSCheckedByKFlex,
+			"dbsVerifiedAt":         p.DBSVerifiedAt,
+			"dbsRecheckDue":         p.DBSRecheckDue,
+			"nurseryApprovalStatus": p.NurseryApprovalStatus,
+			"activationDate":        p.ActivationDate,
+			"companyNumber":         p.CompanyNumber,
+			"ofstedRegNumber":       p.OfstedRegNumber,
+			"suspended":             p.Suspended,
+			"identityVerified":      p.IdentityVerified,
+			"ofstedVerified":        p.OfstedVerified,
+			"rating":                p.Rating,
+			"createdAt":             p.CreatedAt,
 		})
 	}
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"users": out})
@@ -316,18 +383,20 @@ func setVerificationBadge(w http.ResponseWriter, r *http.Request) {
 		field = "identityVerified"
 		val = req.Verified
 	case "ofsted":
-		field = "ofstedVerified"
-		val = req.Verified
+		// Nursery approval owns this field now. The old badge shortcut is kept
+		// only to return a clear error, never to bypass the workflow.
+		httpjson.WriteError(w, http.StatusConflict, "USE_NURSERY_APPROVAL",
+			"Approve or reject the nursery registration instead of setting the badge directly")
+		return
 	case "right_to_work":
 		field = "rightToWorkVerified"
 		val = req.Verified
 	case "dbs":
-		field = "dbsStatus"
-		if req.Verified {
-			val = string(DBSVerified)
-		} else {
-			val = string(DBSUnverified)
-		}
+		// DBS is only ever verified through the vetting checklist. This
+		// endpoint must not be able to mark someone verified on its own.
+		httpjson.WriteError(w, http.StatusConflict, "USE_VETTING_APPROVAL",
+			"Record the vetting checklist and approve the practitioner instead")
+		return
 	default:
 		httpjson.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "badge must be 'identity', 'ofsted', 'dbs', or 'right_to_work'")
 		return
@@ -373,4 +442,49 @@ func setVerificationBadge(w http.ResponseWriter, r *http.Request) {
 	})
 
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"uid": req.UID, "badge": req.Badge, "verified": req.Verified})
+}
+
+func subscriptionLineTotal(lines []InvoiceLineItem) int64 {
+	var total int64
+	for _, line := range lines {
+		if line.Type == "subscription" || line.Type == "booking_fee" {
+			total += line.TotalPence
+		}
+	}
+	return total
+}
+
+// listAuditLogs — GET /listAuditLogs?limit=200. Admin-only, append-only
+// source. The console shows this instead of a browser-local imitation.
+func listAuditLogs(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if !isAdmin(ctx) {
+		httpjson.WriteError(w, http.StatusForbidden, "NOT_ADMIN", "Admin claim required")
+		return
+	}
+	db, err := fsDB(ctx)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "firestore unavailable")
+		return
+	}
+
+	limit := 200
+	iter := db.Collection("auditLogs").OrderBy("timestamp", firestore.Desc).Limit(limit).Documents(ctx)
+	defer iter.Stop()
+
+	out := []map[string]any{}
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+			return
+		}
+		entry := doc.Data()
+		entry["id"] = doc.Ref.ID
+		out = append(out, entry)
+	}
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"entries": out})
 }

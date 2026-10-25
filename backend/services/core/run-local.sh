@@ -96,6 +96,21 @@ declare -A FUNCS=(
   [GetInvoice]=8209
   [MarkInvoicePaid]=8210
   [CreateLedgerEntry]=8211
+  [RequestPlanChange]=8212
+  [CancelSubscription]=8213
+  [ListSubscriptionRequests]=8214
+  [GetFeatureFlags]=8215
+  [UpdateFeatureFlags]=8216
+  [ListAuditLogs]=8217
+  [AdminSavePolicyDraft]=8218
+  [AdminApprovePolicy]=8219
+  [AdminPublishPolicy]=8220
+  [ListPolicies]=8221
+  [GetInvoiceDocument]=8222
+  [CreateDiscountCode]=8223
+  [ListDiscountCodes]=8224
+  [SetDiscountCodeActive]=8225
+  [SendAdminNotification]=8226
 )
 
 pids=()

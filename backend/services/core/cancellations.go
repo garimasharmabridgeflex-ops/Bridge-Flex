@@ -19,6 +19,72 @@ import (
 
 func init() {
 	functions.HTTP("CancelShiftStructured", authed(cancelShiftStructured))
+	functions.HTTP("GetCancellationPolicy", getCancellationPolicy)
+	functions.HTTP("UpdateCancellationPolicy", authed(updateCancellationPolicy))
+}
+
+const cancellationPolicyDoc = "platformConfig/cancellationPolicy"
+
+// LoadCancellationPolicy returns the stored policy, or the safe zero-fee
+// default when nothing has been published.
+func LoadCancellationPolicy(ctx context.Context, db *firestore.Client) CancellationPolicy {
+	policy := CancellationPolicy{NoticeHours: 48, NurseryFeePence: 0, Published: false}
+	snap, err := db.Doc(cancellationPolicyDoc).Get(ctx)
+	if err != nil {
+		return policy
+	}
+	_ = snap.DataTo(&policy)
+	if !policy.Published {
+		policy.NurseryFeePence = 0
+	}
+	return policy
+}
+
+func getCancellationPolicy(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	db, err := fsDB(ctx)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "firestore unavailable")
+		return
+	}
+	httpjson.WriteJSON(w, http.StatusOK, LoadCancellationPolicy(ctx, db))
+}
+
+func updateCancellationPolicy(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if !isAdmin(ctx) {
+		httpjson.WriteError(w, http.StatusForbidden, "NOT_ADMIN", "Admin claim required")
+		return
+	}
+	var req CancellationPolicy
+	if !httpjson.DecodeJSON(w, r, &req) {
+		return
+	}
+	if req.NoticeHours < 0 || req.NurseryFeePence < 0 {
+		httpjson.WriteError(w, http.StatusBadRequest, "BAD_REQUEST", "Fees and notice hours cannot be negative")
+		return
+	}
+	db, err := fsDB(ctx)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "firestore unavailable")
+		return
+	}
+	current := LoadCancellationPolicy(ctx, db)
+	if current.Version > 0 {
+		req.Version = current.Version + 1
+	} else {
+		req.Version = 1
+	}
+	req.UpdatedAt = time.Now().UTC()
+	if _, err := db.Doc(cancellationPolicyDoc).Set(ctx, req); err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+	_ = audit.WriteAudit(ctx, db, audit.Entry{
+		Action:   "platform.update_cancellation_policy",
+		Metadata: map[string]any{"version": req.Version, "feePence": req.NurseryFeePence, "published": req.Published},
+	})
+	httpjson.WriteJSON(w, http.StatusOK, req)
 }
 
 type cancelShiftStructuredRequest struct {
@@ -36,16 +102,38 @@ func CalculateCancellationCharge(
 	category string,
 	cancelledAt time.Time,
 ) (int64, int64, int) {
-	// Hours before shift start:
-	// hoursUntilStart := shift.StartTime.Sub(cancelledAt).Hours()
+	return CalculateCancellationChargeWithPolicy(shift, actorRole, category, cancelledAt,
+		CancellationPolicy{NoticeHours: 48, NurseryFeePence: 0, Published: false})
+}
 
-	// Under Decision 13: All cancellation fees default to 0 pence.
-	// Emergency and sickness are always exempted from penalty fees.
-	if category == "emergency" || category == "sickness" {
-		return 0, 0, 1
+// CalculateCancellationChargeWithPolicy applies only the published policy.
+// Practitioners are never charged a penalty (no unlawful deduction); only a
+// nursery cancellation inside the notice window can attract a fee.
+func CalculateCancellationChargeWithPolicy(
+	shift Shift,
+	actorRole Role,
+	category string,
+	cancelledAt time.Time,
+	policy CancellationPolicy,
+) (int64, int64, int) {
+	version := policy.Version
+	if version == 0 {
+		version = 1
 	}
-
-	return 0, 0, 1
+	if !policy.Published || policy.NurseryFeePence <= 0 {
+		return 0, 0, version
+	}
+	if category == "emergency" || category == "sickness" {
+		return 0, 0, version
+	}
+	if actorRole != RoleNursery {
+		return 0, 0, version
+	}
+	hoursUntilStart := shift.StartTime.Sub(cancelledAt).Hours()
+	if hoursUntilStart < float64(policy.NoticeHours) {
+		return policy.NurseryFeePence, 0, version
+	}
+	return 0, 0, version
 }
 
 // cancelShiftStructured handles cancellations with audit trail, reasons, and replacement tasks.
@@ -73,6 +161,7 @@ func cancelShiftStructured(w http.ResponseWriter, r *http.Request) {
 
 	shiftRef := db.Collection("shifts").Doc(req.ShiftID)
 	now := time.Now()
+	policy := LoadCancellationPolicy(ctx, db)
 
 	var (
 		cancellationID string
@@ -123,7 +212,7 @@ func cancelShiftStructured(w http.ResponseWriter, r *http.Request) {
 			callerRole = RoleStaff
 		}
 
-		chargePence, compPence, policyVersion = CalculateCancellationCharge(shift, callerRole, req.Category, now)
+		chargePence, compPence, policyVersion = CalculateCancellationChargeWithPolicy(shift, callerRole, req.Category, now, policy)
 
 		var shiftUpdates []firestore.Update
 		if isNursery {
@@ -220,6 +309,18 @@ func cancelShiftStructured(w http.ResponseWriter, r *http.Request) {
 		}
 		httpjson.WriteError(w, http.StatusBadRequest, "ERROR", err.Error())
 		return
+	}
+
+	if callerRole == RoleNursery {
+		for _, staffID := range bookedStaff {
+			_ = notifyInApp(ctx, db, staffID, "shift_cancelled", "A shift was cancelled",
+				"The nursery has cancelled a shift you were booked on. Check My Shifts for details.",
+				map[string]any{"shiftId": req.ShiftID, "category": req.Category})
+		}
+	} else if nurseryID != "" {
+		_ = notifyInApp(ctx, db, nurseryID, "shift_cancelled", "Practitioner cancellation",
+			"A booked practitioner can no longer attend. Review the shift and arrange replacement cover.",
+			map[string]any{"shiftId": req.ShiftID, "category": req.Category})
 	}
 
 	_ = audit.WriteAudit(ctx, db, audit.Entry{

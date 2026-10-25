@@ -2,8 +2,10 @@ package function
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"time"
 
@@ -30,6 +32,9 @@ func init() {
 	functions.HTTP("UpsertPlan", authed(upsertPlan))
 	functions.HTTP("GetNurserySubscription", authed(getNurserySubscription))
 	functions.HTTP("AssignNurseryPlan", authed(assignNurseryPlan))
+	functions.HTTP("RequestPlanChange", authed(requestPlanChange))
+	functions.HTTP("CancelSubscription", authed(cancelSubscription))
+	functions.HTTP("ListSubscriptionRequests", authed(listSubscriptionRequests))
 	functions.HTTP("GenerateWeeklyInvoices", authed(generateWeeklyInvoices))
 	functions.HTTP("ListInvoices", authed(listInvoices))
 	functions.HTTP("GetInvoice", authed(getInvoice))
@@ -96,6 +101,36 @@ func defaultPlans() []Plan {
 }
 
 // GenerateNextInvoiceNumber generates atomic sequential invoice numbers: INV-YYYY-XXXX.
+// findPlan resolves an active plan from Firestore, falling back to the seeded
+// defaults when the plans collection has not been created yet. A plan id that
+// exists but is inactive is treated as unavailable.
+func findPlan(ctx context.Context, db *firestore.Client, planID string) (*Plan, error) {
+	if db != nil {
+		snap, err := db.Collection("plans").Doc(planID).Get(ctx)
+		if err == nil {
+			var p Plan
+			if err := snap.DataTo(&p); err != nil {
+				return nil, err
+			}
+			p.ID = snap.Ref.ID
+			if !p.Active {
+				return nil, nil
+			}
+			return &p, nil
+		}
+		if status.Code(err) != codes.NotFound {
+			return nil, err
+		}
+	}
+	for _, p := range defaultPlans() {
+		if p.ID == planID && p.Active {
+			plan := p
+			return &plan, nil
+		}
+	}
+	return nil, nil
+}
+
 func GenerateNextInvoiceNumber(ctx context.Context, db *firestore.Client, year int) (string, error) {
 	if db == nil {
 		return fmt.Sprintf("INV-%d-0001", year), nil
@@ -223,6 +258,113 @@ func upsertPlan(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteJSON(w, http.StatusOK, req)
 }
 
+// nurseryApprovalSatisfied treats an empty status as approved. Every nursery
+// that existed before the approval workflow was grandfathered on purpose
+// (plan rule 6.1.5); only nurseries that chose the nursery role after the
+// workflow shipped carry pending_approval.
+func nurseryApprovalSatisfied(p Profile) bool {
+	return p.NurseryApprovalStatus == "" || p.NurseryApprovalStatus == NurseryApproved
+}
+
+const trialDuration = 14 * 24 * time.Hour
+
+// ensureTrialSubscription returns the nursery's subscription, creating the
+// single free trial only once the nursery is approved and activated. It never
+// writes a trial for an unapproved nursery, and never issues a second trial
+// for the same company number.
+func ensureTrialSubscription(ctx context.Context, db *firestore.Client, nurseryID string) (*NurserySubscription, error) {
+	pSnap, err := db.Collection("profiles").Doc(nurseryID).Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var p Profile
+	if err := pSnap.DataTo(&p); err != nil {
+		return nil, err
+	}
+	if p.Role != RoleNursery {
+		return nil, fmt.Errorf("NOT_A_NURSERY")
+	}
+
+	now := time.Now().UTC()
+	subRef := db.Collection("subscriptions").Doc(nurseryID)
+	if snap, err := subRef.Get(ctx); err == nil {
+		var sub NurserySubscription
+		if err := snap.DataTo(&sub); err != nil {
+			return nil, err
+		}
+		return &sub, nil
+	} else if status.Code(err) != codes.NotFound {
+		return nil, err
+	}
+
+	if !nurseryApprovalSatisfied(p) {
+		return &NurserySubscription{
+			NurseryID:     nurseryID,
+			CompanyNumber: p.CompanyNumber,
+			PlanID:        "none",
+			PlanName:      "Awaiting approval",
+			Status:        SubPending,
+			PaymentMethod: "none",
+			UpdatedAt:     now,
+		}, nil
+	}
+
+	// Grandfathered nurseries (empty approval status) may predate the
+	// activationDate field. They are approved by definition (plan rule
+	// 6.1.5), so stamp activation now rather than leaving them with no trial
+	// and a permanently "pending" subscription.
+	if p.ActivationDate == nil {
+		p.ActivationDate = &now
+		if _, err := db.Collection("profiles").Doc(nurseryID).Set(ctx,
+			map[string]any{"activationDate": now}, firestore.MergeAll); err != nil {
+			return nil, err
+		}
+	}
+
+	// One trial per company number. If this company has already had a trial on
+	// another nursery account, no second trial is issued.
+	if p.CompanyNumber != "" {
+		iter := db.Collection("subscriptions").Where("companyNumber", "==", p.CompanyNumber).Limit(1).Documents(ctx)
+		_, foundErr := iter.Next()
+		iter.Stop()
+		if foundErr == nil {
+			return &NurserySubscription{
+				NurseryID:        nurseryID,
+				CompanyNumber:    p.CompanyNumber,
+				PlanID:           "none",
+				PlanName:         "Trial already used",
+				Status:           SubExpired,
+				CurrentPeriodEnd: now,
+				PaymentMethod:    "none",
+				UpdatedAt:        now,
+			}, nil
+		}
+	}
+
+	start := *p.ActivationDate
+	end := start.Add(trialDuration)
+	sub := NurserySubscription{
+		NurseryID:          nurseryID,
+		CompanyNumber:      p.CompanyNumber,
+		PlanID:             "trial",
+		PlanName:           "Free Trial",
+		Status:             SubTrialing,
+		TrialStartDate:     &start,
+		TrialEndDate:       &end,
+		CurrentPeriodStart: start,
+		CurrentPeriodEnd:   end,
+		PaymentMethod:      "none",
+		UpdatedAt:          now,
+	}
+	if _, err := subRef.Set(ctx, sub); err != nil {
+		return nil, err
+	}
+	_ = notifyInApp(ctx, db, nurseryID, "trial_started", "Your 14-day free trial has started",
+		fmt.Sprintf("Your trial runs until %s. Staffing hours are billed separately.", end.Format("2 Jan 2006")),
+		map[string]any{"trialEndDate": end.Format(time.RFC3339)})
+	return &sub, nil
+}
+
 // getNurserySubscription — GET /getNurserySubscription?nurseryId=...
 // Nursery reads own subscription; Admin can read any.
 func getNurserySubscription(w http.ResponseWriter, r *http.Request) {
@@ -232,7 +374,6 @@ func getNurserySubscription(w http.ResponseWriter, r *http.Request) {
 	if targetNurseryID == "" {
 		targetNurseryID = callerUID
 	}
-
 	if targetNurseryID != callerUID && !isAdmin(ctx) {
 		httpjson.WriteError(w, http.StatusForbidden, "FORBIDDEN", "Only nursery owner or admin can view subscription")
 		return
@@ -244,56 +385,40 @@ func getNurserySubscription(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	subRef := db.Collection("subscriptions").Doc(targetNurseryID)
-	doc, err := subRef.Get(ctx)
-	now := time.Now().UTC()
-
-	var sub NurserySubscription
+	sub, err := ensureTrialSubscription(ctx, db, targetNurseryID)
 	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			// Check if nursery has an activationDate (Phase 5)
-			pDoc, pErr := db.Collection("profiles").Doc(targetNurseryID).Get(ctx)
-			activationDate := now
-			if pErr == nil {
-				if act, ok := pDoc.Data()["activationDate"].(time.Time); ok && !act.IsZero() {
-					activationDate = act
-				}
-			}
-
-			// Seed 14-day free trial automatically (Decision 12)
-			trialEnd := activationDate.Add(14 * 24 * time.Hour)
-			sub = NurserySubscription{
-				NurseryID:          targetNurseryID,
-				PlanID:             "trial",
-				PlanName:           "Free Trial",
-				Status:             SubTrialing,
-				TrialStartDate:     &activationDate,
-				TrialEndDate:       &trialEnd,
-				CurrentPeriodStart: activationDate,
-				CurrentPeriodEnd:   trialEnd,
-				PaymentMethod:      "bank_transfer",
-				UpdatedAt:          now,
-			}
-			_, _ = subRef.Set(ctx, sub)
-		} else {
-			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		if status.Code(err) == codes.NotFound || err.Error() == "NOT_A_NURSERY" {
+			httpjson.WriteError(w, http.StatusNotFound, "SUBSCRIPTION_NOT_FOUND", "No nursery subscription for this account")
 			return
 		}
-	} else {
-		_ = doc.DataTo(&sub)
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
 	}
 
-	// Calculate trial countdown and expiration
-	daysRemaining := 0
-	isExpired := false
-	if sub.Status == SubTrialing && sub.TrialEndDate != nil {
-		if now.Before(*sub.TrialEndDate) {
-			daysRemaining = int(sub.TrialEndDate.Sub(now).Hours() / 24)
+	now := time.Now().UTC()
+	// Persist the two lifecycle transitions the server owns. There is no
+	// automatic charging at launch: an ended paid period becomes past_due for
+	// an admin to reconcile, never silently cancelled.
+	if sub.Status == SubTrialing && sub.TrialEndDate != nil && now.After(*sub.TrialEndDate) {
+		sub.Status = SubExpired
+		_, _ = db.Collection("subscriptions").Doc(targetNurseryID).Set(ctx,
+			map[string]any{"status": SubExpired, "updatedAt": now}, firestore.MergeAll)
+	} else if sub.Status == SubActive && !sub.CurrentPeriodEnd.IsZero() && now.After(sub.CurrentPeriodEnd) {
+		if sub.CancelAtPeriodEnd {
+			sub.Status = SubCancelled
 		} else {
-			daysRemaining = 0
-			isExpired = true
+			sub.Status = SubPastDue
 		}
-	} else if sub.Status == SubExpired {
+		_, _ = db.Collection("subscriptions").Doc(targetNurseryID).Set(ctx,
+			map[string]any{"status": sub.Status, "updatedAt": now}, firestore.MergeAll)
+	}
+
+	daysRemaining := 0
+	isExpired := sub.Status == SubExpired
+	if sub.Status == SubTrialing && sub.TrialEndDate != nil && now.Before(*sub.TrialEndDate) {
+		daysRemaining = int(math.Ceil(sub.TrialEndDate.Sub(now).Hours() / 24))
+	}
+	if sub.Status == SubCancelled {
 		isExpired = true
 	}
 
@@ -302,8 +427,182 @@ func getNurserySubscription(w http.ResponseWriter, r *http.Request) {
 		"trial": map[string]any{
 			"daysRemaining": daysRemaining,
 			"isExpired":     isExpired,
+			// Lets the client mirror the server's enforcement instead of
+			// hard-coding its own trial rule.
+			"gate": string(GetGateMode(ctx, db, "trialExpired")),
 		},
 	})
+}
+
+type requestPlanChangeRequest struct {
+	PlanID string `json:"planId"`
+	Note   string `json:"note,omitempty"`
+}
+
+// requestPlanChange lets a nursery ask to move plan without taking any
+// payment. An admin assigns the plan; until then the current plan stays.
+func requestPlanChange(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		httpjson.WriteError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "POST required")
+		return
+	}
+	ctx := r.Context()
+	uid := auth.UID(ctx)
+
+	var req requestPlanChangeRequest
+	if !httpjson.DecodeJSON(w, r, &req) {
+		return
+	}
+	if req.PlanID == "" || req.PlanID == "trial" {
+		httpjson.WriteError(w, http.StatusBadRequest, "INVALID_PLAN", "Choose a paid plan or Pay As You Go")
+		return
+	}
+
+	db, err := fsDB(ctx)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "firestore client unavailable")
+		return
+	}
+	if err := requireRole(ctx, db, uid, RoleNursery); err != nil {
+		writeRoleError(w, err)
+		return
+	}
+
+	plan, err := findPlan(ctx, db, req.PlanID)
+	if err != nil || plan == nil {
+		httpjson.WriteError(w, http.StatusBadRequest, "INVALID_PLAN", "That plan is not available")
+		return
+	}
+
+	if _, err := ensureTrialSubscription(ctx, db, uid); err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+
+	now := time.Now().UTC()
+	if _, err := db.Collection("subscriptions").Doc(uid).Set(ctx, map[string]any{
+		"requestedPlanId": req.PlanID,
+		"requestedAt":     now,
+		"requestNote":     req.Note,
+		"updatedAt":       now,
+	}, firestore.MergeAll); err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+
+	_ = audit.WriteAudit(ctx, db, audit.Entry{
+		Action:    "subscription.request_plan_change",
+		TargetUID: uid,
+		Metadata:  map[string]any{"planId": req.PlanID},
+	})
+	_ = notifyInApp(ctx, db, uid, "plan_change_requested", "Plan change requested",
+		"Our team will confirm your move to "+plan.Name+". No payment has been taken.",
+		map[string]any{"planId": req.PlanID})
+
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
+		"status":          "requested",
+		"requestedPlanId": req.PlanID,
+	})
+}
+
+// cancelSubscription stops future renewals. It never deletes completed
+// bookings or outstanding invoices, and no refund is issued automatically.
+func cancelSubscription(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		httpjson.WriteError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "POST required")
+		return
+	}
+	ctx := r.Context()
+	uid := auth.UID(ctx)
+
+	var req struct {
+		Reason string `json:"reason,omitempty"`
+	}
+	_ = httpjson.DecodeJSON(w, r, &req)
+
+	db, err := fsDB(ctx)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "firestore client unavailable")
+		return
+	}
+	if err := requireRole(ctx, db, uid, RoleNursery); err != nil {
+		writeRoleError(w, err)
+		return
+	}
+
+	sub, err := ensureTrialSubscription(ctx, db, uid)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+	now := time.Now().UTC()
+	updates := map[string]any{
+		"cancelAtPeriodEnd": true,
+		"cancelledAt":       now,
+		"updatedAt":         now,
+	}
+	// A trial or a pending account has nothing to renew, so cancellation is
+	// effective immediately. A paid plan runs to the end of its period.
+	if sub.Status != SubActive {
+		updates["status"] = SubCancelled
+	}
+	if _, err := db.Collection("subscriptions").Doc(uid).Set(ctx, updates, firestore.MergeAll); err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+
+	_ = audit.WriteAudit(ctx, db, audit.Entry{
+		Action:    "subscription.cancel",
+		TargetUID: uid,
+		Metadata:  map[string]any{"reason": req.Reason},
+	})
+	_ = notifyInApp(ctx, db, uid, "subscription_cancelled", "Subscription cancellation recorded",
+		"Future renewals have been stopped. Existing bookings and invoices are unaffected.", nil)
+
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
+		"status":            updates["status"],
+		"cancelAtPeriodEnd": true,
+	})
+}
+
+// listSubscriptionRequests — admin view of nurseries waiting for a plan.
+func listSubscriptionRequests(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if !isFinanceOrSuperAdmin(ctx) {
+		httpjson.WriteError(w, http.StatusForbidden, "FORBIDDEN", "Finance or SuperAdmin claim required")
+		return
+	}
+	db, err := fsDB(ctx)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "firestore client unavailable")
+		return
+	}
+
+	docs, err := db.Collection("subscriptions").Documents(ctx).GetAll()
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+	out := []map[string]any{}
+	for _, doc := range docs {
+		var sub NurserySubscription
+		if err := doc.DataTo(&sub); err != nil || sub.RequestedPlanID == "" {
+			continue
+		}
+		name := ""
+		if pSnap, err := db.Collection("profiles").Doc(sub.NurseryID).Get(ctx); err == nil {
+			name, _ = pSnap.Data()["name"].(string)
+		}
+		out = append(out, map[string]any{
+			"nurseryId":       sub.NurseryID,
+			"nurseryName":     name,
+			"currentPlanId":   sub.PlanID,
+			"requestedPlanId": sub.RequestedPlanID,
+			"requestedAt":     sub.RequestedAt,
+			"note":            sub.RequestNote,
+		})
+	}
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"requests": out})
 }
 
 type assignPlanRequest struct {
@@ -312,6 +611,8 @@ type assignPlanRequest struct {
 }
 
 // assignNurseryPlan — POST /assignNurseryPlan. Admin only.
+// Assigning a plan records the membership state. No payment is collected and
+// no card is charged: invoicing stays manual until a payment provider exists.
 func assignNurseryPlan(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		httpjson.WriteError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "POST required")
@@ -319,8 +620,8 @@ func assignNurseryPlan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	if !isAdmin(ctx) {
-		httpjson.WriteError(w, http.StatusForbidden, "FORBIDDEN", "Admin claim required")
+	if !isFinanceOrSuperAdmin(ctx) {
+		httpjson.WriteError(w, http.StatusForbidden, "FORBIDDEN", "Finance or SuperAdmin claim required")
 		return
 	}
 
@@ -339,58 +640,84 @@ func assignNurseryPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	callerUID := auth.UID(ctx)
-	now := time.Now().UTC()
-
-	planName := "Custom Plan"
-	for _, p := range defaultPlans() {
-		if p.ID == req.PlanID {
-			planName = p.Name
-			break
-		}
+	if err := requireRole(ctx, db, req.NurseryID, RoleNursery); err != nil {
+		httpjson.WriteError(w, http.StatusBadRequest, "NOT_A_NURSERY", "That account is not a nursery")
+		return
 	}
 
+	plan, err := findPlan(ctx, db, req.PlanID)
+	if err != nil || plan == nil {
+		httpjson.WriteError(w, http.StatusBadRequest, "INVALID_PLAN", "planId is not a known plan")
+		return
+	}
+
+	subRef := db.Collection("subscriptions").Doc(req.NurseryID)
+	var existing NurserySubscription
+	hasExisting := false
+	if snap, err := subRef.Get(ctx); err == nil {
+		_ = snap.DataTo(&existing)
+		hasExisting = true
+	}
+
+	now := time.Now().UTC()
 	status := SubActive
-	if req.PlanID == "trial" {
-		status = SubTrialing
+	paymentMethod := "none"
+	periodDays := 30
+	if plan.BillingInterval == "per_booking" {
+		paymentMethod = "payg"
 	}
 
 	sub := NurserySubscription{
 		NurseryID:          req.NurseryID,
-		PlanID:             req.PlanID,
-		PlanName:           planName,
+		PlanID:             plan.ID,
+		PlanName:           plan.Name,
 		Status:             status,
 		CurrentPeriodStart: now,
-		CurrentPeriodEnd:   now.Add(30 * 24 * time.Hour),
-		PaymentMethod:      "bank_transfer",
+		CurrentPeriodEnd:   now.AddDate(0, 0, periodDays),
+		PaymentMethod:      paymentMethod,
 		AssignedByAdmin:    true,
 		UpdatedAt:          now,
 	}
+	if hasExisting {
+		sub.CompanyNumber = existing.CompanyNumber
+		sub.TrialStartDate = existing.TrialStartDate
+		sub.TrialEndDate = existing.TrialEndDate
+	}
 
-	subRef := db.Collection("subscriptions").Doc(req.NurseryID)
+	if plan.ID == "trial" {
+		// A trial can be re-assigned only before one has ever started.
+		if hasExisting && existing.TrialStartDate != nil {
+			httpjson.WriteError(w, http.StatusConflict, "TRIAL_ALREADY_USED", "This nursery has already used its free trial")
+			return
+		}
+		start := now
+		end := now.Add(trialDuration)
+		sub.Status = SubTrialing
+		sub.TrialStartDate = &start
+		sub.TrialEndDate = &end
+		sub.CurrentPeriodStart = start
+		sub.CurrentPeriodEnd = end
+	}
+
 	if _, err := subRef.Set(ctx, sub); err != nil {
 		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 		return
 	}
 
-	_ = outbox.WriteTx(nil, db, outbox.Event{
-		Topic: topicSubscriptionUpdate,
-		Payload: map[string]any{
-			"nurseryId": req.NurseryID,
-			"planId":    req.PlanID,
-			"status":    string(status),
-		},
-	})
-
 	_ = audit.WriteAudit(ctx, db, audit.Entry{
 		Action:    "subscription.assign_plan",
-		ActorUID:  callerUID,
+		ActorUID:  auth.UID(ctx),
 		TargetUID: req.NurseryID,
 		Metadata: map[string]any{
-			"planId": req.PlanID,
-			"status": string(status),
+			"planId": plan.ID,
+			"status": string(sub.Status),
 		},
 	})
+	_ = notifyInApp(ctx, db, req.NurseryID, "subscription_updated", "Membership updated",
+		"Your nursery is now on "+plan.Name+". No payment has been taken in the app.",
+		map[string]any{"planId": plan.ID})
+	sendTransactionalEmail(ctx, db, req.NurseryID, "subscription_updated",
+		map[string]string{"planName": plan.Name}, true)
 
 	httpjson.WriteJSON(w, http.StatusOK, sub)
 }
@@ -551,6 +878,13 @@ func generateWeeklyInvoices(w http.ResponseWriter, r *http.Request) {
 					"totalPence":    total,
 				},
 			})
+			// Essential mail (owner brief §12 "invoice generated"): a nursery
+			// must not find out about money it owes only by opening the app.
+			sendTransactionalEmail(ctx, db, nurseryID, "invoice_generated",
+				map[string]string{
+					"invoiceNumber": invoiceNum,
+					"total":         fmt.Sprintf("£%d.%02d", total/100, total%100),
+				}, true)
 		}
 	}
 
@@ -731,11 +1065,12 @@ func markInvoicePaid(w http.ResponseWriter, r *http.Request) {
 }
 
 type createLedgerEntryRequest struct {
-	NurseryID   string `json:"nurseryId"`
-	Type        string `json:"type"` // "discount", "refund", "credit"
-	AmountPence int64  `json:"amountPence"`
-	Reason      string `json:"reason"`
-	InvoiceID   string `json:"invoiceId,omitempty"`
+	NurseryID    string `json:"nurseryId"`
+	Type         string `json:"type"` // "discount", "refund", "credit"
+	AmountPence  int64  `json:"amountPence"`
+	Reason       string `json:"reason"`
+	InvoiceID    string `json:"invoiceId,omitempty"`
+	DiscountCode string `json:"discountCode,omitempty"` // optional, validated when type is "discount"
 }
 
 // createLedgerEntry — POST /createLedgerEntry. Admin only.
@@ -780,21 +1115,54 @@ func createLedgerEntry(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:   now,
 	}
 
-	docRef, _, err := db.Collection("ledger").Add(ctx, entry)
-	if err != nil {
-		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
-		return
+	// A discount with a code behind it is redeemed in the same transaction as
+	// the ledger write, so a code can never be counted twice or redeemed after
+	// it expired or hit its cap.
+	if req.DiscountCode != "" {
+		if req.Type != "discount" {
+			httpjson.WriteError(w, http.StatusBadRequest, "INVALID_DISCOUNT", "discountCode is only valid when type is \"discount\"")
+			return
+		}
+		err = db.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+			dc, err := redeemDiscount(ctx, tx, db, req.DiscountCode)
+			if err != nil {
+				return err
+			}
+			entry.DiscountCode = dc.Code
+			ref := db.Collection("ledger").NewDoc()
+			if err := tx.Set(ref, entry); err != nil {
+				return err
+			}
+			entry.ID = ref.ID
+			return nil
+		})
+		if err != nil {
+			if errors.Is(err, errDiscountCodeNotFound) || errors.Is(err, errDiscountCodeInactive) ||
+				errors.Is(err, errDiscountCodeExpired) || errors.Is(err, errDiscountCodeExhausted) {
+				httpjson.WriteError(w, http.StatusBadRequest, err.Error(), "Discount code could not be applied")
+				return
+			}
+			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+			return
+		}
+	} else {
+		docRef, _, err := db.Collection("ledger").Add(ctx, entry)
+		if err != nil {
+			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+			return
+		}
+		entry.ID = docRef.ID
 	}
-	entry.ID = docRef.ID
 
 	_ = audit.WriteAudit(ctx, db, audit.Entry{
 		Action:    "ledger.create_entry",
 		ActorUID:  callerUID,
 		TargetUID: req.NurseryID,
 		Metadata: map[string]any{
-			"type":        req.Type,
-			"amountPence": req.AmountPence,
-			"reason":      req.Reason,
+			"type":         entry.Type,
+			"amountPence":  req.AmountPence,
+			"reason":       req.Reason,
+			"discountCode": entry.DiscountCode,
 		},
 	})
 

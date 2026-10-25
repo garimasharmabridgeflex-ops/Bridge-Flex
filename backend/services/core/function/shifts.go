@@ -176,10 +176,11 @@ func createShift(w http.ResponseWriter, r *http.Request) {
 		endTime,
 		req.UnpaidBreakMinutes,
 	)
-	payRate := req.PayRate
-	if payRate <= 0 {
-		payRate = defaultPayRate
-	}
+	// Decision 2: the admin's rate card sets both rates. A nursery-supplied
+	// payRate is accepted on the wire for old clients but deliberately ignored
+	// so a nursery cannot set its own staffing charge or practitioner pay.
+	payRate := defaultPayRate
+	_ = req.PayRate
 
 	shift := Shift{
 		NurseryID:     uid,
@@ -228,14 +229,14 @@ type updateShiftRequest struct {
 	EndTime   *string  `json:"endTime,omitempty"`
 	PayRate   *float64 `json:"payRate,omitempty"`
 
-	AgeGroup         *string   `json:"ageGroup,omitempty"`
-	Room             *string   `json:"room,omitempty"`
-	NumberOfChildren *int64    `json:"numberOfChildren,omitempty"`
-	ExpectedDuties   *[]string `json:"expectedDuties,omitempty"`
-	Requirements     *[]string `json:"requirements,omitempty"`
-	UnpaidBreakMinutes    *int64  `json:"unpaidBreakMinutes,omitempty"`
-	RequiredQualification *string `json:"requiredQualification,omitempty"`
-	Description           *string `json:"description,omitempty"`
+	AgeGroup              *string   `json:"ageGroup,omitempty"`
+	Room                  *string   `json:"room,omitempty"`
+	NumberOfChildren      *int64    `json:"numberOfChildren,omitempty"`
+	ExpectedDuties        *[]string `json:"expectedDuties,omitempty"`
+	Requirements          *[]string `json:"requirements,omitempty"`
+	UnpaidBreakMinutes    *int64    `json:"unpaidBreakMinutes,omitempty"`
+	RequiredQualification *string   `json:"requiredQualification,omitempty"`
+	Description           *string   `json:"description,omitempty"`
 }
 
 // updateShift — POST /updateShift. Nursery may only edit their own shift's
@@ -284,9 +285,7 @@ func updateShift(w http.ResponseWriter, r *http.Request) {
 		if req.Date != nil {
 			updates = append(updates, firestore.Update{Path: "date", Value: *req.Date})
 		}
-		if req.PayRate != nil {
-			updates = append(updates, firestore.Update{Path: "payRate", Value: *req.PayRate})
-		}
+		// payRate is intentionally not editable here: the rate card owns it.
 		if req.StartTime != nil {
 			t, err := time.Parse(time.RFC3339, *req.StartTime)
 			if err != nil {
@@ -330,6 +329,21 @@ func updateShift(w http.ResponseWriter, r *http.Request) {
 		}
 		return tx.Update(ref, updates)
 	})
+
+	if err == nil {
+		// Re-snapshot the financials outside the transaction so an edit to
+		// times, breaks or qualification cannot leave a stale rate behind.
+		if snap, rErr := ref.Get(ctx); rErr == nil {
+			var updated Shift
+			if snap.DataTo(&updated) == nil && updated.Status == ShiftOpen {
+				fin, legacy := ResolveShiftFinancials(ctx, db, updated.RequiredQualification, updated.StartTime, updated.EndTime, updated.UnpaidBreakMinutes)
+				_, _ = ref.Update(ctx, []firestore.Update{
+					{Path: "financials", Value: fin},
+					{Path: "payRate", Value: legacy},
+				})
+			}
+		}
+	}
 
 	switch {
 	case err == nil:

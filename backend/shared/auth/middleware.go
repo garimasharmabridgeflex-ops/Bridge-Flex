@@ -22,12 +22,21 @@ const (
 )
 
 // RequireAuth wraps next, rejecting the request with 401/NOT_AUTHENTICATED
-// unless the Authorization header carries a valid Firebase ID token. On
-// success it attaches the decoded uid to the request context for next (and
-// UID) to read.
+// unless the caller carries a valid Firebase ID token. On success it attaches
+// the decoded uid to the request context for next (and UID) to read.
+//
+// The token is read from the Authorization header, or — only when there is no
+// header — from a `token` query parameter. The query form exists for one
+// case: a browser or webview opening a file URL (GetInvoiceDocument) cannot
+// set request headers on a plain navigation. The token is still verified
+// exactly the same way, it is short-lived, and the endpoint behind it does
+// its own ownership check.
 func RequireAuth(app *firebase.App, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := bearerToken(r)
+		if token == "" {
+			token = r.URL.Query().Get("token")
+		}
 		if token == "" {
 			httpjson.WriteError(w, http.StatusUnauthorized, "NOT_AUTHENTICATED", "Missing or malformed Authorization header")
 			return
@@ -42,6 +51,18 @@ func RequireAuth(app *firebase.App, next http.HandlerFunc) http.HandlerFunc {
 		decoded, err := client.VerifyIDToken(r.Context(), token)
 		if err != nil {
 			httpjson.WriteError(w, http.StatusUnauthorized, "NOT_AUTHENTICATED", "Invalid or expired ID token")
+			return
+		}
+
+		// VerifyIDToken validates the JWT signature and expiry but does NOT
+	// reject tokens issued to disabled accounts. A suspended nursery or staff
+	// member's current ID token is still valid for its whole ~1hr lifetime
+	// unless we explicitly check the account status here. GetUser is a single
+	// get-by-UID (not a scan) so the added latency is small, and this closes
+	// the hole where a suspended account can keep posting shifts and sending
+	// messages until its token naturally expires.
+		if u, err := client.GetUser(r.Context(), decoded.UID); err == nil && u.Disabled {
+			httpjson.WriteError(w, http.StatusUnauthorized, "ACCOUNT_SUSPENDED", "This account has been suspended")
 			return
 		}
 

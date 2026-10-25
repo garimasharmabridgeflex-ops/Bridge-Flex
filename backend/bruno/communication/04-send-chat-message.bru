@@ -16,14 +16,14 @@ headers {
 
 body:json {
   {
-    "sessionId": "session-1",
+    "sessionId": "chat_nursery-acorn_staff-jane",
     "text": "Running 5 minutes late, on my way!"
   }
 }
 
 docs {
   functions-communication: SendChatMessage (port 8123). Participant-only —
-  sign in as nursery-acorn or staff-jane (session-1's seeded participants)
+  sign in as nursery-acorn or staff-jane (chat_nursery-acorn_staff-jane's seeded participants)
   first; a third party gets 403 NOT_A_PARTICIPANT, mirroring the Security
   Rule (§3) exactly.
 }

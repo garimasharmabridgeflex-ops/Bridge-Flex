@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -19,9 +21,10 @@ import (
 )
 
 func init() {
-	functions.HTTP("GetRequiredPolicies", getRequiredPolicies)
+	functions.HTTP("GetRequiredPolicies", authed(getRequiredPolicies))
 	functions.HTTP("GetPolicy", getPolicy)
 	functions.HTTP("AcceptPolicies", authed(acceptPolicies))
+	functions.HTTP("ListPolicies", authed(listPolicies))
 	functions.HTTP("AdminSavePolicyDraft", authed(adminSavePolicyDraft))
 	functions.HTTP("AdminApprovePolicy", authed(adminApprovePolicy))
 	functions.HTTP("AdminPublishPolicy", authed(adminPublishPolicy))
@@ -83,6 +86,7 @@ func hasUnresolvedPlaceholders(text string) bool {
 // Returns currently published policies required for onboarding or re-acceptance.
 func getRequiredPolicies(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	uid := auth.UID(ctx)
 	role := r.URL.Query().Get("role")
 	if role == "" {
 		role = "staff"
@@ -113,7 +117,15 @@ func getRequiredPolicies(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	policies := make([]Policy, 0, len(requiredTypes))
+	type requiredPolicyView struct {
+		Policy
+		// Accepted is true when this user has already accepted this exact
+		// policy type and version, so a client can gate on `pending` rather than
+		// re-prompting for everything on every launch.
+		Accepted bool `json:"accepted"`
+	}
+
+	policies := make([]requiredPolicyView, 0, len(requiredTypes))
 	for _, pType := range requiredTypes {
 		iter := db.Collection("policies").
 			Where("type", "==", string(pType)).
@@ -133,12 +145,36 @@ func getRequiredPolicies(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var p Policy
-		if err := snap.DataTo(&p); err == nil {
-			policies = append(policies, p)
+		if err := snap.DataTo(&p); err != nil {
+			continue
+		}
+		p.ID = snap.Ref.ID
+
+		accepted := false
+		accSnap, accErr := db.Collection("policyAcceptances").
+			Doc(fmt.Sprintf("%s_%s_%d", uid, p.Type, p.Version)).Get(ctx)
+		if accErr == nil {
+			var acc PolicyAcceptance
+			accepted = accSnap.DataTo(&acc) == nil && acc.Status == "accepted"
+		}
+
+		policies = append(policies, requiredPolicyView{Policy: p, Accepted: accepted})
+	}
+
+	pending := 0
+	for _, p := range policies {
+		if !p.Accepted {
+			pending++
 		}
 	}
 
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"policies": policies})
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
+		"policies": policies,
+		"pending":  pending,
+		// The gate travels with the payload so the client does not need the
+		// admin-only feature-flag endpoint just to know how strict to be.
+		"gate": string(GetGateMode(ctx, db, "termsAcceptanceRequired")),
+	})
 }
 
 // getPolicy — GET /getPolicy?type=...
@@ -249,6 +285,45 @@ func acceptPolicies(w http.ResponseWriter, r *http.Request) {
 		"count":    len(req.Acceptances),
 		"accepted": true,
 	})
+}
+
+// listPolicies — GET /listPolicies. Admin-only authoring view of every policy
+// version (draft, approved and published), newest version first per type, so
+// the console can show what is live and what is still waiting for sign-off.
+func listPolicies(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if !isAdmin(ctx) {
+		httpjson.WriteError(w, http.StatusForbidden, "NOT_ADMIN", "Admin claim required")
+		return
+	}
+	db, err := fsDB(ctx)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "firestore unavailable")
+		return
+	}
+
+	docs, err := db.Collection("policies").Documents(ctx).GetAll()
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+	policies := make([]Policy, 0, len(docs))
+	for _, doc := range docs {
+		var p Policy
+		if err := doc.DataTo(&p); err != nil {
+			continue
+		}
+		p.ID = doc.Ref.ID
+		policies = append(policies, p)
+	}
+	slices.SortFunc(policies, func(a, b Policy) int {
+		if a.Type != b.Type {
+			return strings.Compare(string(a.Type), string(b.Type))
+		}
+		return int(b.Version - a.Version)
+	})
+
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"policies": policies})
 }
 
 type saveDraftRequest struct {
@@ -396,7 +471,11 @@ func adminApprovePolicy(w http.ResponseWriter, r *http.Request) {
 // Transitions approved -> published and records outbox event.
 func adminPublishPolicy(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if !auth.HasRole(ctx, auth.AdminRoleSuperAdmin) {
+	// Either the platform super-admin role claim or the admin custom claim
+	// the console account uses is sufficient, matching every other admin
+	// endpoint. Requiring only the role claim would leave a console admin
+	// able to approve a policy but never publish it.
+	if !auth.HasRole(ctx, auth.AdminRoleSuperAdmin) && !isAdmin(ctx) {
 		httpjson.WriteError(w, http.StatusForbidden, "NOT_SUPER_ADMIN", "Super Admin role required to publish policies")
 		return
 	}

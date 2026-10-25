@@ -253,12 +253,18 @@ To push a code change to the existing production project:
 
 1. `gcloud auth login` and `gcloud config set project kvision-503115`.
 2. `PROJECT_ID=kvision-503115 ./deploy.sh` — deploys Firestore/Storage rules via the normal
-   Firebase CLI, then all 27 Cloud Functions (2nd gen) via `gcloud` directly. **`firebase deploy
-   --only functions` does not work here** — that path only supports Node/Python codebases; Go
-   requires `gcloud functions deploy` per function, which is what `deploy.sh` (and the
+   Firebase CLI, then every HTTP function and trigger (2nd gen) via `gcloud` directly. **`firebase
+   deploy --only functions` does not work here** — that path only supports Node/Python codebases;
+   Go requires `gcloud functions deploy` per function, which is what `deploy.sh` (and the
    per-service `services/*/deploy.sh` it calls) automates. Read those scripts for the exact
-   trigger config (event filters, Pub/Sub topics) per function.
-3. Fill in `bruno/environments/Production.bru` with the deployed URLs (`gcloud functions describe
+   trigger config (event filters, Pub/Sub topics) per function; the list in
+   `services/core/deploy.sh` is the source of truth.
+3. `firebase deploy --only hosting --project kvision-503115` — publishes the public site, the
+   legal pages and the admin operations console. The console calls functions through the
+   hosting rewrites in `firebase.json`, so deploy functions first.
+4. Set up the two Cloud Scheduler jobs (trial reminders and DBS rechecks) — commands are in
+   [`PRODUCTION_SETUP.md`](PRODUCTION_SETUP.md) §8a.
+5. Fill in `bruno/environments/Production.bru` with the deployed URLs (`gcloud functions describe
    NAME --gen2 --region=... --format='value(serviceConfig.uri)'` per function — each one gets its
    own URL, unlike the emulator's one-host-many-ports scheme).
 

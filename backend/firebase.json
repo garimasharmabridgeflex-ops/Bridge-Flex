@@ -9,83 +9,773 @@
     "rewrites": [
       {
         "source": "/GetPlatformStats",
-        "function": { "functionId": "GetPlatformStats", "region": "europe-west2" }
+        "function": {
+          "functionId": "GetPlatformStats",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/ListPendingDocuments",
-        "function": { "functionId": "ListPendingDocuments", "region": "europe-west2" }
+        "function": {
+          "functionId": "ListPendingDocuments",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/ReviewDocument",
-        "function": { "functionId": "ReviewDocument", "region": "europe-west2" }
+        "function": {
+          "functionId": "ReviewDocument",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/ListAllUsers",
-        "function": { "functionId": "ListAllUsers", "region": "europe-west2" }
+        "function": {
+          "functionId": "ListAllUsers",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/GetUserDetail",
-        "function": { "functionId": "GetUserDetail", "region": "europe-west2" }
+        "function": {
+          "functionId": "GetUserDetail",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/SetVerificationBadge",
-        "function": { "functionId": "SetVerificationBadge", "region": "europe-west2" }
+        "function": {
+          "functionId": "SetVerificationBadge",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/SetUserSuspended",
-        "function": { "functionId": "SetUserSuspended", "region": "europe-west2" }
+        "function": {
+          "functionId": "SetUserSuspended",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/ListTimesheets",
-        "function": { "functionId": "ListTimesheets", "region": "europe-west2" }
+        "function": {
+          "functionId": "ListTimesheets",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/AdminApproveTimesheet",
-        "function": { "functionId": "AdminApproveTimesheet", "region": "europe-west2" }
+        "function": {
+          "functionId": "AdminApproveTimesheet",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/ListInvoices",
-        "function": { "functionId": "ListInvoices", "region": "europe-west2" }
+        "function": {
+          "functionId": "ListInvoices",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/MarkInvoicePaid",
-        "function": { "functionId": "MarkInvoicePaid", "region": "europe-west2" }
+        "function": {
+          "functionId": "MarkInvoicePaid",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/ListPayrollPeriods",
-        "function": { "functionId": "ListPayrollPeriods", "region": "europe-west2" }
+        "function": {
+          "functionId": "ListPayrollPeriods",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/GeneratePayrollPeriod",
-        "function": { "functionId": "GeneratePayrollPeriod", "region": "europe-west2" }
+        "function": {
+          "functionId": "GeneratePayrollPeriod",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/ExportPayrollCSV",
-        "function": { "functionId": "ExportPayrollCSV", "region": "europe-west2" }
+        "function": {
+          "functionId": "ExportPayrollCSV",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/GetVettingChecklist",
-        "function": { "functionId": "GetVettingChecklist", "region": "europe-west2" }
+        "function": {
+          "functionId": "GetVettingChecklist",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/ApprovePractitionerVetting",
-        "function": { "functionId": "ApprovePractitionerVetting", "region": "europe-west2" }
+        "function": {
+          "functionId": "ApprovePractitionerVetting",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/RejectPractitionerVetting",
-        "function": { "functionId": "RejectPractitionerVetting", "region": "europe-west2" }
+        "function": {
+          "functionId": "RejectPractitionerVetting",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/ApproveNurseryRegistration",
-        "function": { "functionId": "ApproveNurseryRegistration", "region": "europe-west2" }
+        "function": {
+          "functionId": "ApproveNurseryRegistration",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/RejectNurseryRegistration",
-        "function": { "functionId": "RejectNurseryRegistration", "region": "europe-west2" }
+        "function": {
+          "functionId": "RejectNurseryRegistration",
+          "region": "europe-west2"
+        }
       },
       {
         "source": "/ListBranches",
-        "function": { "functionId": "ListBranches", "region": "europe-west2" }
+        "function": {
+          "functionId": "ListBranches",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetFeatureFlags",
+        "function": {
+          "functionId": "GetFeatureFlags",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UpdateFeatureFlags",
+        "function": {
+          "functionId": "UpdateFeatureFlags",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ListAuditLogs",
+        "function": {
+          "functionId": "ListAuditLogs",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/RequestPlanChange",
+        "function": {
+          "functionId": "RequestPlanChange",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/CancelSubscription",
+        "function": {
+          "functionId": "CancelSubscription",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ListSubscriptionRequests",
+        "function": {
+          "functionId": "ListSubscriptionRequests",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetPlans",
+        "function": {
+          "functionId": "GetPlans",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UpsertPlan",
+        "function": {
+          "functionId": "UpsertPlan",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetNurserySubscription",
+        "function": {
+          "functionId": "GetNurserySubscription",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/AssignNurseryPlan",
+        "function": {
+          "functionId": "AssignNurseryPlan",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GenerateWeeklyInvoices",
+        "function": {
+          "functionId": "GenerateWeeklyInvoices",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetInvoice",
+        "function": {
+          "functionId": "GetInvoice",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/CreateLedgerEntry",
+        "function": {
+          "functionId": "CreateLedgerEntry",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ListPolicies",
+        "function": {
+          "functionId": "ListPolicies",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/AdminSavePolicyDraft",
+        "function": {
+          "functionId": "AdminSavePolicyDraft",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/AdminApprovePolicy",
+        "function": {
+          "functionId": "AdminApprovePolicy",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/AdminPublishPolicy",
+        "function": {
+          "functionId": "AdminPublishPolicy",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetRequiredPolicies",
+        "function": {
+          "functionId": "GetRequiredPolicies",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetPolicy",
+        "function": {
+          "functionId": "GetPolicy",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UpdateCancellationPolicy",
+        "function": {
+          "functionId": "UpdateCancellationPolicy",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetCancellationPolicy",
+        "function": {
+          "functionId": "GetCancellationPolicy",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetCompanyInfo",
+        "function": {
+          "functionId": "GetCompanyInfo",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UpdateCompanyInfo",
+        "function": {
+          "functionId": "UpdateCompanyInfo",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetActiveRateCard",
+        "function": {
+          "functionId": "GetActiveRateCard",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ListRateCards",
+        "function": {
+          "functionId": "ListRateCards",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UpsertRateCard",
+        "function": {
+          "functionId": "UpsertRateCard",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/CancelShiftStructured",
+        "function": {
+          "functionId": "CancelShiftStructured",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/RecordVettingCheck",
+        "function": {
+          "functionId": "RecordVettingCheck",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/RequestMoreDocuments",
+        "function": {
+          "functionId": "RequestMoreDocuments",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/CreateBranch",
+        "function": {
+          "functionId": "CreateBranch",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UpdateBranch",
+        "function": {
+          "functionId": "UpdateBranch",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/DeleteBranch",
+        "function": {
+          "functionId": "DeleteBranch",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetPayrollPeriodDetail",
+        "function": {
+          "functionId": "GetPayrollPeriodDetail",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/MarkPayrollPeriodPaid",
+        "function": {
+          "functionId": "MarkPayrollPeriodPaid",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/LinkPayslip",
+        "function": {
+          "functionId": "LinkPayslip",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/RunTrialReminders",
+        "function": {
+          "functionId": "RunTrialReminders",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/RunRecheckReminders",
+        "function": {
+          "functionId": "RunRecheckReminders",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/EscalateUnresponsiveTimesheets",
+        "function": {
+          "functionId": "EscalateUnresponsiveTimesheets",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ApproveShiftApplicant",
+        "function": {
+          "functionId": "ApproveShiftApplicant",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/RejectShiftApplicant",
+        "function": {
+          "functionId": "RejectShiftApplicant",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/CancelShift",
+        "function": {
+          "functionId": "CancelShift",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/MarkNoShow",
+        "function": {
+          "functionId": "MarkNoShow",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetInvoiceDocument",
+        "function": {
+          "functionId": "GetInvoiceDocument",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/CreateDiscountCode",
+        "function": {
+          "functionId": "CreateDiscountCode",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ListDiscountCodes",
+        "function": {
+          "functionId": "ListDiscountCodes",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/SetDiscountCodeActive",
+        "function": {
+          "functionId": "SetDiscountCodeActive",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/SendAdminNotification",
+        "function": {
+          "functionId": "SendAdminNotification",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/AcceptPolicies",
+        "function": {
+          "functionId": "AcceptPolicies",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/AcceptShift",
+        "function": {
+          "functionId": "AcceptShift",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ApproveTimesheet",
+        "function": {
+          "functionId": "ApproveTimesheet",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/CreateDocument",
+        "function": {
+          "functionId": "CreateDocument",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/CreateRating",
+        "function": {
+          "functionId": "CreateRating",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/CreateShift",
+        "function": {
+          "functionId": "CreateShift",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/DeleteAccount",
+        "function": {
+          "functionId": "DeleteAccount",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/DeleteTrainingModule",
+        "function": {
+          "functionId": "DeleteTrainingModule",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/DisputeTimesheet",
+        "function": {
+          "functionId": "DisputeTimesheet",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetDocumentStatus",
+        "function": {
+          "functionId": "GetDocumentStatus",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetPayrollProfile",
+        "function": {
+          "functionId": "GetPayrollProfile",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetPractitionerEarnings",
+        "function": {
+          "functionId": "GetPractitionerEarnings",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetProfile",
+        "function": {
+          "functionId": "GetProfile",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetPublicProfile",
+        "function": {
+          "functionId": "GetPublicProfile",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetSensitiveProfile",
+        "function": {
+          "functionId": "GetSensitiveProfile",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetShift",
+        "function": {
+          "functionId": "GetShift",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetTimesheet",
+        "function": {
+          "functionId": "GetTimesheet",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ListChatMessages",
+        "function": {
+          "functionId": "ListChatMessages",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ListChatSessions",
+        "function": {
+          "functionId": "ListChatSessions",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ListMyDocuments",
+        "function": {
+          "functionId": "ListMyDocuments",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ListMyShifts",
+        "function": {
+          "functionId": "ListMyShifts",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ListNotifications",
+        "function": {
+          "functionId": "ListNotifications",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ListOpenShifts",
+        "function": {
+          "functionId": "ListOpenShifts",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ListRatings",
+        "function": {
+          "functionId": "ListRatings",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ListTrainingModules",
+        "function": {
+          "functionId": "ListTrainingModules",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ListTrainingModulesAdmin",
+        "function": {
+          "functionId": "ListTrainingModulesAdmin",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/MarkAllNotificationsRead",
+        "function": {
+          "functionId": "MarkAllNotificationsRead",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/MarkNotificationRead",
+        "function": {
+          "functionId": "MarkNotificationRead",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/MarkTrainingVideoWatched",
+        "function": {
+          "functionId": "MarkTrainingVideoWatched",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/RegisterFcmToken",
+        "function": {
+          "functionId": "RegisterFcmToken",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/RequestTimesheetCorrection",
+        "function": {
+          "functionId": "RequestTimesheetCorrection",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/SchedulerHeartbeat",
+        "function": {
+          "functionId": "SchedulerHeartbeat",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/SchedulerRecheckReminders",
+        "function": {
+          "functionId": "SchedulerRecheckReminders",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/SchedulerTrialReminders",
+        "function": {
+          "functionId": "SchedulerTrialReminders",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/SendChatMessage",
+        "function": {
+          "functionId": "SendChatMessage",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/SubmitTimesheet",
+        "function": {
+          "functionId": "SubmitTimesheet",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/SubmitTrainingQuiz",
+        "function": {
+          "functionId": "SubmitTrainingQuiz",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UnregisterFcmToken",
+        "function": {
+          "functionId": "UnregisterFcmToken",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UpdatePayrollProfile",
+        "function": {
+          "functionId": "UpdatePayrollProfile",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UpdateProfile",
+        "function": {
+          "functionId": "UpdateProfile",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UpdateSensitiveProfile",
+        "function": {
+          "functionId": "UpdateSensitiveProfile",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UpdateShift",
+        "function": {
+          "functionId": "UpdateShift",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UpsertTrainingModule",
+        "function": {
+          "functionId": "UpsertTrainingModule",
+          "region": "europe-west2"
+        }
       }
     ]
   },

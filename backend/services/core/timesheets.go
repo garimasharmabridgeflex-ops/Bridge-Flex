@@ -813,10 +813,6 @@ func getTimesheet(w http.ResponseWriter, r *http.Request) {
 		ts.ID = snap.Ref.ID
 	} else if shiftID != "" {
 		targetStaffID := staffID
-		if targetStaffID == "" && !callerIsAdmin {
-			targetStaffID = callerUID
-		}
-
 		if targetStaffID != "" {
 			docID := timesheetDocID(shiftID, targetStaffID)
 			snap, err := db.Collection("timesheets").Doc(docID).Get(ctx)
@@ -834,21 +830,31 @@ func getTimesheet(w http.ResponseWriter, r *http.Request) {
 			}
 			ts.ID = snap.Ref.ID
 		} else {
-			// Query shift's timesheet
-			docs, err := db.Collection("timesheets").Where("shiftId", "==", shiftID).Limit(1).Documents(ctx).GetAll()
-			if err != nil {
-				httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
-				return
+			// Try specific doc for caller first if caller is practitioner
+			docID := timesheetDocID(shiftID, callerUID)
+			snap, err := db.Collection("timesheets").Doc(docID).Get(ctx)
+			if err == nil {
+				if err := snap.DataTo(&ts); err == nil {
+					ts.ID = snap.Ref.ID
+				}
 			}
-			if len(docs) == 0 {
-				httpjson.WriteError(w, http.StatusNotFound, "NOT_FOUND", "Timesheet not found for this shift")
-				return
+			// If not found (e.g. caller is nursery or admin), query by shiftId
+			if ts.ID == "" {
+				docs, err := db.Collection("timesheets").Where("shiftId", "==", shiftID).Limit(1).Documents(ctx).GetAll()
+				if err != nil {
+					httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+					return
+				}
+				if len(docs) == 0 {
+					httpjson.WriteError(w, http.StatusNotFound, "NOT_FOUND", "Timesheet not found for this shift")
+					return
+				}
+				if err := docs[0].DataTo(&ts); err != nil {
+					httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+					return
+				}
+				ts.ID = docs[0].Ref.ID
 			}
-			if err := docs[0].DataTo(&ts); err != nil {
-				httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
-				return
-			}
-			ts.ID = docs[0].Ref.ID
 		}
 	} else {
 		httpjson.WriteError(w, http.StatusBadRequest, "MISSING_PARAM", "Either timesheetId or shiftId is required")

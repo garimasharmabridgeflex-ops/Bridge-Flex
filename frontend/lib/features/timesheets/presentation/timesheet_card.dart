@@ -8,12 +8,13 @@ import '../../shifts/domain/shift.dart';
 import '../domain/timesheet.dart';
 import 'submit_timesheet_sheet.dart';
 
-final shiftTimesheetProvider = StreamProvider.autoDispose.family<Timesheet?, String>((ref, shiftId) {
+final shiftTimesheetProvider = StreamProvider.autoDispose.family<Timesheet?, String>((ref, shiftId) async* {
   final repo = ref.watch(timesheetRepositoryProvider);
-  return repo.watchTimesheetForShift(shiftId).handleError((_, __) async* {
-    final fallback = await repo.getTimesheet(shiftId: shiftId);
-    yield fallback;
-  });
+  while (true) {
+    final ts = await repo.getTimesheet(shiftId: shiftId);
+    yield ts;
+    await Future.delayed(const Duration(seconds: 8));
+  }
 });
 
 class TimesheetCard extends ConsumerStatefulWidget {

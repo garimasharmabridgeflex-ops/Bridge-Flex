@@ -310,7 +310,7 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
           final otherPartyId = isOwner ? shift.bookedStaffId : shift.nurseryId;
 
           final totalMinutes = shift.duration.inMinutes;
-          final payableMinutes = (totalMinutes - shift.unpaidBreakMinutes).clamp(0, totalMinutes);
+          final payableMinutes = totalMinutes > shift.unpaidBreakMinutes ? totalMinutes - shift.unpaidBreakMinutes : 0;
           final payableHours = (payableMinutes / 60.0).toStringAsFixed(1);
           final dateStr = DateFormat('EEEE, d MMMM yyyy').format(shift.startTime);
           final timeStr = '${DateFormat('HH:mm').format(shift.startTime)} – ${DateFormat('HH:mm').format(shift.endTime)}';

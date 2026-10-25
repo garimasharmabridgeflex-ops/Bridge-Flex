@@ -78,7 +78,8 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
   DateTime get _endDateTime =>
       DateTime(_date.year, _date.month, _date.day, _endTime.hour, _endTime.minute);
 
-  bool get _detailsValid => _title.text.trim().isNotEmpty;
+  bool get _detailsValid =>
+      _title.text.trim().isNotEmpty && _endDateTime.isAfter(_startDateTime);
   bool get _payValid {
     final n = double.tryParse(_payRate.text);
     return n != null && n > 0;
@@ -111,6 +112,13 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
     setState(() {
       if (isStart) {
         _startTime = picked;
+        // If end time is before or equal to start time, advance end time automatically
+        final startMinutes = picked.hour * 60 + picked.minute;
+        final currentEndMinutes = _endTime.hour * 60 + _endTime.minute;
+        if (currentEndMinutes <= startMinutes) {
+          final newEndHour = (picked.hour + 8) % 24;
+          _endTime = TimeOfDay(hour: newEndHour, minute: picked.minute);
+        }
       } else {
         _endTime = picked;
       }
@@ -302,8 +310,9 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
       }
     }
 
-    final totalMinutes = _endDateTime.difference(_startDateTime).inMinutes;
-    final payableMinutes = (totalMinutes - _unpaidBreakMinutes).clamp(0, totalMinutes);
+    final rawDifference = _endDateTime.difference(_startDateTime).inMinutes;
+    final totalMinutes = rawDifference > 0 ? rawDifference : 0;
+    final payableMinutes = totalMinutes > _unpaidBreakMinutes ? totalMinutes - _unpaidBreakMinutes : 0;
     final payableHours = (payableMinutes / 60.0).toStringAsFixed(1);
     final branches = ref.watch(branchesProvider).valueOrNull ?? const <Branch>[];
 
@@ -471,6 +480,29 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
                     ),
                   ],
                 ),
+                if (!_endDateTime.isAfter(_startDateTime)) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFFCA5A5)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.error_outline_rounded, size: 16, color: Color(0xFFDC2626)),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'End time must be after start time.',
+                            style: TextStyle(fontSize: 12, color: Color(0xFFDC2626), fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.md),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

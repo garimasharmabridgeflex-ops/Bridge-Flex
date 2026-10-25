@@ -71,7 +71,7 @@ class ShiftCard extends ConsumerWidget {
     final endFmt = DateFormat('HH:mm').format(shift.endTime);
 
     final totalMinutes = shift.duration.inMinutes;
-    final payableMinutes = (totalMinutes - shift.unpaidBreakMinutes).clamp(0, totalMinutes);
+    final payableMinutes = totalMinutes > shift.unpaidBreakMinutes ? totalMinutes - shift.unpaidBreakMinutes : 0;
     final hoursFormatted = payableMinutes % 60 == 0
         ? '${payableMinutes ~/ 60}h'
         : '${(payableMinutes / 60.0).toStringAsFixed(1)}h';

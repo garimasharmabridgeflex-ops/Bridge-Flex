@@ -1,11 +1,15 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../../core/api/api_client.dart';
 import '../../../core/config/env.dart';
 import '../domain/shift.dart';
 
 class ShiftRepository {
-  ShiftRepository(this._api);
+  ShiftRepository(this._api, [FirebaseFirestore? firestore])
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final ApiClient _api;
+  final FirebaseFirestore _firestore;
 
   List<Shift> _parseShiftList(Map<String, dynamic> res) {
     final raw = (res['shifts'] as List?) ?? const [];
@@ -29,6 +33,33 @@ class ShiftRepository {
   Future<List<Shift>> fetchMyShifts() async {
     final res = await _api.post(ApiFunction.listMyShifts);
     return _parseShiftList(res);
+  }
+
+  /// Live Firestore snapshot stream of a single shift doc.
+  /// Eliminates the need for manual refreshes when applications, status
+  /// changes, or cancellations occur.
+  Stream<Shift?> watchShift(String shiftId) {
+    return _firestore
+        .collection('shifts')
+        .doc(shiftId)
+        .snapshots()
+        .map((snap) {
+          if (!snap.exists || snap.data() == null) return null;
+          return Shift.fromFirestore(snap);
+        });
+  }
+
+  /// Real-time stream of nursery's posted shifts for instant status & applicant updates.
+  Stream<List<Shift>> watchMyShiftsNursery(String nurseryId) {
+    return _firestore
+        .collection('shifts')
+        .where('nurseryId', isEqualTo: nurseryId)
+        .snapshots()
+        .map((snap) {
+          final list = snap.docs.map(Shift.fromFirestore).toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   Future<Shift?> fetchShift(String shiftId) async {

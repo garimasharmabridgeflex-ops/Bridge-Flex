@@ -1053,7 +1053,6 @@ class _NearMeAwareCard extends ConsumerWidget {
   Widget _card(BuildContext context, String? area) {
     return ShiftCard(
           shift: shift,
-          trailingLabel: 'Book Shift',
           onTap: () => context.push('/shifts/${shift.id}'),
         )
         .animate()
@@ -1062,68 +1061,6 @@ class _NearMeAwareCard extends ConsumerWidget {
   }
 }
 
-// ─── Stitch Alexandria Utility Header Action Button ──────────────────────────
-
-class _CircularHeaderAction extends StatelessWidget {
-  const _CircularHeaderAction({
-    required this.icon,
-    required this.onTap,
-    this.isActive = false,
-    this.badgeColor,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool isActive;
-  final Color? badgeColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isActive ? const Color(0xFF1B2A4A) : const Color(0xFFE2E8F0),
-                width: isActive ? 1.2 : 1.0,
-              ),
-              boxShadow: const [
-                BoxShadow(color: Color(0x080F172A), blurRadius: 4, offset: Offset(0, 1)),
-              ],
-            ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: isActive ? const Color(0xFF1B2A4A) : const Color(0xFF475569),
-            ),
-          ),
-          if (badgeColor != null && isActive)
-            Positioned(
-              top: 1,
-              right: 1,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: badgeColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─── Stitch Alexandria Quick Filter Pill ──────────────────────────────────────
 

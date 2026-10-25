@@ -70,21 +70,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       // they have no marketplace role at all, just the review queue.
       final isAdminState = ref.read(isAdminProvider);
       final adminPreview = ref.read(adminMarketplacePreviewProvider);
-      final onAdmin = state.matchedLocation.startsWith('/admin');
+      final onRootOrAuth = loggingIn || signingUp || resettingPassword || onSplash || state.matchedLocation == '/' || state.matchedLocation == '/role-select';
       if (isAdminState.valueOrNull == true && !adminPreview) {
-        return onAdmin ? null : '/admin';
+        if (onRootOrAuth) return '/admin';
+        return null;
       }
-      if (!isAdminState.hasValue) return onSplash ? null : '/splash';
+      if (!isAdminState.hasValue && onSplash) return '/splash';
 
       final profileState = ref.read(ownProfileProvider);
       final profile = profileState.valueOrNull;
       final onRoleSelect = state.matchedLocation == '/role-select';
       final onOnboarding = state.matchedLocation == '/onboarding';
 
-      if (profileState.isLoading) return onSplash ? null : '/splash';
-      if (profileState.hasError) return onSplash ? null : '/splash';
-
+      // CRITICAL FIX: Only redirect to /splash if we are currently on splash during startup.
+      // NEVER redirect an active content screen to /splash during a background refresh/reload
+      // (such as during camera capture, document upload, or admin operations).
       if (profile == null) {
+        if (profileState.isLoading || profileState.hasError) {
+          return onSplash ? null : null;
+        }
         return onRoleSelect ? null : '/role-select';
       }
 
@@ -102,7 +106,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       // away from /onboarding if the user explicitly navigates elsewhere
       // (i.e. they called context.go('/home') from the wizard itself).
       if (onOnboarding) return null;
-      if (loggingIn || signingUp || onRoleSelect || onSplash) return '/home';
+      if (loggingIn || signingUp || onRoleSelect || onSplash) {
+        if (isAdminState.valueOrNull == true && !adminPreview) return '/admin';
+        return '/home';
+      }
       return null;
     },
     routes: [

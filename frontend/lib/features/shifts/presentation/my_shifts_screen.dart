@@ -14,11 +14,18 @@ import '../data/bookmarks_provider.dart';
 import '../domain/shift.dart';
 import 'widgets/shift_card.dart';
 
-final myShiftsProvider = FutureProvider.autoDispose<List<Shift>>((ref) {
+final myShiftsProvider = StreamProvider.autoDispose<List<Shift>>((ref) {
   final user = ref.watch(authStateProvider).valueOrNull;
   final profile = ref.watch(ownProfileProvider).valueOrNull;
-  if (user == null || profile == null) return Future.value(<Shift>[]);
-  return ref.watch(shiftRepositoryProvider).fetchMyShifts();
+  if (user == null || profile == null) return const Stream.empty();
+  final repo = ref.watch(shiftRepositoryProvider);
+  if (profile.role == UserRole.nursery) {
+    return repo.watchMyShiftsNursery(user.uid).handleError((_, __) async* {
+      final list = await repo.fetchMyShifts();
+      yield list;
+    });
+  }
+  return Stream.fromFuture(repo.fetchMyShifts());
 });
 
 enum _ShiftTab { upcoming, completed, cancelled, saved }

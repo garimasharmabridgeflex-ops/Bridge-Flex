@@ -825,24 +825,103 @@ async function reviewDocument(docId, uid, name) {
       </div>
     `,
     `
-      <button class="btn btn-outline" onclick="closeModal()">Close</button>
-      <button class="btn btn-danger" onclick="submitDocReview('${esc(docId)}', false, this)">Reject</button>
-      <button class="btn btn-emerald" onclick="submitDocReview('${esc(docId)}', true, this)">Approve document</button>
+      <button class="btn btn-outline" onclick="${uid ? `openPractitioner('${esc(uid)}')` : 'closeModal()'}">← Back to dossier</button>
+      <button class="btn btn-danger" onclick="submitDocReview('${esc(docId)}', '${esc(uid)}', false, this)">Reject</button>
+      <button class="btn btn-emerald" onclick="submitDocReview('${esc(docId)}', '${esc(uid)}', true, this)">Approve document</button>
     `,
     'Document review',
     true
   );
 }
 
-async function submitDocReview(docId, approve, button) {
+async function submitDocReview(docId, uid, approve, button) {
   const note = document.getElementById('doc-note')?.value.trim() || '';
   if (!approve && !note) { showToast('Add a note explaining the rejection', 'error'); return; }
   const run = withBusy(button, async () => {
     await api('ReviewDocument', { docId, approve, note });
     showToast(approve ? 'Document approved' : 'Document rejected', 'success');
-    closeModal();
     await loadCore();
-    await RENDERERS[state.tab]();
+    if (uid) {
+      await openPractitioner(uid);
+    } else {
+      closeModal();
+      await RENDERERS[state.tab]();
+    }
+  });
+  await run();
+}
+
+async function openAdminShiftDetail(shiftId) {
+  if (!shiftId || shiftId === '—') return;
+  openModal('Shift Detail', '<div class="empty"><span class="spinner"></span> Loading shift…</div>', '', '', false);
+  try {
+    const shift = await api('GetShift?shiftId=' + encodeURIComponent(shiftId));
+    const nursery = (state.users || []).find(u => u.uid === shift.nurseryId) || {};
+    const booked = shift.bookedStaffIds || (shift.bookedStaffId ? [shift.bookedStaffId] : []);
+    const pending = shift.pendingStaffIds || [];
+
+    let bookedHtml = booked.length
+      ? booked.map(buid => {
+          const u = (state.users || []).find(x => x.uid === buid) || {};
+          return `<span class="badge badge-emerald" style="margin-right:4px;">${esc(u.name || buid)}</span>`;
+        }).join('')
+      : '<span class="muted">No staff booked yet</span>';
+
+    let pendingHtml = pending.length
+      ? `<div class="table-scroll"><table style="width:100%;"><thead><tr><th>Applicant</th><th style="text-align:right;">Actions</th></tr></thead><tbody>` +
+        pending.map(puid => {
+          const u = (state.users || []).find(x => x.uid === puid) || {};
+          return `<tr>
+            <td><strong>${esc(u.name || 'Applicant')}</strong><div class="muted">${esc(u.email || puid)}</div></td>
+            <td style="text-align:right;">
+              <button class="btn btn-outline btn-sm" onclick="openPractitioner('${esc(puid)}')">View Profile</button>
+              <button class="btn btn-danger btn-sm" onclick="adminDecideShiftApplicant('${esc(shiftId)}', '${esc(puid)}', false, this)">Decline</button>
+              <button class="btn btn-emerald btn-sm" onclick="adminDecideShiftApplicant('${esc(shiftId)}', '${esc(puid)}', true, this)">Approve</button>
+            </td>
+          </tr>`;
+        }).join('') + `</tbody></table></div>`
+      : '<p class="muted" style="margin-top:6px;">No pending applicants for this shift.</p>';
+
+    openModal(
+      shift.title || 'Shift Details',
+      `
+        <div class="inline-actions" style="margin-bottom:14px;">
+          ${statusBadge(shift.status || 'open')}
+          ${pending.length ? `<span class="badge badge-amber">${pending.length} pending review</span>` : ''}
+          <span class="badge badge-emerald">Capacity: ${booked.length}/${shift.capacity || 1}</span>
+        </div>
+        <dl class="info-grid">
+          <dt>Nursery</dt><dd>${esc(nursery.name || shift.nurseryId || '—')}</dd>
+          <dt>Date & Time</dt><dd>${fmtDate(shift.startTime)} ${fmtTime(shift.startTime)} – ${fmtTime(shift.endTime)}</dd>
+          <dt>Hourly Rate</dt><dd>£${((shift.payRate || 0)).toFixed(2)}/hr</dd>
+          <dt>Qualification</dt><dd>${esc((shift.requiredQualification || 'None').replace(/_/g, ' '))}</dd>
+          <dt>Room / Age</dt><dd>${esc(shift.room || '—')} ${shift.ageGroup ? '• ' + esc(shift.ageGroup) : ''}</dd>
+          <dt>Booked Staff</dt><dd>${bookedHtml}</dd>
+        </dl>
+        <div class="divider"></div>
+        <h3 style="font-size:14px; font-weight:800; color:var(--oxford); margin-bottom:8px;">Pending Applicants (${pending.length})</h3>
+        ${pendingHtml}
+      `,
+      `
+        <button class="btn btn-outline" onclick="closeModal()">Close</button>
+      `,
+      esc(shift.title || shiftId),
+      false
+    );
+  } catch (err) {
+    showToast(err.message, 'error');
+    closeModal();
+  }
+}
+
+async function adminDecideShiftApplicant(shiftId, staffId, approve, button) {
+  const run = withBusy(button, async () => {
+    const endpoint = approve ? 'ApproveShiftApplicant' : 'RejectShiftApplicant';
+    await api(endpoint, { shiftId, staffId });
+    showToast(approve ? 'Applicant approved' : 'Applicant declined', 'success');
+    await openAdminShiftDetail(shiftId);
+    await loadCore();
+    if (RENDERERS[state.tab]) await RENDERERS[state.tab]();
   });
   await run();
 }
@@ -974,7 +1053,7 @@ async function renderTimesheets() {
               <tr>
                 <td><strong>${esc(t.staffName || userName(t.staffId))}</strong><div class="muted">${esc(t.staffId || '')}</div></td>
                 <td>${esc(t.nurseryName || userName(t.nurseryId))}</td>
-                <td class="mono">${esc(t.shiftId || '—')}</td>
+                <td class="mono"><a href="javascript:void(0)" onclick="openAdminShiftDetail('${esc(t.shiftId)}')" style="color:var(--royal); text-decoration:underline;">${esc(t.shiftId || '—')}</a></td>
                 <td>${hoursFromMinutes(t.netMinutes ?? t.billableMinutes)}</td>
                 <td>${money(t.grossPayPence)}</td>
                 <td>${statusBadge(t.status)}</td>
@@ -2012,6 +2091,18 @@ async function renderAudit() {
   window.addEventListener('resize', apply);
   apply();
 })();
+
+/* Real-time sync: auto-refresh operations dashboard and timesheets without manual page reloads */
+setInterval(() => {
+  const modalOpen = document.getElementById('modal')?.classList.contains('open');
+  if (document.visibilityState === 'visible' && !modalOpen && state.user) {
+    loadCore().then(() => {
+      if (RENDERERS[state.tab] && (state.tab === 'dashboard' || state.tab === 'timesheets')) {
+        RENDERERS[state.tab]();
+      }
+    }).catch(() => {});
+  }
+}, 15000);
 </script>
 </body>
 </html>

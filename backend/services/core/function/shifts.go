@@ -565,8 +565,9 @@ func getShift(w http.ResponseWriter, r *http.Request) {
 	if len(bookedIDs) == 0 && s.BookedStaffID != nil {
 		bookedIDs = []string{*s.BookedStaffID}
 	}
-	isParty := uid == s.NurseryID || slices.Contains(bookedIDs, uid)
-	if s.Status != ShiftOpen && !isParty {
+	callerIsAdmin := auth.HasRole(ctx, auth.AdminRoleSuperAdmin, auth.AdminRoleSupport, auth.AdminRoleFinance) || isAdmin(ctx)
+	isParty := uid == s.NurseryID || slices.Contains(bookedIDs, uid) || slices.Contains(s.PendingStaffIDs, uid)
+	if s.Status != ShiftOpen && !isParty && !callerIsAdmin {
 		httpjson.WriteError(w, http.StatusForbidden, "NOT_VISIBLE", "You cannot view this shift")
 		return
 	}

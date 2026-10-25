@@ -284,6 +284,17 @@ func submitTimesheet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_ = notifyInApp(ctx, db, shift.NurseryID, "timesheet_submitted",
+		"Timesheet submitted",
+		fmt.Sprintf("A practitioner submitted a timesheet for shift %s. Tap to review and approve.", shift.Title),
+		map[string]any{
+			"timesheetId":     tsID,
+			"shiftId":         req.ShiftID,
+			"staffId":         callerUID,
+			"billableMinutes": billableMins,
+		},
+	)
+
 	_ = audit.WriteAudit(ctx, db, audit.Entry{
 		Action:    "timesheet.submit",
 		ActorUID:  callerUID,
@@ -402,6 +413,15 @@ func approveTimesheet(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 
+	_ = notifyInApp(ctx, db, updated.StaffID, "timesheet_approved",
+		"Timesheet approved",
+		fmt.Sprintf("Your timesheet for shift %s has been approved.", updated.ShiftID),
+		map[string]any{
+			"timesheetId": updated.ID,
+			"shiftId":     updated.ShiftID,
+		},
+	)
+
 	httpjson.WriteJSON(w, http.StatusOK, updated)
 }
 
@@ -508,6 +528,16 @@ func requestTimesheetCorrection(w http.ResponseWriter, r *http.Request) {
 			"feedback":    req.Feedback,
 		},
 	})
+
+	_ = notifyInApp(ctx, db, updated.StaffID, "timesheet_correction_requested",
+		"Timesheet needs correction",
+		fmt.Sprintf("The nursery requested changes to your timesheet: %s", req.Feedback),
+		map[string]any{
+			"timesheetId": updated.ID,
+			"shiftId":     updated.ShiftID,
+			"feedback":    req.Feedback,
+		},
+	)
 
 	httpjson.WriteJSON(w, http.StatusOK, updated)
 }

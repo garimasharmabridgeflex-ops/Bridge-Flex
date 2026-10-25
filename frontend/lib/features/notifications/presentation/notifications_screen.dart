@@ -9,13 +9,24 @@ import '../../../app/theme.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../data/notification_item.dart';
 
-final notificationsListProvider = FutureProvider.autoDispose((ref) {
-  return ref.watch(notificationsRepositoryProvider).list();
+final notificationsListProvider = StreamProvider.autoDispose<List<NotificationItem>>((ref) {
+  final user = ref.watch(authStateProvider).valueOrNull;
+  if (user == null) return const Stream.empty();
+  final repo = ref.watch(notificationsRepositoryProvider);
+  return repo.watchNotifications(user.uid).handleError((_, __) async* {
+    final list = await repo.list();
+    yield list;
+  });
 });
 
-final unreadNotificationCountProvider = FutureProvider.autoDispose<int>((ref) async {
-  final items = await ref.watch(notificationsRepositoryProvider).list();
-  return items.where((n) => !n.read).length;
+final unreadNotificationCountProvider = StreamProvider.autoDispose<int>((ref) {
+  final user = ref.watch(authStateProvider).valueOrNull;
+  if (user == null) return const Stream.empty();
+  final repo = ref.watch(notificationsRepositoryProvider);
+  return repo.watchUnreadCount(user.uid).handleError((_, __) async* {
+    final list = await repo.list();
+    yield list.where((n) => !n.read).length;
+  });
 });
 
 class NotificationIconButton extends ConsumerWidget {
@@ -121,6 +132,12 @@ class _NotificationTile extends ConsumerWidget {
 
   IconData get _icon => switch (item.type) {
         'shift_booked' => Icons.event_available_rounded,
+        'shift_application' => Icons.how_to_reg_rounded,
+        'shift_application_approved' => Icons.check_circle_rounded,
+        'shift_application_declined' => Icons.person_remove_rounded,
+        'timesheet_submitted' => Icons.timer_outlined,
+        'timesheet_approved' => Icons.task_alt_rounded,
+        'timesheet_correction_requested' => Icons.edit_calendar_rounded,
         'new_matching_shift' => Icons.campaign_outlined,
         'rating_received' => Icons.star_outline_rounded,
         'shift_cancelled' => Icons.event_busy_rounded,

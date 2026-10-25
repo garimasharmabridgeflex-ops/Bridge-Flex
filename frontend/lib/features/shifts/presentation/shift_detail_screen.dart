@@ -22,8 +22,12 @@ import 'browse_shifts_screen.dart';
 import 'my_shifts_screen.dart';
 import 'widgets/shift_card.dart' show kDefaultNurseryPhotos;
 
-final shiftDetailProvider = FutureProvider.autoDispose.family<Shift?, String>((ref, shiftId) {
-  return ref.watch(shiftRepositoryProvider).fetchShift(shiftId);
+final shiftDetailProvider = StreamProvider.autoDispose.family<Shift?, String>((ref, shiftId) {
+  final repo = ref.watch(shiftRepositoryProvider);
+  return repo.watchShift(shiftId).handleError((_, __) async* {
+    final fallback = await repo.fetchShift(shiftId);
+    yield fallback;
+  });
 });
 
 class ShiftDetailScreen extends ConsumerStatefulWidget {
@@ -62,6 +66,8 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
     try {
       await ref.read(shiftRepositoryProvider).applyForShift(shift.id);
       ref.invalidate(shiftDetailProvider(shift.id));
+      ref.invalidate(myShiftsProvider);
+      ref.invalidate(openShiftsProvider);
       ref.invalidate(openShiftsProvider);
       ref.invalidate(myShiftsProvider);
       if (mounted) {
@@ -114,6 +120,8 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
         await repo.rejectApplicant(shiftId: shift.id, staffId: staffId);
       }
       ref.invalidate(shiftDetailProvider(shift.id));
+      ref.invalidate(myShiftsProvider);
+      ref.invalidate(openShiftsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -150,6 +158,8 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
     try {
       await ref.read(shiftRepositoryProvider).markNoShow(shiftId: shift.id, staffId: staffId);
       ref.invalidate(shiftDetailProvider(shift.id));
+      ref.invalidate(myShiftsProvider);
+      ref.invalidate(openShiftsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No-show reported.')));
       }
@@ -194,6 +204,8 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
     try {
       await ref.read(shiftRepositoryProvider).cancelShift(shift.id);
       ref.invalidate(shiftDetailProvider(shift.id));
+      ref.invalidate(myShiftsProvider);
+      ref.invalidate(openShiftsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(
@@ -256,7 +268,8 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
             return const EmptyState(icon: Icons.search_off_rounded, title: 'Shift not found');
           }
 
-          final isOwner = user?.uid == shift.nurseryId;
+          final isAdmin = ref.watch(isAdminProvider).valueOrNull == true;
+          final isOwner = (user != null && user.uid == shift.nurseryId) || isAdmin;
           // Membership must check the full bookedStaffIds list, not just
           // bookedStaffId ("most recent acceptor") — on a multi-capacity
           // shift the first person to accept would otherwise be told
@@ -408,7 +421,32 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                                   ),
                                   Row(
                                     children: [
-                                      ShiftStatusBadge(status: shift.status),
+                                      if (shift.pendingStaffIds.isNotEmpty && shift.spotsRemaining > 0)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFEF3C7),
+                                            borderRadius: BorderRadius.circular(AppRadius.pill),
+                                            border: Border.all(color: const Color(0xFFFDE68A)),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.how_to_reg_rounded, size: 13, color: Color(0xFFB45309)),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                '${shift.pendingStaffIds.length} Awaiting Review',
+                                                style: const TextStyle(
+                                                  color: Color(0xFFB45309),
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      else
+                                        ShiftStatusBadge(status: shift.status),
                                       const SizedBox(width: 8),
                                       InkWell(
                                         onTap: () {
@@ -678,6 +716,18 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                   ),
                 ),
 
+                // Applicants list, nursery side. Placed prominently at the top
+                // so the nursery immediately sees and can act on pending applicants!
+                if (isOwner && shift.pendingStaffIds.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _ApplicantList(
+                    shift: shift,
+                    busy: _busy,
+                    onApprove: (staffId) => _decideApplicant(shift, staffId, true),
+                    onReject: (staffId) => _decideApplicant(shift, staffId, false),
+                  ),
+                ],
+
                 const SizedBox(height: 12),
 
                 // Pay Breakdown Callout (Statutory 12.07% Holiday Pay)
@@ -795,7 +845,7 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                           ),
                           _CompliancePill(
                             label: hasIncompleteCourses
-                                ? 'Courses (${trainingOverview!.completedCount}/${trainingOverview.totalCount})'
+                                ? 'Courses (${trainingOverview.completedCount}/${trainingOverview.totalCount})'
                                 : 'Training Complete',
                             isPassed: !hasIncompleteCourses,
                           ),
@@ -925,7 +975,7 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                     ),
                   ],
                 ],
-                if ((isOwner || isBookedStaff) && shift.status == ShiftStatus.booked) ...[
+                if ((isOwner || isBookedStaff) && shift.status == ShiftStatus.booked && shift.bookedStaffIds.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.sm),
                   SizedBox(
                     width: double.infinity,
@@ -1112,18 +1162,7 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                 ],
-                // Applicants list, nursery side. Placed with the actions
-                // rather than the details because approving is the nursery's
-                // main job on this screen once people start applying.
-                if (isOwner && shift.pendingStaffIds.isNotEmpty) ...[
-                  _ApplicantList(
-                    shift: shift,
-                    busy: _busy,
-                    onApprove: (staffId) => _decideApplicant(shift, staffId, true),
-                    onReject: (staffId) => _decideApplicant(shift, staffId, false),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                ],
+
                 // Owner (nursery) rating is handled per booked-staff-member
                 // above, since a multi-capacity shift can have more than one
                 // ratee; only the staff→nursery direction has a single party.

@@ -35,11 +35,11 @@ final profileRepositoryProvider = Provider<ProfileRepository>(
 );
 
 final shiftRepositoryProvider = Provider<ShiftRepository>(
-  (ref) => ShiftRepository(ref.watch(apiClientProvider)),
+  (ref) => ShiftRepository(ref.watch(apiClientProvider), ref.watch(firestoreProvider)),
 );
 
 final timesheetRepositoryProvider = Provider<TimesheetRepository>(
-  (ref) => TimesheetRepository(ref.watch(apiClientProvider)),
+  (ref) => TimesheetRepository(ref.watch(apiClientProvider), ref.watch(firestoreProvider)),
 );
 
 final payrollRepositoryProvider = Provider<PayrollRepository>(
@@ -51,7 +51,7 @@ final billingRepositoryProvider = Provider<BillingRepository>(
 );
 
 final notificationsRepositoryProvider = Provider<NotificationsRepository>(
-  (ref) => NotificationsRepository(ref.watch(apiClientProvider)),
+  (ref) => NotificationsRepository(ref.watch(apiClientProvider), ref.watch(firestoreProvider)),
 );
 
 final ratingsRepositoryProvider = Provider<RatingsRepository>(

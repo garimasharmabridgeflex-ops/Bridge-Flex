@@ -3,6 +3,7 @@ package function
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -113,6 +114,7 @@ func acceptShift(w http.ResponseWriter, r *http.Request) {
 
 	ref := db.Collection("shifts").Doc(req.ShiftID)
 	var nurseryID string
+	var shiftTitle string
 	var resultStatus string
 	var spotsRemaining int64
 
@@ -174,6 +176,7 @@ func acceptShift(w http.ResponseWriter, r *http.Request) {
 		}
 
 		nurseryID = shift.NurseryID
+		shiftTitle = shift.Title
 		spotsRemaining = capacity - int64(len(bookedList))
 
 		// Status is untouched: an application leaves the shift open and
@@ -222,6 +225,15 @@ func acceptShift(w http.ResponseWriter, r *http.Request) {
 	}); err != nil {
 		log.Printf("acceptShift: publish shift-applied for shift %s failed: %v", req.ShiftID, err)
 	}
+
+	_ = notifyInApp(ctx, db, nurseryID, "shift_application",
+		"New shift applicant",
+		fmt.Sprintf("A practitioner applied for shift '%s'. Tap to review and approve.", shiftTitle),
+		map[string]any{
+			"shiftId": req.ShiftID,
+			"staffId": uid,
+		},
+	)
 
 	// spotsRemaining counts places still to be filled by APPROVED staff, so
 	// it doesn't move when someone applies.
@@ -598,6 +610,7 @@ func decideApplicant(w http.ResponseWriter, r *http.Request, approve bool) {
 		spotsRemaining int64
 		autoRejected   []string
 		nurseryID      string
+		shiftTitle     string
 	)
 
 	err = db.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
@@ -614,14 +627,16 @@ func decideApplicant(w http.ResponseWriter, r *http.Request, approve bool) {
 			return err
 		}
 		// Ownership, not just role: a nursery must not be able to approve
-		// applicants onto another nursery's shift.
-		if shift.NurseryID != uid {
+		// applicants onto another nursery's shift, unless caller is admin.
+		callerIsAdmin := auth.HasRole(ctx, auth.AdminRoleSuperAdmin, auth.AdminRoleSupport) || isAdmin(ctx)
+		if shift.NurseryID != uid && !callerIsAdmin {
 			return errNotShiftOwner
 		}
 		if shift.Status == ShiftCancelled {
 			return errShiftNotFound
 		}
 
+		shiftTitle = shift.Title
 		pending := shift.PendingStaffIDs
 		found := false
 		remainingPending := make([]string, 0, len(pending))
@@ -735,6 +750,17 @@ func decideApplicant(w http.ResponseWriter, r *http.Request, approve bool) {
 		}); err != nil {
 			log.Printf("approveShiftApplicant: publish shift-booked for shift %s failed: %v", req.ShiftID, err)
 		}
+		_ = notifyInApp(ctx, db, req.StaffID, "shift_application_approved",
+			"Application approved!",
+			fmt.Sprintf("Your application for '%s' was approved! You are booked for this shift.", shiftTitle),
+			map[string]any{"shiftId": req.ShiftID, "nurseryId": nurseryID},
+		)
+	} else {
+		_ = notifyInApp(ctx, db, req.StaffID, "shift_application_declined",
+			"Application update",
+			fmt.Sprintf("Your application for '%s' was declined.", shiftTitle),
+			map[string]any{"shiftId": req.ShiftID, "nurseryId": nurseryID},
+		)
 	}
 	if err := publish(ctx, topicShiftDecided, shiftApplicationDecidedMessage{
 		ShiftID: req.ShiftID, NurseryID: nurseryID, StaffID: req.StaffID, Approved: approve,
@@ -748,6 +774,11 @@ func decideApplicant(w http.ResponseWriter, r *http.Request, approve bool) {
 		}); err != nil {
 			log.Printf("decideApplicant: publish auto-rejection for %s failed: %v", staffID, err)
 		}
+		_ = notifyInApp(ctx, db, staffID, "shift_application_declined",
+			"Shift filled",
+			fmt.Sprintf("The shift '%s' has been filled by another applicant.", shiftTitle),
+			map[string]any{"shiftId": req.ShiftID, "nurseryId": nurseryID},
+		)
 	}
 
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{

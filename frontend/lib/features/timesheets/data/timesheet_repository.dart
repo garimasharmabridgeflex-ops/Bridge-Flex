@@ -1,11 +1,29 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../../core/api/api_client.dart';
 import '../../../core/config/env.dart';
 import '../domain/timesheet.dart';
 
 class TimesheetRepository {
-  TimesheetRepository(this._api);
+  TimesheetRepository(this._api, [FirebaseFirestore? firestore])
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final ApiClient _api;
+  final FirebaseFirestore _firestore;
+
+  /// Live real-time stream of the timesheet document for a given shift.
+  /// Notifies the nursery instantly when a practitioner submits hours.
+  Stream<Timesheet?> watchTimesheetForShift(String shiftId) {
+    return _firestore
+        .collection('timesheets')
+        .where('shiftId', isEqualTo: shiftId)
+        .limit(1)
+        .snapshots()
+        .map((snap) {
+          if (snap.docs.isEmpty) return null;
+          return Timesheet.fromFirestore(snap.docs.first);
+        });
+  }
 
   /// Practitioner submits recorded hours for a completed shift.
   Future<Timesheet> submitTimesheet({

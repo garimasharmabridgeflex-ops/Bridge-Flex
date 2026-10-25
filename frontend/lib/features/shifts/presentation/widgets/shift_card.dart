@@ -461,6 +461,30 @@ class ShiftCard extends ConsumerWidget {
                                     ),
                                   ),
                                 )
+                              else if ((isOwner || isNursery) && shift.pendingStaffIds.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  margin: const EdgeInsets.only(right: 6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEF3C7),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.how_to_reg_rounded, size: 12, color: Color(0xFFB45309)),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        '${shift.pendingStaffIds.length} applicant${shift.pendingStaffIds.length > 1 ? 's' : ''}',
+                                        style: const TextStyle(
+                                          color: Color(0xFFB45309),
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
                               else if (shift.status != ShiftStatus.open && isStaff)
                                 Padding(
                                   padding: const EdgeInsets.only(right: 6),
@@ -469,7 +493,9 @@ class ShiftCard extends ConsumerWidget {
                               FilledButton(
                                 onPressed: onTap,
                                 style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFF1B2A4A),
+                                  backgroundColor: (isOwner || isNursery) && shift.pendingStaffIds.isNotEmpty
+                                      ? const Color(0xFFD97706)
+                                      : const Color(0xFF1B2A4A),
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                   minimumSize: const Size(0, 36),

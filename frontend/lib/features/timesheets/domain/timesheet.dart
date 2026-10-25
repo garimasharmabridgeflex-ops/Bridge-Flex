@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 enum TimesheetStatus {
   submitted,
   approved,
@@ -153,6 +155,48 @@ class Timesheet {
       submittedAt: parseDateOpt(json['submittedAt']),
       decidedAt: parseDateOpt(json['decidedAt']),
       escalatedAt: parseDateOpt(json['escalatedAt']),
+    );
+  }
+
+  factory Timesheet.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+    DateTime parseDate(dynamic v) {
+      if (v is Timestamp) return v.toDate();
+      if (v is String) return DateTime.tryParse(v) ?? DateTime.now();
+      if (v is DateTime) return v;
+      return DateTime.now();
+    }
+
+    DateTime? parseDateOpt(dynamic v) {
+      if (v == null) return null;
+      if (v is Timestamp) return v.toDate();
+      if (v is String) return DateTime.tryParse(v);
+      if (v is DateTime) return v;
+      return null;
+    }
+
+    return Timesheet(
+      id: doc.id,
+      shiftId: data['shiftId'] as String? ?? '',
+      nurseryId: data['nurseryId'] as String? ?? '',
+      staffId: data['staffId'] as String? ?? '',
+      scheduledStartTime: parseDate(data['scheduledStartTime']),
+      scheduledEndTime: parseDate(data['scheduledEndTime']),
+      actualStartTime: parseDate(data['actualStartTime']),
+      actualEndTime: parseDate(data['actualEndTime']),
+      unpaidBreakMinutes: (data['unpaidBreakMinutes'] as num?)?.toInt() ?? 0,
+      billableMinutes: (data['billableMinutes'] as num?)?.toInt() ?? 0,
+      hourlyRatePence: (data['hourlyRatePence'] as num?)?.toInt() ?? 0,
+      nurseryHourlyRatePence: (data['nurseryHourlyRatePence'] as num?)?.toInt() ?? 0,
+      totalGrossPayPence: (data['totalGrossPayPence'] as num?)?.toInt() ?? 0,
+      totalNurseryChargePence: (data['totalNurseryChargePence'] as num?)?.toInt() ?? 0,
+      status: TimesheetStatus.fromString(data['status'] as String? ?? 'submitted'),
+      nurseryFeedback: data['nurseryFeedback'] as String? ?? '',
+      disputeReason: data['disputeReason'] as String? ?? '',
+      adminNotes: data['adminNotes'] as String? ?? '',
+      submittedAt: parseDateOpt(data['submittedAt']),
+      decidedAt: parseDateOpt(data['decidedAt']),
+      escalatedAt: parseDateOpt(data['escalatedAt']),
     );
   }
 }

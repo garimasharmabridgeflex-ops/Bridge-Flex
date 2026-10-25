@@ -777,7 +777,7 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
 
                 const SizedBox(height: AppSpacing.md),
 
-                // ── Stitch Alexandria Compliance & Eligibility Checklist ───
+                // ── Compliance & Safety Standards Checklist ───
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -795,9 +795,9 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Compliance & Eligibility',
-                            style: TextStyle(
+                          Text(
+                            isOwner ? 'Set Compliance Measures' : 'Your Eligibility & Compliance',
+                            style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w800,
                               color: Color(0xFF1B2A4A),
@@ -806,50 +806,106 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: isEligible ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                              color: isOwner
+                                  ? const Color(0xFFEFF6FF)
+                                  : (isEligible ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2)),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Text(
-                              isEligible ? 'Verified' : 'Action Required',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: isEligible ? const Color(0xFF059669) : const Color(0xFFDC2626),
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isOwner) ...[
+                                  const Icon(Icons.shield_outlined, size: 12, color: Color(0xFF2563EB)),
+                                  const SizedBox(width: 4),
+                                ],
+                                Text(
+                                  isOwner
+                                      ? 'Enforced by K Flex'
+                                      : (isEligible ? 'Verified' : 'Action Required'),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: isOwner
+                                        ? const Color(0xFF2563EB)
+                                        : (isEligible ? const Color(0xFF059669) : const Color(0xFFDC2626)),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        isOwner
+                            ? 'All applicants and assigned practitioners must meet these compliance measures before attending this shift.'
+                            : 'Review your credentials below to ensure you meet all requirements for this shift.',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                          height: 1.4,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: [
-                          _CompliancePill(
-                            label: shift.requiredQualification.isNotEmpty
-                                ? shift.requiredQualification
-                                : 'Level 3 Early Years',
-                            isPassed: isQualPassed,
-                          ),
-                          _CompliancePill(
-                            label: 'Enhanced DBS Active',
-                            isPassed: isDbsVerified,
-                          ),
-                          _CompliancePill(
-                            label: 'Paediatric 1st Aid',
-                            isPassed: isFirstAidVerified,
-                          ),
-                          _CompliancePill(
-                            label: 'Right to Work UK',
-                            isPassed: isRightToWorkVerified,
-                          ),
-                          _CompliancePill(
-                            label: hasIncompleteCourses
-                                ? 'Courses (${trainingOverview.completedCount}/${trainingOverview.totalCount})'
-                                : 'Training Complete',
-                            isPassed: !hasIncompleteCourses,
-                          ),
-                        ],
+                        children: isOwner
+                            ? [
+                                _CompliancePill(
+                                  label: shift.requiredQualification.isNotEmpty
+                                      ? '${shift.requiredQualification.replaceAll('_', ' ').toUpperCase()} Required'
+                                      : 'Level 3 Early Years Required',
+                                  isPassed: true,
+                                  activeColor: const Color(0xFF059669),
+                                ),
+                                const _CompliancePill(
+                                  label: 'Enhanced DBS Checked & Active',
+                                  isPassed: true,
+                                  activeColor: Color(0xFF059669),
+                                ),
+                                const _CompliancePill(
+                                  label: 'Paediatric 1st Aid Certified',
+                                  isPassed: true,
+                                  activeColor: Color(0xFF059669),
+                                ),
+                                const _CompliancePill(
+                                  label: 'Right to Work UK Verified',
+                                  isPassed: true,
+                                  activeColor: Color(0xFF059669),
+                                ),
+                                const _CompliancePill(
+                                  label: 'Safeguarding & Training Complete',
+                                  isPassed: true,
+                                  activeColor: Color(0xFF059669),
+                                ),
+                              ]
+                            : [
+                                _CompliancePill(
+                                  label: shift.requiredQualification.isNotEmpty
+                                      ? shift.requiredQualification
+                                      : 'Level 3 Early Years',
+                                  isPassed: isQualPassed,
+                                ),
+                                _CompliancePill(
+                                  label: 'Enhanced DBS Active',
+                                  isPassed: isDbsVerified,
+                                ),
+                                _CompliancePill(
+                                  label: 'Paediatric 1st Aid',
+                                  isPassed: isFirstAidVerified,
+                                ),
+                                _CompliancePill(
+                                  label: 'Right to Work UK',
+                                  isPassed: isRightToWorkVerified,
+                                ),
+                                _CompliancePill(
+                                  label: hasIncompleteCourses
+                                      ? 'Courses (${trainingOverview.completedCount}/${trainingOverview.totalCount})'
+                                      : 'Training Complete',
+                                  isPassed: !hasIncompleteCourses,
+                                ),
+                              ],
                       ),
                     ],
                   ),
@@ -1503,12 +1559,20 @@ class _ApplicantRow extends ConsumerWidget {
 }
 
 class _CompliancePill extends StatelessWidget {
-  const _CompliancePill({required this.label, required this.isPassed});
+  const _CompliancePill({
+    required this.label,
+    required this.isPassed,
+    this.activeColor,
+  });
   final String label;
   final bool isPassed;
+  final Color? activeColor;
 
   @override
   Widget build(BuildContext context) {
+    final effectiveColor = isPassed
+        ? (activeColor ?? const Color(0xFF2563EB))
+        : const Color(0xFFEF4444);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -1521,7 +1585,7 @@ class _CompliancePill extends StatelessWidget {
         children: [
           Icon(
             isPassed ? Icons.check_circle_rounded : Icons.cancel_rounded,
-            color: isPassed ? const Color(0xFF2563EB) : const Color(0xFFEF4444),
+            color: effectiveColor,
             size: 15,
           ),
           const SizedBox(width: 6),

@@ -8,12 +8,29 @@ import '../../shifts/domain/shift.dart';
 import '../domain/timesheet.dart';
 import 'submit_timesheet_sheet.dart';
 
-final shiftTimesheetProvider = StreamProvider.autoDispose.family<Timesheet?, String>((ref, shiftId) async* {
+class TimesheetQuery {
+  const TimesheetQuery({required this.shiftId, this.staffId});
+  final String shiftId;
+  final String? staffId;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TimesheetQuery &&
+          runtimeType == other.runtimeType &&
+          shiftId == other.shiftId &&
+          staffId == other.staffId;
+
+  @override
+  int get hashCode => shiftId.hashCode ^ (staffId?.hashCode ?? 0);
+}
+
+final shiftTimesheetProvider = StreamProvider.autoDispose.family<Timesheet?, TimesheetQuery>((ref, query) async* {
   final repo = ref.watch(timesheetRepositoryProvider);
   while (true) {
-    final ts = await repo.getTimesheet(shiftId: shiftId);
+    final ts = await repo.getTimesheet(shiftId: query.shiftId, staffId: query.staffId);
     yield ts;
-    await Future.delayed(const Duration(seconds: 8));
+    await Future.delayed(const Duration(seconds: 6));
   }
 });
 
@@ -38,6 +55,13 @@ class TimesheetCard extends ConsumerStatefulWidget {
 class _TimesheetCardState extends ConsumerState<TimesheetCard> {
   bool _actionBusy = false;
 
+  TimesheetQuery get _query {
+    final staffId = widget.isOwner
+        ? (widget.shift.bookedStaffId ?? widget.shift.bookedStaffIds.firstOrNull)
+        : null;
+    return TimesheetQuery(shiftId: widget.shift.id, staffId: staffId);
+  }
+
   void _openSubmitSheet(Timesheet? existing) {
     showModalBottomSheet(
       context: context,
@@ -46,7 +70,7 @@ class _TimesheetCardState extends ConsumerState<TimesheetCard> {
         shift: widget.shift,
         existingTimesheet: existing,
         onSubmitted: () {
-          ref.invalidate(shiftTimesheetProvider(widget.shift.id));
+          ref.invalidate(shiftTimesheetProvider(_query));
           widget.onTimesheetChanged();
         },
       ),
@@ -93,7 +117,7 @@ class _TimesheetCardState extends ConsumerState<TimesheetCard> {
             timesheetId: ts.id,
             feedback: feedbackCtrl.text.trim(),
           );
-      ref.invalidate(shiftTimesheetProvider(widget.shift.id));
+      ref.invalidate(shiftTimesheetProvider(_query));
       widget.onTimesheetChanged();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -152,7 +176,7 @@ class _TimesheetCardState extends ConsumerState<TimesheetCard> {
             timesheetId: ts.id,
             feedback: feedbackCtrl.text.trim(),
           );
-      ref.invalidate(shiftTimesheetProvider(widget.shift.id));
+      ref.invalidate(shiftTimesheetProvider(_query));
       widget.onTimesheetChanged();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -214,7 +238,7 @@ class _TimesheetCardState extends ConsumerState<TimesheetCard> {
             timesheetId: ts.id,
             reason: reasonCtrl.text.trim(),
           );
-      ref.invalidate(shiftTimesheetProvider(widget.shift.id));
+      ref.invalidate(shiftTimesheetProvider(_query));
       widget.onTimesheetChanged();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -249,7 +273,7 @@ class _TimesheetCardState extends ConsumerState<TimesheetCard> {
 
   @override
   Widget build(BuildContext context) {
-    final timesheetAsync = ref.watch(shiftTimesheetProvider(widget.shift.id));
+    final timesheetAsync = ref.watch(shiftTimesheetProvider(_query));
 
     return Card(
       elevation: 0,

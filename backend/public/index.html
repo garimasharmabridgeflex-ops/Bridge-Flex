@@ -1,135 +1,38 @@
-<!DOCTYPE html><html><head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="/">
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
   <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
-
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="KFlex">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png">
-
-  <title>KFlex</title>
-  <link rel="manifest" href="manifest.json">
-  
-  
-  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
-  
-  
-  
-  
-  <style id="splash-screen-style">
-    html {
-      height: 100%
-    }
-
-    body {
-      margin: 0;
-      min-height: 100%;
-      background-color: #FFFFFF;
-          background-size: 100% 100%;
-    }
-
-    .center {
-      margin: 0;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      -ms-transform: translate(-50%, -50%);
-      transform: translate(-50%, -50%);
-    }
-
-    .contain {
-      display:block;
-      width:100%; height:100%;
-      object-fit: contain;
-    }
-
-    .stretch {
-      display:block;
-      width:100%; height:100%;
-    }
-
-    .cover {
-      display:block;
-      width:100%; height:100%;
-      object-fit: cover;
-    }
-
-    .bottom {
-      position: absolute;
-      bottom: 0;
-      left: 50%;
-      -ms-transform: translate(-50%, 0);
-      transform: translate(-50%, 0);
-    }
-
-    .bottomLeft {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-    }
-
-    .bottomRight {
-      position: absolute;
-      bottom: 0;
-      right: 0;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      body {
-        background-color: #121218;
-          }
-    }
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KFlex — Staffing for Nurseries and Early-Years Practitioners</title>
+  <style>
+    body { margin: 0; background: #fff; color: #222; font-family: system-ui, sans-serif; min-height: 100vh; }
+    .wrap { max-width: 680px; margin: 40px auto; padding: 0 20px; text-align: center; }
+    h1 { font-size: 28px; margin-bottom: 4px; }
+    .tagline { color: #555; margin-bottom: 32px; }
+    .download-btn { display: inline-block; background: #1a73e8; color: #fff; padding: 14px 28px; border-radius: 6px; font-size: 18px; font-weight: 500; text-decoration: none; margin: 12px; }
+    .download-btn:hover { background: #1557b2; }
+    .admin-btn { display: inline-block; background: #6c757d; color: #fff; padding: 14px 28px; border-radius: 6px; font-size: 16px; text-decoration: none; margin: 8px 12px 12px; }
+    .admin-btn:hover { background: #5a6268; }
+    .features { margin-top: 40px; text-align: left; max-width: 500px; margin-left: auto; margin-right: auto; }
+    .feature { margin: 12px 0; line-height: 1.6; }
+    code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-family: ui-monospace, monospace; font-size: 12px; }
   </style>
-  <script id="splash-screen-script">
-    function removeSplashFromWeb() {
-      var s = document.getElementById("splash");
-      if (s) s.remove();
-      var b = document.getElementById("splash-branding");
-      if (b) b.remove();
-      document.body.style.background = "transparent";
-    }
-    window.addEventListener('flutter-first-frame', removeSplashFromWeb);
-    setTimeout(removeSplashFromWeb, 2500);
-  </script>
 </head>
 <body>
-  <picture id="splash">
-      <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
-      <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
-      <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
-  </picture>
-  
-  
-  
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+  <div class="wrap">
+    <h1>KFlex</h1>
+    <p class="tagline">Staffing for nurseries and early-years practitioners</p>
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
-  <script src="flutter_bootstrap.js" async=""></script>
+    <div>
+      <a href="app-release.apk" class="download-btn" download>Download Android APK</a>
+      <a href="/admin" class="admin-btn">Admin Console</a>
+    </div>
 
-
-</body></html>
+    <div class="features">
+      <div class="feature"><strong>For practitioners:</> Browse and accept shifts, log ratings, submit timesheets, view payroll profiles and earnings.</div>
+      <div class="feature"><strong>For nursery admins:</> Manage staff scheduling, approve shift applicants, run vetting checklists, assign nursery plans, generate invoices and payroll periods, view audit logs.</div>
+      <div class="feature"><strong>Distribution:</> Direct APK download — the app is not on Google Play. Side-load the APK on Android devices.</div>
+    </div>
+  </div>
+</body>
+</html>

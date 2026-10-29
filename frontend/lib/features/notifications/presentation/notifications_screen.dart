@@ -83,7 +83,7 @@ class NotificationsScreen extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(notificationsListProvider),
-        child: notificationsAsync.when(
+        child: notificationsAsync.when(skipLoadingOnRefresh: true,
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => ListView(children: [
             const SizedBox(height: 80),

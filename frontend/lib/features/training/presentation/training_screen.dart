@@ -30,7 +30,7 @@ class TrainingScreen extends ConsumerWidget {
           ),
         ),
       ),
-      body: overview.when(
+      body: overview.when(skipLoadingOnRefresh: true,
         loading: () => const Center(
           child: CircularProgressIndicator(
             strokeWidth: 2.5,

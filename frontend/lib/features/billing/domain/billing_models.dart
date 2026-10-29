@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Plan {
   const Plan({
     required this.id,
@@ -200,9 +202,21 @@ class Invoice {
   String get vatFormatted => '£${(vatPence / 100.0).toStringAsFixed(2)}';
   String get totalFormatted => '£${(totalPence / 100.0).toStringAsFixed(2)}';
 
+  /// Firestore stores dates as [Timestamp] (Go `time.Time`) and keeps the id
+  /// only in the document name (`firestore:"-"` on the Go struct), so snapshot
+  /// data is normalized here before reusing the JSON parser.
+  factory Invoice.fromFirestore(Map<String, dynamic> data, String id) {
+    final json = <String, dynamic>{...data, 'id': id};
+    json['lineItems'] = ((data['lineItems'] as List?) ?? const [])
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+    return Invoice.fromJson(json);
+  }
+
   factory Invoice.fromJson(Map<String, dynamic> json) {
     DateTime parseDate(dynamic v) {
       if (v is String) return DateTime.tryParse(v) ?? DateTime.now();
+      if (v is Timestamp) return v.toDate();
       if (v is DateTime) return v;
       return DateTime.now();
     }
@@ -210,6 +224,7 @@ class Invoice {
     DateTime? parseDateOpt(dynamic v) {
       if (v == null) return null;
       if (v is String) return DateTime.tryParse(v);
+      if (v is Timestamp) return v.toDate();
       if (v is DateTime) return v;
       return null;
     }

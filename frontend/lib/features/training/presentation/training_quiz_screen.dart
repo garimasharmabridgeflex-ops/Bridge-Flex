@@ -22,7 +22,7 @@ class TrainingQuizScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Knowledge check')),
-      body: overview.when(
+      body: overview.when(skipLoadingOnRefresh: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => const Padding(
           padding: EdgeInsets.all(AppSpacing.lg),

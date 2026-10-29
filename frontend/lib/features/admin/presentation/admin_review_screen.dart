@@ -93,7 +93,7 @@ class _OverviewTab extends ConsumerWidget {
     final statsAsync = ref.watch(platformStatsProvider);
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(platformStatsProvider),
-      child: statsAsync.when(
+      child: statsAsync.when(skipLoadingOnRefresh: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ListView(
           padding: const EdgeInsets.all(AppSpacing.lg),
@@ -220,7 +220,7 @@ class _QueueTab extends ConsumerWidget {
         ref.invalidate(pendingDocumentsProvider);
         ref.invalidate(allUsersProvider);
       },
-      child: pendingAsync.when(
+      child: pendingAsync.when(skipLoadingOnRefresh: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ListView(
           padding: const EdgeInsets.all(AppSpacing.lg),
@@ -410,7 +410,7 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async => ref.invalidate(allUsersProvider),
-            child: usersAsync.when(
+            child: usersAsync.when(skipLoadingOnRefresh: true,
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
@@ -570,7 +570,7 @@ class _TrainingTab extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(adminTrainingModulesProvider),
-        child: modulesAsync.when(
+        child: modulesAsync.when(skipLoadingOnRefresh: true,
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => ListView(
             padding: const EdgeInsets.all(AppSpacing.lg),

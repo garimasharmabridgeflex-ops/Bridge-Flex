@@ -176,7 +176,7 @@ class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
                   ref.invalidate(savedShiftsListProvider);
                 },
                 child: _selectedTab == _ShiftTab.saved
-                    ? savedShiftsAsync.when(
+                    ? savedShiftsAsync.when(skipLoadingOnRefresh: true,
                         loading: () => ListView.separated(
                           padding: const EdgeInsets.all(16),
                           itemCount: 2,
@@ -216,7 +216,7 @@ class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
                           );
                         },
                       )
-                    : shiftsAsync.when(
+                    : shiftsAsync.when(skipLoadingOnRefresh: true,
                         loading: () => ListView.separated(
                           padding: const EdgeInsets.all(16),
                           itemCount: 3,

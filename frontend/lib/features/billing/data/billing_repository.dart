@@ -1,11 +1,15 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../../core/api/api_client.dart';
 import '../../../core/config/env.dart';
 import '../domain/billing_models.dart';
 
 class BillingRepository {
-  BillingRepository(this._api);
+  BillingRepository(this._api, [FirebaseFirestore? firestore])
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final ApiClient _api;
+  final FirebaseFirestore _firestore;
 
   Future<List<Plan>> getPlans() async {
     final res = await _api.post(ApiFunction.getPlans);
@@ -56,6 +60,25 @@ class BillingRepository {
         .cast<Map<String, dynamic>>()
         .map((e) => Invoice.fromJson(e))
         .toList();
+  }
+
+  /// Live Firestore stream of a nursery's invoices — the same client-legal
+  /// `nurseryId == <uid>` query listInvoices runs server-side, sorted
+  /// client-side by issueDate (no composite index needed). This is what makes
+  /// a freshly generated weekly invoice appear the moment it is written
+  /// instead of on the next heartbeat tick.
+  Stream<List<Invoice>> watchInvoices(String nurseryId) {
+    return _firestore
+        .collection('invoices')
+        .where('nurseryId', isEqualTo: nurseryId)
+        .snapshots()
+        .map((snap) {
+      final invoices = snap.docs
+          .map((d) => Invoice.fromFirestore(d.data(), d.id))
+          .toList();
+      invoices.sort((a, b) => b.issueDate.compareTo(a.issueDate));
+      return invoices;
+    });
   }
 
   Future<Invoice> getInvoice(String invoiceId) async {

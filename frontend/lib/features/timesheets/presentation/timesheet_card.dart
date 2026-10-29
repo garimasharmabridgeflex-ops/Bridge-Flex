@@ -310,7 +310,7 @@ class _TimesheetCardState extends ConsumerState<TimesheetCard> {
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
-        child: timesheetAsync.when(
+        child: timesheetAsync.when(skipLoadingOnRefresh: true,
           loading: () => const Center(
             child: Padding(
               padding: EdgeInsets.all(12),

@@ -201,7 +201,7 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Hero Earnings Card in Oxford Navy Gradient (Stitch Pattern)
-              earningsAsync.when(
+              earningsAsync.when(skipLoadingOnRefresh: true,
                 loading: () => const Center(
                   child: Padding(
                     padding: EdgeInsets.all(32),
@@ -406,7 +406,7 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
               const SizedBox(height: 14),
 
               // Bank Details Card (Encrypted)
-              profileAsync.when(
+              profileAsync.when(skipLoadingOnRefresh: true,
                 loading: () => const SizedBox.shrink(),
                 error: (_, _) => const SizedBox.shrink(),
                 data: (profile) => Container(
@@ -488,7 +488,7 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
                 ],
               ),
               const SizedBox(height: 10),
-              earningsAsync.when(
+              earningsAsync.when(skipLoadingOnRefresh: true,
                 loading: () => const SizedBox.shrink(),
                 error: (_, _) => const SizedBox.shrink(),
                 data: (earnings) {

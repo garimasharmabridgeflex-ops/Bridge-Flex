@@ -35,7 +35,7 @@ class PublicProfileScreen extends ConsumerWidget {
         onRefresh: () async {
           ref.invalidate(publicProfileProvider(uid));
         },
-        child: profileAsync.when(
+        child: profileAsync.when(skipLoadingOnRefresh: true,
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => ListView(
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -570,7 +570,7 @@ class ReviewsList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reviewsAsync = ref.watch(reviewsProvider(uid));
-    return reviewsAsync.when(
+    return reviewsAsync.when(skipLoadingOnRefresh: true,
       loading: () => const Padding(
         padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),

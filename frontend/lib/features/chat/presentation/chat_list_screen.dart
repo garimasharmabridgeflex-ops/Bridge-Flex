@@ -48,7 +48,7 @@ class ChatListScreen extends ConsumerWidget {
           ),
         ),
       ),
-      body: sessionsAsync.when(
+      body: sessionsAsync.when(skipLoadingOnRefresh: true,
         loading: () => const Center(
           child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF1B2A4A)),
         ),

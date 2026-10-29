@@ -260,7 +260,7 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
           ) ?? const SizedBox.shrink(),
         ],
       ),
-      body: shiftAsync.when(
+      body: shiftAsync.when(skipLoadingOnRefresh: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => EmptyState(icon: Icons.error_outline, title: 'Failed to load', subtitle: '$e'),
         data: (shift) {
@@ -1365,7 +1365,7 @@ class _PartyTile extends ConsumerWidget {
       child: _InfoTile(
         icon: Icons.person_outline_rounded,
         label: label,
-        value: publicProfileAsync.when(
+        value: publicProfileAsync.when(skipLoadingOnRefresh: true,
           data: (p) => p?.name ?? 'View profile',
           loading: () => 'Loading…',
           error: (_, _) => 'View profile',

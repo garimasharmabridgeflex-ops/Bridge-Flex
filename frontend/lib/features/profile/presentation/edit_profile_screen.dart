@@ -356,7 +356,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Edit profile')),
-      body: profileAsync.when(
+      body: profileAsync.when(skipLoadingOnRefresh: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
         data: (profile) {
@@ -764,7 +764,7 @@ class _LocationStatus extends ConsumerWidget {
         const SizedBox(width: 6),
         Expanded(
           child: Text(
-            placeAsync.when(
+            placeAsync.when(skipLoadingOnRefresh: true,
               data: (place) => place != null ? 'Location set — $place' : 'Location set',
               loading: () => 'Location set — resolving area…',
               error: (_, _) => 'Location set',

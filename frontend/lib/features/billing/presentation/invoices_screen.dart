@@ -5,15 +5,19 @@ import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme.dart';
-import '../../../core/live/live_refresh.dart';
 import '../domain/billing_models.dart';
 
-final nurseryInvoicesProvider = FutureProvider.autoDispose<List<Invoice>>((ref) {
-  // Rides the live heartbeat: an invoice generated or settled on the admin
-  // side appears without reopening the screen.
-  ref.watch(liveTickProvider);
-  return ref.watch(billingRepositoryProvider).listInvoices();
-});
+final nurseryInvoicesProvider = StreamProvider.autoDispose<List<Invoice>>(
+  (ref) {
+    // Live Firestore listener: a weekly invoice generated on the admin side
+    // shows up the moment it is written instead of on the next heartbeat
+    // tick. Rules already scope the query to what a nursery may read
+    // (invoices are readable when nurseryId == caller).
+    final uid = ref.watch(authStateProvider).valueOrNull?.uid;
+    if (uid == null) return Stream<List<Invoice>>.value(const []);
+    return ref.watch(billingRepositoryProvider).watchInvoices(uid);
+  },
+);
 
 /// Invoice line descriptions are written by the backend with the raw shift id
 /// in them ("… (Shift cm3abc…)"), which means nothing to a nursery reader.
@@ -302,7 +306,7 @@ class InvoicesScreen extends ConsumerWidget {
       body: RefreshIndicator(
         color: const Color(0xFF1B2A4A),
         onRefresh: () async => ref.invalidate(nurseryInvoicesProvider),
-        child: invoicesAsync.when(
+        child: invoicesAsync.when(skipLoadingOnRefresh: true,
           loading: () => const Center(
             child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF1B2A4A)),
           ),

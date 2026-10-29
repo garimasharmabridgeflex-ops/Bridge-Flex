@@ -51,7 +51,7 @@ class SubscriptionsScreen extends ConsumerWidget {
           children: [
             // ── Current Membership Status Banner ───────────────────────────
             if (isNursery) ...[
-              subAsync?.when(
+              subAsync?.when(skipLoadingOnRefresh: true,
                     loading: () => Container(
                       height: 120,
                       decoration: BoxDecoration(
@@ -153,7 +153,7 @@ class SubscriptionsScreen extends ConsumerWidget {
               const SizedBox(height: 12),
 
               // ── Plans List ─────────────────────────────────────────────────
-              plansAsync.when(
+              plansAsync.when(skipLoadingOnRefresh: true,
                 loading: () => const Center(
                   child: Padding(
                     padding: EdgeInsets.all(32),

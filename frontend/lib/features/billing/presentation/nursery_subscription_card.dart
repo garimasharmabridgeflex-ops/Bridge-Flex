@@ -28,7 +28,7 @@ class NurserySubscriptionCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final subAsync = ref.watch(nurserySubscriptionProvider);
 
-    return subAsync.when(
+    return subAsync.when(skipLoadingOnRefresh: true,
       loading: () => Container(
         height: 64,
         margin: const EdgeInsets.only(bottom: AppSpacing.sm),

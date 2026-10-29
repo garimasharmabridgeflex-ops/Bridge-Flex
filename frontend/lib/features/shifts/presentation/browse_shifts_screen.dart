@@ -659,7 +659,7 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
                   ref.invalidate(openShiftsProvider);
                   ref.invalidate(_ownLocationAreaProvider);
                 },
-                child: shiftsAsync.when(
+                child: shiftsAsync.when(skipLoadingOnRefresh: true,
                   loading: () => ListView.separated(
                     padding: const EdgeInsets.all(AppSpacing.md),
                     itemCount: 4,

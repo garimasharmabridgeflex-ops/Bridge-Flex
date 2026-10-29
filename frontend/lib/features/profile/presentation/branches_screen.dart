@@ -144,7 +144,7 @@ class _BranchesScreenState extends ConsumerState<BranchesScreen> {
         icon: const Icon(Icons.add_location_alt_rounded),
         label: const Text('Add Branch'),
       ),
-      body: branchesAsync.when(
+      body: branchesAsync.when(skipLoadingOnRefresh: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error loading branches: $e')),
         data: (branches) {

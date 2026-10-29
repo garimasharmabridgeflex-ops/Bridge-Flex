@@ -33,7 +33,7 @@ class AdminUserDetailScreen extends ConsumerWidget {
     final detailAsync = ref.watch(adminUserDetailProvider(uid));
     return Scaffold(
       appBar: AppBar(title: const Text('User detail')),
-      body: detailAsync.when(
+      body: detailAsync.when(skipLoadingOnRefresh: true,
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => EmptyState(icon: Icons.error_outline, title: "Couldn't load user", subtitle: '$e'),
         data: (detail) => _DetailBody(uid: uid, detail: detail),

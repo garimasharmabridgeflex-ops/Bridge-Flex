@@ -317,7 +317,7 @@ class _DbsUploadScreenState extends ConsumerState<DbsUploadScreen> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: myDocsAsync.when(
+              child: myDocsAsync.when(skipLoadingOnRefresh: true,
                 loading: () => const Center(
                   child: Padding(
                     padding: EdgeInsets.all(12),

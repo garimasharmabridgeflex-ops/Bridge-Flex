@@ -23,7 +23,7 @@ final openShiftsProvider = StreamProvider.autoDispose<List<Shift>>((ref) {
   // the next heartbeat. Falls back to the plain HTTP mirror if the stream
   // errors (rules, index or connectivity hiccup).
   final repo = ref.watch(shiftRepositoryProvider);
-  return repo.watchOpenShifts().handleError((_, __) async* {
+  return repo.watchOpenShifts().handleError((_, _) async* {
     yield await repo.fetchOpenShifts();
   });
 });
@@ -663,9 +663,9 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
                   loading: () => ListView.separated(
                     padding: const EdgeInsets.all(AppSpacing.md),
                     itemCount: 4,
-                    separatorBuilder: (_, __) =>
+                    separatorBuilder: (_, _) =>
                         const SizedBox(height: AppSpacing.sm),
-                    itemBuilder: (_, __) => const ShiftCardSkeleton(),
+                    itemBuilder: (_, _) => const ShiftCardSkeleton(),
                   ),
                   error: (e, _) => ListView(
                     children: [
@@ -705,7 +705,7 @@ class _BrowseShiftsScreenState extends ConsumerState<BrowseShiftsScreen> {
                     return ListView.separated(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       itemCount: filtered.length,
-                      separatorBuilder: (_, __) =>
+                      separatorBuilder: (_, _) =>
                           const SizedBox(height: AppSpacing.sm),
                       itemBuilder: (context, i) {
                         final shift = filtered[i];

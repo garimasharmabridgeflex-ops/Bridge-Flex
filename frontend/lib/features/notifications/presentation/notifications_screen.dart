@@ -13,7 +13,7 @@ final notificationsListProvider = StreamProvider.autoDispose<List<NotificationIt
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return const Stream.empty();
   final repo = ref.watch(notificationsRepositoryProvider);
-  return repo.watchNotifications(user.uid).handleError((_, __) async* {
+  return repo.watchNotifications(user.uid).handleError((_, _) async* {
     final list = await repo.list();
     yield list;
   });
@@ -23,7 +23,7 @@ final unreadNotificationCountProvider = StreamProvider.autoDispose<int>((ref) {
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return const Stream.empty();
   final repo = ref.watch(notificationsRepositoryProvider);
-  return repo.watchUnreadCount(user.uid).handleError((_, __) async* {
+  return repo.watchUnreadCount(user.uid).handleError((_, _) async* {
     final list = await repo.list();
     yield list.where((n) => !n.read).length;
   });
@@ -109,7 +109,7 @@ class NotificationsScreen extends ConsumerWidget {
             return ListView.separated(
               padding: const EdgeInsets.all(AppSpacing.md),
               itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 6),
+              separatorBuilder: (_, _) => const SizedBox(height: 6),
               itemBuilder: (context, i) {
                 final n = items[i];
                 return _NotificationTile(item: n)

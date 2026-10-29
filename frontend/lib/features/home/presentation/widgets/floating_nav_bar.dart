@@ -39,7 +39,6 @@ class FloatingNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final half = (items.length / 2).ceil();
     final leftItems = centerAction == null ? items : items.take(half).toList();
     final rightItems = centerAction == null ? <NavItem>[] : items.skip(half).toList();

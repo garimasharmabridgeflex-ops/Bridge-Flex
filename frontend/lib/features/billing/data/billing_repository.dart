@@ -76,7 +76,7 @@ class BillingRepository {
       body: {
         'invoiceId': invoiceId,
         'paymentReference': paymentReference,
-        if (notes != null) 'notes': notes,
+        'notes': ?notes,
       },
     );
   }

@@ -382,7 +382,7 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
-                        value: _selectedBranchId,
+                        initialValue: _selectedBranchId,
                         isExpanded: true,
                         decoration: InputDecoration(
                           filled: true,
@@ -576,7 +576,7 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 DropdownButtonFormField<String>(
-                  value: _requiredQualification,
+                  initialValue: _requiredQualification,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Minimum Required Qualification',

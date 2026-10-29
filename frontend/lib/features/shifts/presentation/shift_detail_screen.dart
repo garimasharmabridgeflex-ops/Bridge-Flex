@@ -24,7 +24,7 @@ import 'widgets/shift_card.dart' show kDefaultNurseryPhotos;
 
 final shiftDetailProvider = StreamProvider.autoDispose.family<Shift?, String>((ref, shiftId) {
   final repo = ref.watch(shiftRepositoryProvider);
-  return repo.watchShift(shiftId).handleError((_, __) async* {
+  return repo.watchShift(shiftId).handleError((_, _) async* {
     final fallback = await repo.fetchShift(shiftId);
     yield fallback;
   });
@@ -370,7 +370,7 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                           width: double.infinity,
                           height: 200,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1B2A4A)),
+                          errorBuilder: (_, _, _) => Container(color: const Color(0xFF1B2A4A)),
                         ),
                       ),
                       Positioned.fill(
@@ -981,7 +981,7 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: nurseryPhotos.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
                       itemBuilder: (context, i) => ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Image.network(
@@ -989,7 +989,7 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                           width: 120,
                           height: 90,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                          errorBuilder: (_, _, _) => Container(
                             width: 120,
                             height: 90,
                             color: const Color(0xFFF1F5F9),
@@ -1368,7 +1368,7 @@ class _PartyTile extends ConsumerWidget {
         value: publicProfileAsync.when(
           data: (p) => p?.name ?? 'View profile',
           loading: () => 'Loading…',
-          error: (_, __) => 'View profile',
+          error: (_, _) => 'View profile',
         ),
       ),
     );
@@ -1959,7 +1959,7 @@ class _EditShiftSheetState extends ConsumerState<_EditShiftSheet> {
                     const SizedBox(height: 14),
                     // Age Group Dropdown
                     DropdownButtonFormField<String>(
-                      value: [
+                      initialValue: [
                         'Babies (0-2 yrs)',
                         'Toddlers (2-3 yrs)',
                         'Preschool (3-5 yrs)',
@@ -1985,7 +1985,7 @@ class _EditShiftSheetState extends ConsumerState<_EditShiftSheet> {
                     const SizedBox(height: 14),
                     // Unpaid Break Dropdown
                     DropdownButtonFormField<int>(
-                      value: [0, 15, 30, 45, 60].contains(_unpaidBreakMinutes) ? _unpaidBreakMinutes : 0,
+                      initialValue: [0, 15, 30, 45, 60].contains(_unpaidBreakMinutes) ? _unpaidBreakMinutes : 0,
                       decoration: const InputDecoration(
                         labelText: 'Unpaid Break Time',
                         border: OutlineInputBorder(),
@@ -2005,7 +2005,7 @@ class _EditShiftSheetState extends ConsumerState<_EditShiftSheet> {
                     const SizedBox(height: 14),
                     // Minimum Qualification Required
                     DropdownButtonFormField<String>(
-                      value: [
+                      initialValue: [
                         '',
                         'unqualified',
                         'level_2',

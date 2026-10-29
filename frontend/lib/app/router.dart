@@ -37,9 +37,9 @@ import 'providers.dart';
 /// next manual navigation.
 class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(Ref ref) {
-    ref.listen(authStateProvider, (_, __) => notifyListeners());
-    ref.listen(ownProfileProvider, (_, __) => notifyListeners());
-    ref.listen(isAdminProvider, (_, __) => notifyListeners());
+    ref.listen(authStateProvider, (_, _) => notifyListeners());
+    ref.listen(ownProfileProvider, (_, _) => notifyListeners());
+    ref.listen(isAdminProvider, (_, _) => notifyListeners());
   }
 }
 
@@ -125,20 +125,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(path: '/', redirect: (_, __) => '/home'),
-      GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
-      GoRoute(path: '/sign-in', builder: (_, __) => const SignInScreen()),
-      GoRoute(path: '/sign-up', builder: (_, __) => const SignUpScreen()),
-      GoRoute(path: '/forgot-password', builder: (_, __) => const ForgotPasswordScreen()),
-      GoRoute(path: '/role-select', builder: (_, __) => const RoleSelectScreen()),
-      GoRoute(path: '/admin', builder: (_, __) => const AdminReviewScreen()),
+      GoRoute(path: '/', redirect: (_, _) => '/home'),
+      GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
+      GoRoute(path: '/sign-in', builder: (_, _) => const SignInScreen()),
+      GoRoute(path: '/sign-up', builder: (_, _) => const SignUpScreen()),
+      GoRoute(path: '/forgot-password', builder: (_, _) => const ForgotPasswordScreen()),
+      GoRoute(path: '/role-select', builder: (_, _) => const RoleSelectScreen()),
+      GoRoute(path: '/admin', builder: (_, _) => const AdminReviewScreen()),
       GoRoute(
         path: '/admin/users/:uid',
         builder: (_, state) => AdminUserDetailScreen(uid: state.pathParameters['uid']!),
       ),
-      GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingRouterScreen()),
-      GoRoute(path: '/home', builder: (_, __) => const HomeShell()),
-      GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
+      GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingRouterScreen()),
+      GoRoute(path: '/home', builder: (_, _) => const HomeShell()),
+      GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
       // Quiz sits under the module so a back gesture from the quiz returns to
       // the module rather than the tab root.
       GoRoute(
@@ -151,28 +151,28 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      GoRoute(path: '/profile/edit', builder: (_, __) => const EditProfileScreen()),
-      GoRoute(path: '/profile/branches', builder: (_, __) => const BranchesScreen()),
-      GoRoute(path: '/earnings', builder: (_, __) => const PractitionerEarningsScreen()),
-      GoRoute(path: '/billing/invoices', builder: (_, __) => const InvoicesScreen()),
-      GoRoute(path: '/billing/subscriptions', builder: (_, __) => const SubscriptionsScreen()),
-      GoRoute(path: '/subscriptions', builder: (_, __) => const SubscriptionsScreen()),
-      GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
+      GoRoute(path: '/profile/edit', builder: (_, _) => const EditProfileScreen()),
+      GoRoute(path: '/profile/branches', builder: (_, _) => const BranchesScreen()),
+      GoRoute(path: '/earnings', builder: (_, _) => const PractitionerEarningsScreen()),
+      GoRoute(path: '/billing/invoices', builder: (_, _) => const InvoicesScreen()),
+      GoRoute(path: '/billing/subscriptions', builder: (_, _) => const SubscriptionsScreen()),
+      GoRoute(path: '/subscriptions', builder: (_, _) => const SubscriptionsScreen()),
+      GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(
         path: '/settings/change-password',
-        builder: (_, __) => const ChangePasswordScreen(),
+        builder: (_, _) => const ChangePasswordScreen(),
       ),
-      GoRoute(path: '/profile/dbs', builder: (_, __) => const DbsUploadScreen()),
+      GoRoute(path: '/profile/dbs', builder: (_, _) => const DbsUploadScreen()),
       GoRoute(
         path: '/profile/:uid',
         builder: (_, state) => PublicProfileScreen(uid: state.pathParameters['uid']!),
       ),
-      GoRoute(path: '/shifts/new', builder: (_, __) => const PostShiftScreen()),
+      GoRoute(path: '/shifts/new', builder: (_, _) => const PostShiftScreen()),
       GoRoute(
         path: '/shifts/:id',
         builder: (_, state) => ShiftDetailScreen(shiftId: state.pathParameters['id']!),
       ),
-      GoRoute(path: '/chats', builder: (_, __) => const ChatListScreen()),
+      GoRoute(path: '/chats', builder: (_, _) => const ChatListScreen()),
       GoRoute(
         path: '/chats/:sessionId',
         builder: (_, state) => ChatScreen(sessionId: state.pathParameters['sessionId']!),

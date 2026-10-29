@@ -22,7 +22,7 @@ final myShiftsProvider = StreamProvider.autoDispose<List<Shift>>((ref) {
   if (profile.role == UserRole.nursery) {
     // Already live — a Firestore listener on the shifts this nursery posted,
     // which is what puts a new applicant on screen without a refresh.
-    return repo.watchMyShiftsNursery(user.uid).handleError((_, __) async* {
+    return repo.watchMyShiftsNursery(user.uid).handleError((_, _) async* {
       final list = await repo.fetchMyShifts();
       yield list;
     });
@@ -31,7 +31,7 @@ final myShiftsProvider = StreamProvider.autoDispose<List<Shift>>((ref) {
   // directly, booked as part of a multi-capacity shift, or applied-but-pending)
   // — the same set listMyShifts assembles server-side. A nursery approving or
   // declining an application rewrites this list the moment it happens.
-  return repo.watchMyShiftsStaff(user.uid).handleError((_, __) async* {
+  return repo.watchMyShiftsStaff(user.uid).handleError((_, _) async* {
     final list = await repo.fetchMyShifts();
     yield list;
   });
@@ -180,8 +180,8 @@ class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
                         loading: () => ListView.separated(
                           padding: const EdgeInsets.all(16),
                           itemCount: 2,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
-                          itemBuilder: (_, __) => const ShiftCardSkeleton(),
+                          separatorBuilder: (_, _) => const SizedBox(height: 12),
+                          itemBuilder: (_, _) => const ShiftCardSkeleton(),
                         ),
                         error: (e, _) => EmptyState(
                           icon: Icons.wifi_off_rounded,
@@ -205,7 +205,7 @@ class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
                           return ListView.separated(
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
                             itemCount: savedShifts.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            separatorBuilder: (_, _) => const SizedBox(height: 12),
                             itemBuilder: (context, i) {
                               final shift = savedShifts[i];
                               return ShiftCard(
@@ -220,8 +220,8 @@ class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
                         loading: () => ListView.separated(
                           padding: const EdgeInsets.all(16),
                           itemCount: 3,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
-                          itemBuilder: (_, __) => const ShiftCardSkeleton(),
+                          separatorBuilder: (_, _) => const SizedBox(height: 12),
+                          itemBuilder: (_, _) => const ShiftCardSkeleton(),
                         ),
                         error: (e, _) => EmptyState(
                           icon: Icons.wifi_off_rounded,
@@ -285,7 +285,7 @@ class _MyShiftsScreenState extends ConsumerState<MyShiftsScreen> {
                           return ListView.separated(
                             padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
                             itemCount: filtered.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            separatorBuilder: (_, _) => const SizedBox(height: 12),
                             itemBuilder: (context, i) {
                               final shift = filtered[i];
                               final user = ref.watch(authStateProvider).valueOrNull;

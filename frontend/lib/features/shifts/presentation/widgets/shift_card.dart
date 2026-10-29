@@ -156,7 +156,7 @@ class ShiftCard extends ConsumerWidget {
                       Image.network(
                         photoUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                        errorBuilder: (_, _, _) => Container(
                           color: const Color(0xFF1B2A4A),
                           child: const Center(
                             child: Icon(Icons.child_care_rounded, size: 48, color: Colors.white24),

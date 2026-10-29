@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/providers.dart';
 import '../../../core/live/live_refresh.dart';
 import '../domain/shift.dart';
-import 'shift_repository.dart';
 
 class BookmarkedShiftsNotifier extends StateNotifier<Set<String>> {
   BookmarkedShiftsNotifier() : super(const <String>{});

@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
-import '../../../app/theme.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../data/chat_models.dart';
 
@@ -65,7 +64,7 @@ class ChatListScreen extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
             itemCount: sessions.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
             itemBuilder: (context, i) {
               final session = sessions[i];
               final otherUid = session.otherParticipant(selfUid);

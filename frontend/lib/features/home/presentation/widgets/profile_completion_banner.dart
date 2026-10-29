@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../app/theme.dart';
 import '../../../profile/domain/profile.dart';
 
 /// Full app spec §1.4: "A partially-complete profile ... is allowed into
@@ -18,11 +17,7 @@ class ProfileCompletionBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final isStaff = profile.role == UserRole.staff;
-    final message = isStaff
-        ? "Finish your profile to start accepting shifts — add DBS verification and a bit about your experience."
-        : "Add a description so staff know what to expect before they accept your shifts.";
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),

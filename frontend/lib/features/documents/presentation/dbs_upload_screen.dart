@@ -8,7 +8,6 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/providers.dart';
-import '../../../app/theme.dart';
 import '../../../core/live/live_refresh.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/photo_source_sheet.dart';
@@ -331,8 +330,11 @@ class _DbsUploadScreenState extends ConsumerState<DbsUploadScreen> {
                     final isDbsType = t == DocumentType.dbsCertificate;
                     DocReviewStatus status = docs[t]?.status ?? DocReviewStatus.none;
                     if (isDbsType) {
-                      if (dbsVerified) status = DocReviewStatus.verified;
-                      else if (dbsPending && status == DocReviewStatus.none) status = DocReviewStatus.pendingReview;
+                      if (dbsVerified) {
+                        status = DocReviewStatus.verified;
+                      } else if (dbsPending && status == DocReviewStatus.none) {
+                        status = DocReviewStatus.pendingReview;
+                      }
                     }
                     return _ChecklistRow(type: t, status: status);
                   }).toList(),
@@ -503,7 +505,7 @@ class _DbsUploadScreenState extends ConsumerState<DbsUploadScreen> {
                         ),
                         Switch(
                           value: _onUpdateService,
-                          activeColor: const Color(0xFF2563EB),
+                          activeThumbColor: const Color(0xFF2563EB),
                           onChanged: (val) => setState(() => _onUpdateService = val),
                         ),
                       ],
@@ -588,7 +590,7 @@ class _DbsUploadScreenState extends ConsumerState<DbsUploadScreen> {
                                 _fileBytes!,
                                 height: 90,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(
+                                errorBuilder: (_, _, _) => const Icon(
                                   Icons.file_present_rounded,
                                   size: 48,
                                   color: Color(0xFF10B981),

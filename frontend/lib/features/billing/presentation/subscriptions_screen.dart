@@ -160,7 +160,7 @@ class SubscriptionsScreen extends ConsumerWidget {
                     child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF1B2A4A)),
                   ),
                 ),
-                error: (_, __) => _FallbackPlansList(isNursery: isNursery),
+                error: (_, _) => _FallbackPlansList(isNursery: isNursery),
                 data: (plans) {
                   if (plans.isEmpty) {
                     return _FallbackPlansList(isNursery: isNursery);

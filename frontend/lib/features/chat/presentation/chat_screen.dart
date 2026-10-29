@@ -14,7 +14,7 @@ final chatMessagesProvider =
   // send, appears the moment the server writes it. Falls back to the HTTP
   // mirror once if the stream errors (dropped connection, missing rules).
   final repo = ref.watch(chatRepositoryProvider);
-  return repo.watchMessages(sessionId).handleError((_, __) async* {
+  return repo.watchMessages(sessionId).handleError((_, _) async* {
     yield await repo.fetchMessages(sessionId);
   });
 });

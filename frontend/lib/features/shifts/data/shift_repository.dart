@@ -194,19 +194,19 @@ class ShiftRepository {
   }) {
     return _api.post(ApiFunction.updateShift, body: {
       'shiftId': shiftId,
-      if (title != null) 'title': title,
-      if (date != null) 'date': date,
+      'title': ?title,
+      'date': ?date,
       if (startTime != null) 'startTime': startTime.toUtc().toIso8601String(),
       if (endTime != null) 'endTime': endTime.toUtc().toIso8601String(),
-      if (payRate != null) 'payRate': payRate,
-      if (room != null) 'room': room,
-      if (ageGroup != null) 'ageGroup': ageGroup,
-      if (numberOfChildren != null) 'numberOfChildren': numberOfChildren,
-      if (expectedDuties != null) 'expectedDuties': expectedDuties,
-      if (requirements != null) 'requirements': requirements,
-      if (description != null) 'description': description,
-      if (unpaidBreakMinutes != null) 'unpaidBreakMinutes': unpaidBreakMinutes,
-      if (requiredQualification != null) 'requiredQualification': requiredQualification,
+      'payRate': ?payRate,
+      'room': ?room,
+      'ageGroup': ?ageGroup,
+      'numberOfChildren': ?numberOfChildren,
+      'expectedDuties': ?expectedDuties,
+      'requirements': ?requirements,
+      'description': ?description,
+      'unpaidBreakMinutes': ?unpaidBreakMinutes,
+      'requiredQualification': ?requiredQualification,
     });
   }
 

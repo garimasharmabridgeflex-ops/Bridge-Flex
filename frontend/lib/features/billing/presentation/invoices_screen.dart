@@ -327,7 +327,7 @@ class InvoicesScreen extends ConsumerWidget {
             return ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
               itemCount: invoices.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (ctx, idx) {
                 final inv = invoices[idx];
                 final color = _statusColor(inv);

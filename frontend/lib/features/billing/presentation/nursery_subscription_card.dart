@@ -24,80 +24,6 @@ final availablePlansProvider = FutureProvider.autoDispose<List<Plan>>((ref) {
 class NurserySubscriptionCard extends ConsumerWidget {
   const NurserySubscriptionCard({super.key});
 
-  void _showUpgradeSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => Consumer(
-        builder: (ctx, ref, _) {
-          final plansAsync = ref.watch(availablePlansProvider);
-          return Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Membership Plans', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.of(ctx).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                const Text(
-                  'Choose a membership plan for your nursery. Invoices are settled via secure bank transfer.',
-                  style: TextStyle(color: Colors.grey, fontSize: 13),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                plansAsync.when(
-                  loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
-                  error: (e, _) => Text('Error loading plans: $e'),
-                  data: (plans) => Column(
-                    children: plans.where((p) => p.id != 'trial').map((plan) {
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: AppColors.teal.withValues(alpha: 0.3)),
-                        ),
-                        child: ListTile(
-                          title: Text(plan.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(plan.description, style: const TextStyle(fontSize: 12)),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(plan.priceFormatted, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.teal)),
-                              Text(plan.billingInterval == 'month' ? '/month (ex-VAT)' : '/booking', style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                            ],
-                          ),
-                          onTap: () {
-                            Navigator.of(ctx).pop();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('To activate ${plan.name}, our finance team will contact your registered billing email.'),
-                                backgroundColor: AppColors.teal,
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final subAsync = ref.watch(nurserySubscriptionProvider);
@@ -115,7 +41,7 @@ class NurserySubscriptionCard extends ConsumerWidget {
           child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1B2A4A)),
         ),
       ),
-      error: (_, __) => Card(
+      error: (_, _) => Card(
         elevation: 0,
         margin: const EdgeInsets.only(bottom: AppSpacing.sm),
         shape: RoundedRectangleBorder(

@@ -115,7 +115,7 @@ class _BranchesScreenState extends ConsumerState<BranchesScreen> {
                       if (ctx.mounted) Navigator.pop(ctx);
                     } on ApiException catch (e) {
                       if (ctx.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(e.message)));
                       }
                     } finally {
                       if (ctx.mounted) setModalState(() => saving = false);
@@ -170,7 +170,7 @@ class _BranchesScreenState extends ConsumerState<BranchesScreen> {
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.md),
             itemCount: branches.length,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+            separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
             itemBuilder: (context, index) {
               final branch = branches[index];
               return Card(

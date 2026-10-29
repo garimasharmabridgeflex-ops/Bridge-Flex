@@ -258,7 +258,7 @@ class _QueueTab extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.lg),
             itemCount: entries.length,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+            separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
             itemBuilder: (context, i) {
               final uid = entries[i].key;
               final pending = entries[i].value;
@@ -433,7 +433,7 @@ class _UsersTabState extends ConsumerState<_UsersTab> {
                 return ListView.separated(
                   padding: const EdgeInsets.all(AppSpacing.lg),
                   itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                  separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
                   itemBuilder: (context, i) => _UserRow(user: filtered[i]),
                 );
               },

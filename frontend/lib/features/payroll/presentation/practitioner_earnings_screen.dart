@@ -135,7 +135,7 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
                           if (ctx.mounted) {
                             Navigator.of(ctx).pop();
                             ref.invalidate(payrollProfileProvider);
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            ScaffoldMessenger.of(ctx).showSnackBar(
                               const SnackBar(
                                 content: Text('Bank details updated securely with AES-256 envelope encryption.'),
                                 backgroundColor: Color(0xFF059669),
@@ -408,7 +408,7 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
               // Bank Details Card (Encrypted)
               profileAsync.when(
                 loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
                 data: (profile) => Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -490,7 +490,7 @@ class _PractitionerEarningsScreenState extends ConsumerState<PractitionerEarning
               const SizedBox(height: 10),
               earningsAsync.when(
                 loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
                 data: (earnings) {
                   if (earnings.payslips.isEmpty) {
                     return Container(

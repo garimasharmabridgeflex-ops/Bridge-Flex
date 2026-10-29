@@ -209,7 +209,7 @@ class NurseryDetails extends StatelessWidget {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: profile.photos.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (context, i) => ClipRRect(
                 borderRadius: BorderRadius.circular(AppRadius.md),
                 child: Image.network(profile.photos[i], width: 160, height: 120, fit: BoxFit.cover),
@@ -575,7 +575,7 @@ class ReviewsList extends ConsumerWidget {
         padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       ),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (reviews) {
         if (reviews.isEmpty) return const SizedBox.shrink();
         return Column(

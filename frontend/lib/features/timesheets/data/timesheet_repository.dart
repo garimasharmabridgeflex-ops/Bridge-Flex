@@ -49,7 +49,7 @@ class TimesheetRepository {
       'shiftId': shiftId,
       if (actualStartTime != null) 'actualStartTime': actualStartTime.toUtc().toIso8601String(),
       if (actualEndTime != null) 'actualEndTime': actualEndTime.toUtc().toIso8601String(),
-      if (unpaidBreakMinutes != null) 'unpaidBreakMinutes': unpaidBreakMinutes,
+      'unpaidBreakMinutes': ?unpaidBreakMinutes,
     };
     final res = await _api.post(ApiFunction.submitTimesheet, body: body);
     return Timesheet.fromJson(res);
@@ -154,7 +154,7 @@ class TimesheetRepository {
         'timesheetId': timesheetId,
         if (actualStartTime != null) 'actualStartTime': actualStartTime.toUtc().toIso8601String(),
         if (actualEndTime != null) 'actualEndTime': actualEndTime.toUtc().toIso8601String(),
-        if (unpaidBreakMinutes != null) 'unpaidBreakMinutes': unpaidBreakMinutes,
+        'unpaidBreakMinutes': ?unpaidBreakMinutes,
         'adminNotes': adminNotes,
       },
     );

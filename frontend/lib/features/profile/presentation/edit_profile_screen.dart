@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -548,7 +547,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: _photos.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
                         itemBuilder: (context, i) => Stack(
                           children: [
                             ClipRRect(
@@ -558,7 +557,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 width: 120,
                                 height: 100,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
+                                errorBuilder: (_, _, _) => Container(
                                   width: 120,
                                   height: 100,
                                   color: const Color(0xFFF1F5F9),
@@ -768,7 +767,7 @@ class _LocationStatus extends ConsumerWidget {
             placeAsync.when(
               data: (place) => place != null ? 'Location set — $place' : 'Location set',
               loading: () => 'Location set — resolving area…',
-              error: (_, __) => 'Location set',
+              error: (_, _) => 'Location set',
             ),
             style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),

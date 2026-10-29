@@ -3,7 +3,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
-import '../../../app/theme.dart';
 import '../../../core/api/api_exception.dart';
 import '../../profile/domain/profile.dart';
 

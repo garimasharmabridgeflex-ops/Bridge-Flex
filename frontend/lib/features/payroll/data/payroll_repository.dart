@@ -24,12 +24,12 @@ class PayrollRepository {
     bool? eligibleForRolledUpHolidayPay,
   }) async {
     final body = <String, dynamic>{
-      if (uid != null) 'uid': uid,
-      if (bankAccountName != null) 'bankAccountName': bankAccountName,
-      if (bankAccountNumber != null) 'bankAccountNumber': bankAccountNumber,
-      if (bankSortCode != null) 'bankSortCode': bankSortCode,
-      if (nationalInsuranceNumber != null) 'nationalInsuranceNumber': nationalInsuranceNumber,
-      if (eligibleForRolledUpHolidayPay != null) 'eligibleForRolledUpHolidayPay': eligibleForRolledUpHolidayPay,
+      'uid': ?uid,
+      'bankAccountName': ?bankAccountName,
+      'bankAccountNumber': ?bankAccountNumber,
+      'bankSortCode': ?bankSortCode,
+      'nationalInsuranceNumber': ?nationalInsuranceNumber,
+      'eligibleForRolledUpHolidayPay': ?eligibleForRolledUpHolidayPay,
     };
     final res = await _api.post(ApiFunction.updatePayrollProfile, body: body);
     return PayrollProfile.fromJson(res);
@@ -48,7 +48,7 @@ class PayrollRepository {
     final body = <String, dynamic>{
       'startDate': startDate.toUtc().toIso8601String(),
       'endDate': endDate.toUtc().toIso8601String(),
-      if (periodName != null) 'periodName': periodName,
+      'periodName': ?periodName,
     };
     return _api.post(ApiFunction.generatePayrollPeriod, body: body);
   }

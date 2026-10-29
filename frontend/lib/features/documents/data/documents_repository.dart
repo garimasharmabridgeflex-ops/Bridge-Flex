@@ -126,7 +126,7 @@ class DocumentsRepository {
     return _api.post(ApiFunction.reviewDocument, body: {
       'docId': docId,
       'approve': approve,
-      if (note != null) 'note': note,
+      'note': ?note,
     });
   }
 }

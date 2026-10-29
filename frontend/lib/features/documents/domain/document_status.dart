@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// The `documents/{docId}.status` value from the backend — distinct from
 /// `profiles.dbsStatus` (the profile-level badge derived from this).
 enum DocReviewStatus { none, pendingReview, verified, rejected }
@@ -78,6 +80,28 @@ class DocumentStatusInfo {
       uploadedAt: json['uploadedAt'] != null
           ? DateTime.tryParse(json['uploadedAt'] as String)?.toLocal()
           : null,
+    );
+  }
+
+  /// Maps a live Firestore `documents/{docId}` doc — the doc id plays the
+  /// part the API injects as `docId`, and `uploadedAt` is a Firestore
+  /// Timestamp here where the HTTP mirror serialises it as a string.
+  factory DocumentStatusInfo.fromFirestore(
+      DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? const <String, dynamic>{};
+    final uploaded = data['uploadedAt'];
+    return DocumentStatusInfo(
+      status: docReviewStatusFromString(data['status'] as String? ?? 'none'),
+      type: documentTypeFromString(data['type'] as String?),
+      docId: doc.id,
+      reviewNote: (data['reviewNote'] as String?)?.isNotEmpty == true
+          ? data['reviewNote'] as String
+          : null,
+      uploadedAt: uploaded is Timestamp
+          ? uploaded.toDate().toLocal()
+          : uploaded is String
+              ? DateTime.tryParse(uploaded)?.toLocal()
+              : null,
     );
   }
 }

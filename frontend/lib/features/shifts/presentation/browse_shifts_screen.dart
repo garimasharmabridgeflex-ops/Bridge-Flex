@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme.dart';
+import '../../../core/live/live_refresh.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../notifications/presentation/notifications_screen.dart';
 import '../../../shared/widgets/shimmer_box.dart';
@@ -16,13 +17,21 @@ import 'widgets/shift_card.dart';
 
 // ─── Providers ───────────────────────────────────────────────────────────────
 
-final openShiftsProvider = FutureProvider.autoDispose<List<Shift>>((ref) {
-  return ref.watch(shiftRepositoryProvider).fetchOpenShifts();
+final openShiftsProvider = StreamProvider.autoDispose<List<Shift>>((ref) {
+  // Live Firestore listener: a shift a nursery posts after this practitioner
+  // opened Browse appears on its own, the moment it is written, instead of on
+  // the next heartbeat. Falls back to the plain HTTP mirror if the stream
+  // errors (rules, index or connectivity hiccup).
+  final repo = ref.watch(shiftRepositoryProvider);
+  return repo.watchOpenShifts().handleError((_, __) async* {
+    yield await repo.fetchOpenShifts();
+  });
 });
 
 final _ownLocationAreaProvider = FutureProvider.autoDispose<String?>((
   ref,
 ) async {
+  ref.watch(liveTickProvider);
   final uid = ref.watch(authStateProvider).valueOrNull?.uid;
   if (uid == null) return null;
   final profile = await ref

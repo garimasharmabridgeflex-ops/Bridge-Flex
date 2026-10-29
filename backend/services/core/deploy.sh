@@ -17,6 +17,9 @@ cd "$(dirname "$0")"
 
 : "${PROJECT_ID:?Set PROJECT_ID to your real Firebase project id, e.g. PROJECT_ID=my-prod-project ./deploy.sh}"
 : "${REGION:=europe-west2}"
+# Cloud Scheduler region — keep in sync with REGION unless the project's
+# App Engine app lives elsewhere.
+: "${SCHEDULER_LOCATION:=$REGION}"
 # Verify the current valid identifier with `gcloud functions runtimes list
 # --project="$PROJECT_ID"` before your first deploy — Cloud Functions'
 # supported Go runtime versions change over time.
@@ -95,7 +98,9 @@ deploy_http GetRequiredPolicies
 deploy_http GetPolicy
 deploy_http AcceptPolicies
 deploy_http GetCompanyInfo
+deploy_http GetCompanySettings
 deploy_http UpdateCompanyInfo
+
 deploy_http SchedulerHeartbeat
 
 # Vetting and sensitive data (Phase 4)
@@ -146,7 +151,9 @@ deploy_http LinkPayslip
 
 # Subscriptions, Invoicing and Ledger without Stripe (Phase 9)
 deploy_http GetPlans
+deploy_http GetAdminPlans
 deploy_http UpsertPlan
+
 deploy_http GetNurserySubscription
 deploy_http AssignNurseryPlan
 deploy_http GenerateWeeklyInvoices
@@ -201,4 +208,34 @@ deploy_firestore_trigger SyncProfilePublic google.cloud.firestore.document.v1.wr
 deploy_firestore_trigger RecomputeRating google.cloud.firestore.document.v1.created "ratings/{ratingId}"
 deploy_firestore_trigger MatchNewShift google.cloud.firestore.document.v1.created "shifts/{shiftId}"
 
-echo "functions-core: all HTTP functions and triggers deployed."
+# Cloud Scheduler jobs (plan Phase 2.3 / 7.4 / 9.2). The Scheduler* endpoints
+# verify Cloud Scheduler's OIDC token, but deploying the endpoints alone
+# never makes a job run — without these, the 48-hour timesheet escalation and
+# the trial/DBS-recheck reminders are dead code in production. Idempotent:
+# an existing job is left alone. Cloud Scheduler needs an App Engine app in
+# the project (`gcloud app create --region=europe-west2`, once).
+ensure_scheduler_job() {
+  local name="$1" schedule="$2" target="$3"
+  if gcloud scheduler jobs describe "$name" \
+      --location="$SCHEDULER_LOCATION" --project="$PROJECT_ID" >/dev/null 2>&1; then
+    echo "==> functions-core: scheduler job $name already exists — skipping"
+    return 0
+  fi
+  echo "==> functions-core: creating scheduler job $name ($schedule → $target)"
+  gcloud scheduler jobs create http "$name" \
+    --location="$SCHEDULER_LOCATION" --project="$PROJECT_ID" \
+    --schedule="$schedule" --time-zone=Etc/UTC \
+    --uri="https://$REGION-$PROJECT_ID.cloudfunctions.net/$target" \
+    --http-method=POST --headers=Content-Type=application/json \
+    --message-body='{}' \
+    --oidc-service-account-email="$PROJECT_ID@appspot.gserviceaccount.com" \
+    --oidc-token-audience="https://$REGION-$PROJECT_ID.cloudfunctions.net/$target" \
+    --quiet || echo "WARNING: could not create scheduler job $name — create it manually against $target"
+}
+
+ensure_scheduler_job kf-heartbeat "*/15 * * * *" SchedulerHeartbeat
+ensure_scheduler_job kf-trial-reminders "0 8 * * *" SchedulerTrialReminders
+ensure_scheduler_job kf-recheck-reminders "15 8 * * *" SchedulerRecheckReminders
+ensure_scheduler_job kf-timesheet-escalation "5 * * * *" EscalateUnresponsiveTimesheets
+
+echo "functions-core: all HTTP functions, triggers and scheduler jobs deployed."

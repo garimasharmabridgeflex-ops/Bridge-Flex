@@ -3,11 +3,13 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme.dart';
+import '../../../core/live/live_refresh.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/photo_source_sheet.dart';
 import '../../../shared/widgets/primary_button.dart';
@@ -15,11 +17,23 @@ import '../../profile/domain/profile.dart';
 import '../domain/document_status.dart';
 
 final documentStatusProvider = FutureProvider.autoDispose((ref) {
+  // Rides the live heartbeat: an admin approving the certificate (or asking
+  // for more information) reaches the practitioner without a re-login.
+  ref.watch(liveTickProvider);
   return ref.watch(documentsRepositoryProvider).fetchStatus();
 });
 
-final myDocumentsProvider = FutureProvider.autoDispose((ref) {
-  return ref.watch(documentsRepositoryProvider).listMyDocuments();
+/// Live stream of the caller's documents checklist — one listener on
+/// `documents where uid == me` (the owner read the rules grant), so an
+/// admin approval/rejection updates the checklist immediately instead of
+/// waiting for the next polling tick.
+final myDocumentsProvider = StreamProvider.autoDispose
+    <Map<DocumentType, DocumentStatusInfo>>((ref) {
+  final uid = ref.watch(firebaseAuthProvider).currentUser?.uid;
+  if (uid == null) {
+    return Stream.value(const <DocumentType, DocumentStatusInfo>{});
+  }
+  return ref.watch(documentsRepositoryProvider).watchMyDocuments(uid);
 });
 
 class DbsUploadScreen extends ConsumerStatefulWidget {
@@ -57,6 +71,7 @@ class _DbsUploadScreenState extends ConsumerState<DbsUploadScreen> {
           _dbsIssueDate = profile.dbsExpiryDate;
         }
       }
+      _applyRecoveredPick();
       _initialized = true;
     }
   }
@@ -67,14 +82,49 @@ class _DbsUploadScreenState extends ConsumerState<DbsUploadScreen> {
     super.dispose();
   }
 
+  /// Document uploads accept the original PDF as well as a photo scan, so
+  /// the source sheet offers the system file dialog alongside camera/gallery.
   Future<void> _pickFile() async {
-    final picked = await pickImageWithSourceSheet(context, imageQuality: 92);
+    final picked = await pickImageWithSourceSheet(context, imageQuality: 92, allowFiles: true);
     if (picked == null) return;
+    await _usePickedFile(picked);
+  }
+
+  Future<void> _usePickedFile(XFile picked) async {
     final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+
+    // The same contract storage.rules enforces (image/* or application/pdf,
+    // under 10MB) — checked here so the user gets a plain-English message
+    // instead of a Storage permission error after a long upload.
+    final lower = picked.name.toLowerCase();
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.pdf'];
+    if (!allowedExtensions.any(lower.endsWith)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please upload a JPEG, PNG or PDF file.')),
+      );
+      return;
+    }
+    if (bytes.length > 10 * 1024 * 1024) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('That file is over 10MB. Please upload a smaller scan or PDF.')),
+      );
+      return;
+    }
+
     setState(() {
       _fileBytes = bytes;
       _filename = picked.name;
     });
+  }
+
+  /// Picks up a photo the OS recovered after it destroyed the app mid-capture
+  /// (see captureLostPick), so the user does not have to take it again.
+  void _applyRecoveredPick() {
+    final recovered = ref.read(recoveredPickProvider);
+    if (recovered == null) return;
+    ref.read(recoveredPickProvider.notifier).state = null;
+    _usePickedFile(recovered);
   }
 
   Future<void> _pickIssueDate() async {
@@ -126,6 +176,9 @@ class _DbsUploadScreenState extends ConsumerState<DbsUploadScreen> {
       await ref.read(documentsRepositoryProvider).uploadDocument(
             uid: user.uid,
             bytes: _fileBytes!,
+            // Real picks always carry their extension (a .pdf name is what
+            // makes uploadDocument send application/pdf); this fallback only
+            // fires when the picker returned no name, so assume the photo case.
             filename: _filename ?? 'document_${DateTime.now().millisecondsSinceEpoch}.jpg',
             type: _docType,
           );

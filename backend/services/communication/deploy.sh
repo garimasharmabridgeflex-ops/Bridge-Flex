@@ -36,8 +36,9 @@ deploy_http ListNotifications
 deploy_http MarkNotificationRead
 deploy_http MarkAllNotificationsRead
 
-# Pub/Sub triggers — same 4 functions covered by triggers_test.go (plus
-# OnShiftCancelled, added after that test file's initial 3).
+# Pub/Sub triggers — same functions covered by triggers_test.go (plus
+# OnShiftCancelled, OnShiftApplied and OnShiftApplicationDecided, added after
+# that test file's initial 3).
 #
 # Topics must EXIST before these deploys: a 2nd-gen --trigger-topic deploy
 # fails validation with "Resource not found" rather than creating the topic.

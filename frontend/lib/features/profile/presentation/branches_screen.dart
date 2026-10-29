@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/providers.dart';
 import '../../../app/theme.dart';
 import '../../../core/api/api_exception.dart';
+import '../../../core/live/live_refresh.dart';
 import '../../../shared/widgets/app_text_field.dart';
 import '../../../shared/widgets/primary_button.dart';
 import '../domain/branch.dart';
 
 final branchesProvider = FutureProvider.autoDispose<List<Branch>>((ref) async {
+  ref.watch(liveTickProvider);
   return ref.watch(profileRepositoryProvider).listBranches();
 });
 

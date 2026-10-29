@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme.dart';
+import '../../../core/live/live_refresh.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../documents/domain/document_status.dart';
 import '../../profile/domain/profile.dart';
@@ -12,6 +13,9 @@ import 'admin_review_screen.dart';
 
 final adminUserDetailProvider =
     FutureProvider.autoDispose.family<AdminUserDetail, String>((ref, uid) {
+  // Rides the live heartbeat: a document or profile change lands on the open
+  // dossier rather than needing to be reopened.
+  ref.watch(liveTickProvider);
   return ref.watch(adminRepositoryProvider).getUserDetail(uid);
 });
 

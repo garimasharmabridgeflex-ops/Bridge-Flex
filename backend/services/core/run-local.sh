@@ -52,6 +52,7 @@ declare -A FUNCS=(
   [AcceptPolicies]=8156
   [GetCompanyInfo]=8157
   [UpdateCompanyInfo]=8158
+  [GetCompanySettings]=8227
   [SchedulerHeartbeat]=8159
   [GetVettingChecklist]=8160
   [RecordVettingCheck]=8161
@@ -89,6 +90,12 @@ declare -A FUNCS=(
   [LinkPayslip]=8202
   [GetPlans]=8203
   [UpsertPlan]=8204
+  [GetAdminPlans]=8228
+  # Settings → Cancellation policy: registered in cancellations.go but missing
+  # from this map until now, so the console's cancellation panel 404'd
+  # against a local run.
+  [GetCancellationPolicy]=8229
+  [UpdateCancellationPolicy]=8230
   [GetNurserySubscription]=8205
   [AssignNurseryPlan]=8206
   [GenerateWeeklyInvoices]=8207

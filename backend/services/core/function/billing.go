@@ -29,6 +29,7 @@ const (
 
 func init() {
 	functions.HTTP("GetPlans", getPlans)
+	functions.HTTP("GetAdminPlans", authed(getAdminPlans))
 	functions.HTTP("UpsertPlan", authed(upsertPlan))
 	functions.HTTP("GetNurserySubscription", authed(getNurserySubscription))
 	functions.HTTP("AssignNurseryPlan", authed(assignNurseryPlan))
@@ -176,7 +177,7 @@ func CalculateInvoiceAmounts(lineItems []InvoiceLineItem, vatPublished bool) (su
 	return subtotalPence, vatRate, vatPence, totalPence
 }
 
-// getPlans — GET /getPlans. Public / authenticated.
+// getPlans — GET /getPlans. Public / authenticated; intentionally exposes active plans only.
 func getPlans(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	db, err := fsDB(ctx)
@@ -202,6 +203,40 @@ func getPlans(w http.ResponseWriter, r *http.Request) {
 		plans = defaultPlans()
 	}
 
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"plans": plans})
+}
+
+// getAdminPlans — GET /getAdminPlans. Admin-only view including inactive
+// plans so administrators can manage plans without making hidden plans public.
+func getAdminPlans(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if !isAdmin(ctx) {
+		httpjson.WriteError(w, http.StatusForbidden, "NOT_ADMIN", "Admin claim required")
+		return
+	}
+	db, err := fsDB(ctx)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "firestore client unavailable")
+		return
+	}
+
+	docs, err := db.Collection("plans").Documents(ctx).GetAll()
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+	plans := make([]Plan, 0, len(docs))
+	for _, doc := range docs {
+		var plan Plan
+		if err := doc.DataTo(&plan); err != nil {
+			continue
+		}
+		plan.ID = doc.Ref.ID
+		plans = append(plans, plan)
+	}
+	if len(plans) == 0 {
+		plans = defaultPlans()
+	}
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"plans": plans})
 }
 

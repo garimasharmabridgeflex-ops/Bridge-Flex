@@ -1,0 +1,12 @@
+{
+  "name": "bridge-flex-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Browser end-to-end checks for the admin console. Runs against the local Firebase emulators + local functions-core processes — never against production.",
+  "scripts": {
+    "settings": "node settings-e2e.mjs"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.0.0"
+  }
+}

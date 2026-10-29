@@ -59,7 +59,7 @@ if [ "$up" -ne 1 ]; then
 fi
 echo "==> emulators are up (UI at http://127.0.0.1:4000)."
 
-echo "==> starting functions-core (13 HTTP endpoints)..."
+echo "==> starting functions-core (108 HTTP endpoints)..."
 services/core/run-local.sh &
 pids+=("$!")
 
@@ -67,7 +67,7 @@ echo "==> starting functions-payments (CreatePayout stub, :8093)..."
 (cd services/payments && FUNCTION_TARGET=CreatePayout PORT=8093 go run ./cmd) &
 pids+=("$!")
 
-echo "==> starting functions-communication (7 HTTP endpoints)..."
+echo "==> starting functions-communication (8 HTTP endpoints)..."
 services/communication/run-local.sh &
 pids+=("$!")
 

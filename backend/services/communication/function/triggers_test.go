@@ -481,3 +481,55 @@ func TestOnShiftBookedMergesLegacySessions(t *testing.T) {
 		t.Errorf("merged messages = %v, want the legacy message preserved", texts)
 	}
 }
+
+
+// The shift-application and decision handlers push only: functions-core writes
+// the in-app record for those events in the request that causes them (see
+// acceptShift / approveShiftApplicant). Calling notifyUser here as well put the
+// same application in the nursery's list twice, under two different titles.
+func TestShiftApplicationHandlersDoNotDuplicateInAppNotifications(t *testing.T) {
+	ctx := context.Background()
+	db, err := fsDB(ctx)
+	if err != nil {
+		t.Fatalf("fsDB: %v", err)
+	}
+
+	nurseryUID := testUID("dedupe-nursery")
+	staffUID := testUID("dedupe-staff")
+	shiftID := testUID("dedupe-shift")
+
+	cleanup := func(uid string) {
+		iter := db.Collection("notifications").Where("uid", "==", uid).Documents(ctx)
+		defer iter.Stop()
+		for {
+			d, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err == nil {
+				_, _ = d.Ref.Delete(ctx)
+			}
+		}
+	}
+	t.Cleanup(func() { cleanup(nurseryUID); cleanup(staffUID) })
+
+	cases := []struct {
+		name    string
+		payload any
+		handler func(context.Context, event.Event) error
+		uid     string
+	}{
+		{"applied", shiftAppliedPayload{ShiftID: shiftID, NurseryID: nurseryUID, StaffID: staffUID}, onShiftApplied, nurseryUID},
+		{"approved", shiftDecisionPayload{ShiftID: shiftID, NurseryID: nurseryUID, StaffID: staffUID, Approved: true}, onShiftApplicationDecided, staffUID},
+		{"declined", shiftDecisionPayload{ShiftID: shiftID, NurseryID: nurseryUID, StaffID: staffUID}, onShiftApplicationDecided, staffUID},
+		{"auto_rejected", shiftDecisionPayload{ShiftID: shiftID, NurseryID: nurseryUID, StaffID: staffUID, AutoRejected: true}, onShiftApplicationDecided, staffUID},
+	}
+	for _, c := range cases {
+		if err := c.handler(ctx, pubsubEvent(t, c.name, c.payload)); err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if notifs := notificationsForUID(t, c.uid); len(notifs) != 0 {
+			t.Errorf("%s: wrote %d in-app notifications, want 0 (core owns the in-app record)", c.name, len(notifs))
+		}
+	}
+}

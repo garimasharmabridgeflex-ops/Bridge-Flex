@@ -647,6 +647,23 @@ func disputeTimesheet(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 
+	// Both sides hear about a dispute the moment it is filed: the practitioner
+	// must know their hours are contested (this is the notification that was
+	// missing — the outbox topic has no subscriber), and the nursery is told
+	// when someone else (an admin) raised it against their shift.
+	_ = notifyInApp(ctx, db, updated.StaffID, "timesheet_disputed",
+		"Timesheet disputed",
+		"A dispute has been raised against your submitted hours. K Flex administration will review it.",
+		map[string]any{"timesheetId": updated.ID, "shiftId": updated.ShiftID, "reason": req.Reason},
+	)
+	if updated.NurseryID != callerUID {
+		_ = notifyInApp(ctx, db, updated.NurseryID, "timesheet_disputed",
+			"Timesheet disputed",
+			"A dispute has been raised on a timesheet for one of your shifts.",
+			map[string]any{"timesheetId": updated.ID, "shiftId": updated.ShiftID, "reason": req.Reason},
+		)
+	}
+
 	httpjson.WriteJSON(w, http.StatusOK, updated)
 }
 
@@ -775,6 +792,16 @@ func adminApproveTimesheet(w http.ResponseWriter, r *http.Request) {
 			"totalGrossPayPence": updated.TotalGrossPayPence,
 		},
 	})
+
+	// The practitioner must hear that their hours were resolved by an admin.
+	// This transition previously only wrote an outbox record whose topic has no
+	// subscriber, so a practitioner whose dispute or 48-hour escalation was
+	// resolved never found out unless they reopened the screen themselves.
+	_ = notifyInApp(ctx, db, updated.StaffID, "timesheet_admin_approved",
+		"Timesheet approved by K Flex",
+		fmt.Sprintf("Your timesheet for shift %s was reviewed and approved by K Flex administration.", updated.ShiftID),
+		map[string]any{"timesheetId": updated.ID, "shiftId": updated.ShiftID, "totalGrossPayPence": updated.TotalGrossPayPence},
+	)
 
 	httpjson.WriteJSON(w, http.StatusOK, updated)
 }
@@ -1049,6 +1076,14 @@ func escalateUnresponsiveTimesheets(w http.ResponseWriter, r *http.Request) {
 					"nurseryId":   ts.NurseryID,
 				},
 			})
+			// Payable Hours Rule (Decision 11): wages are never withheld while a
+			// nursery sits on a timesheet. Tell the practitioner their hours have
+			// moved to K Flex for approval so the silence is not read as a problem.
+			_ = notifyInApp(ctx, db, ts.StaffID, "timesheet_escalated",
+				"Timesheet escalated to K Flex",
+				"The nursery did not review your timesheet within 48 hours, so K Flex administration will approve it.",
+				map[string]any{"timesheetId": doc.Ref.ID, "shiftId": ts.ShiftID},
+			)
 		}
 	}
 

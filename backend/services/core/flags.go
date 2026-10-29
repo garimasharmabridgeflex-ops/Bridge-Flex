@@ -8,6 +8,8 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"kvision.internal/shared/audit"
 	"kvision.internal/shared/auth"
 	"kvision.internal/shared/httpjson"
@@ -64,27 +66,46 @@ var globalFlags = &flagsCache{
 // loadGateModes reads platformConfig/featureFlags. Unknown values collapse to
 // off, and a missing document falls back to the safe defaults above.
 func loadGateModes(ctx context.Context, db *firestore.Client) (map[string]GateMode, error) {
-	out := map[string]GateMode{}
 	snap, err := db.Doc(featureFlagsDoc).Get(ctx)
 	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			// Nothing saved yet — the code defaults apply.
+			return map[string]GateMode{}, nil
+		}
 		return nil, err
 	}
-	{
-		var raw map[string]string
-		if snap.DataTo(&raw) == nil {
-			for k, v := range raw {
-				switch GateMode(v) {
-				case GateEnforce:
-					out[k] = GateEnforce
-				case GateWarn:
-					out[k] = GateWarn
-				default:
-					out[k] = GateOff
-				}
-			}
+	return gateModesFromDoc(snap.Data()), nil
+}
+
+// gateModesFromDoc converts the stored document into gate modes.
+//
+// The document is decoded as map[string]any rather than map[string]string on
+// purpose: it also holds updatedAt (a Firestore timestamp) and updatedBy, and
+// decoding a timestamp into a string makes the whole decode fail. That failure
+// was silent — getFeatureFlags fell back to the code defaults and
+// updateFeatureFlags then cached an empty flag set — so every saved gate
+// appeared to revert the moment it was written.
+//
+// Only known gate names are kept, so an unrelated field added to this document
+// later cannot invent a gate.
+func gateModesFromDoc(raw map[string]any) map[string]GateMode {
+	out := map[string]GateMode{}
+	for name := range defaultGateModes {
+		value, ok := raw[name].(string)
+		if !ok {
+			// Not stored (or stored as a non-string): leave it to the default.
+			continue
+		}
+		switch GateMode(value) {
+		case GateEnforce:
+			out[name] = GateEnforce
+		case GateWarn:
+			out[name] = GateWarn
+		default:
+			out[name] = GateOff
 		}
 	}
-	return out, nil
+	return out
 }
 
 // GetGateMode returns the current GateMode for a feature gate. Results are

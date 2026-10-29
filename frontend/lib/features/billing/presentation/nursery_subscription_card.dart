@@ -6,13 +6,18 @@ import 'package:intl/intl.dart';
 import '../../../app/providers.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/live/live_refresh.dart';
 import '../domain/billing_models.dart';
 
 final nurserySubscriptionProvider = FutureProvider.autoDispose<({NurserySubscription subscription, TrialCountdown trial})>((ref) {
+  // Plan changes and trial dates are set by an admin, so this rides the live
+  // heartbeat rather than waiting for the app to be restarted.
+  ref.watch(liveTickProvider);
   return ref.watch(billingRepositoryProvider).getNurserySubscription();
 });
 
 final availablePlansProvider = FutureProvider.autoDispose<List<Plan>>((ref) {
+  ref.watch(liveTickProvider);
   return ref.watch(billingRepositoryProvider).getPlans();
 });
 

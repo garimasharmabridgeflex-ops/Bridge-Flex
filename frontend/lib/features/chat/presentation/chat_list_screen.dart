@@ -9,10 +9,20 @@ import '../../../app/theme.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../data/chat_models.dart';
 
-final chatSessionsProvider = FutureProvider.autoDispose<List<ChatSession>>((ref) {
+/// Live stream of the caller's chat sessions — a new conversation (or a new
+/// last-message timestamp on an existing one) reflects immediately rather
+/// than on the next polling tick. The one-shot HTTP [ChatRepository.foldSessions]
+/// call still runs when the screen opens so legacy per-shift threads get
+/// migrated server-side; the stream shows the merge as it happens.
+final chatSessionsProvider = StreamProvider.autoDispose<List<ChatSession>>((ref) {
   final user = ref.watch(authStateProvider).valueOrNull;
-  if (user == null) return Future.value(<ChatSession>[]);
-  return ref.watch(chatRepositoryProvider).fetchSessions();
+  if (user == null) return Stream.value(const <ChatSession>[]);
+  final repo = ref.watch(chatRepositoryProvider);
+  // Intentionally not awaited: legacy fold runs server-side while the
+  // stream below already serves live data.
+  // ignore: unawaited_futures
+  repo.foldSessions();
+  return repo.watchSessions(user.uid);
 });
 
 class ChatListScreen extends ConsumerWidget {

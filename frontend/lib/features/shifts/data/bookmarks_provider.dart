@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
+import '../../../core/live/live_refresh.dart';
 import '../domain/shift.dart';
 import 'shift_repository.dart';
 
@@ -25,6 +26,9 @@ final bookmarkedShiftIdsProvider =
 
 /// Returns full Shift models for all bookmarked shift IDs
 final savedShiftsListProvider = FutureProvider.autoDispose<List<Shift>>((ref) async {
+  // Rides the live heartbeat so a saved shift that has since been filled or
+  // cancelled stops looking available.
+  ref.watch(liveTickProvider);
   final ids = ref.watch(bookmarkedShiftIdsProvider);
   if (ids.isEmpty) return const [];
 

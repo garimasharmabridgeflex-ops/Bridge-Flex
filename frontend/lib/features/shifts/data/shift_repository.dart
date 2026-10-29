@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/api/api_client.dart';
@@ -33,6 +35,72 @@ class ShiftRepository {
   Future<List<Shift>> fetchMyShifts() async {
     final res = await _api.post(ApiFunction.listMyShifts);
     return _parseShiftList(res);
+  }
+
+  /// Live stream of every open shift, mirroring listOpenShifts exactly
+  /// (same status filter, same createdAt ordering). The rules already let any
+  /// signed-in user read open shifts, and the composite index behind it is the
+  /// same one the HTTP endpoint uses, so a shift posted a second ago appears
+  /// here a second ago.
+  Stream<List<Shift>> watchOpenShifts() {
+    return _firestore
+        .collection('shifts')
+        .where('status', isEqualTo: 'open')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map(Shift.fromFirestore).toList());
+  }
+
+  /// Live stream of the shifts a practitioner is attached to, mirroring the
+  /// staff side of listMyShifts: legacy single-booker docs, multi-capacity
+  /// bookedStaffIds, and shifts they've applied to but the nursery hasn't
+  /// decided on yet.
+  ///
+  /// Firestore has no client-side OR, so the three queries are merged into one
+  /// deduplicated list here. Each query's snapshot is kept whole (a doc that
+  /// drops out of one query but is still in another must not disappear), and
+  /// results are sorted newest-first like the rest of the shift lists.
+  Stream<List<Shift>> watchMyShiftsStaff(String uid) {
+    final queries = <Query<Map<String, dynamic>>>[
+      _firestore.collection('shifts').where('bookedStaffIds', arrayContains: uid),
+      _firestore.collection('shifts').where('bookedStaffId', isEqualTo: uid),
+      _firestore.collection('shifts').where('pendingStaffIds', arrayContains: uid),
+    ];
+
+    return Stream<List<Shift>>.multi((controller) {
+      final perQuery = List.generate(queries.length, (_) => <String, Shift>{});
+      final subs = <StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>[];
+
+      void emit() {
+        final merged = <String, Shift>{};
+        for (final part in perQuery) {
+          merged.addAll(part);
+        }
+        final list = merged.values.toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        controller.add(list);
+      }
+
+      for (var i = 0; i < queries.length; i++) {
+        subs.add(queries[i].snapshots().listen(
+          (snap) {
+            perQuery[i]
+              ..clear()
+              ..addAll({
+                for (final doc in snap.docs) doc.id: Shift.fromFirestore(doc),
+              });
+            emit();
+          },
+          onError: controller.addError,
+        ));
+      }
+
+      controller.onCancel = () {
+        for (final sub in subs) {
+          sub.cancel();
+        }
+      };
+    });
   }
 
   /// Live Firestore snapshot stream of a single shift doc.

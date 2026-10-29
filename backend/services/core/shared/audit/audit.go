@@ -33,6 +33,10 @@ func WriteAudit(ctx context.Context, db *firestore.Client, entry Entry) error {
 		entry.ActorRole = string(auth.GetAdminRole(ctx))
 	}
 	_, _, err := db.Collection("auditLogs").Add(ctx, entry)
+	// Every admin action and every business decision writes an audit entry, so
+	// this is the one hook that turns "something changed" into an instant
+	// refresh signal for the web console. Fire-and-forget by contract.
+	SignalActivity(db, entry.Action)
 	return err
 }
 
@@ -48,5 +52,9 @@ func WriteAuditTx(ctx context.Context, tx *firestore.Transaction, db *firestore.
 		entry.ActorRole = string(auth.GetAdminRole(ctx))
 	}
 	ref := db.Collection("auditLogs").NewDoc()
-	return tx.Create(ref, entry)
+	err := tx.Create(ref, entry)
+	if err == nil {
+		SignalActivity(db, entry.Action)
+	}
+	return err
 }

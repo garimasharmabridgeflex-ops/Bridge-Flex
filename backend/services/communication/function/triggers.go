@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"github.com/cloudevents/sdk-go/v2/event"
@@ -170,6 +171,11 @@ type shiftAppliedPayload struct {
 // onShiftApplied notifies the nursery that someone wants the shift. It
 // deliberately does NOT create a chat session — that happens on approval, so
 // a nursery never ends up with a thread against someone it turned down.
+//
+// Push only: functions-core already writes the in-app notifications/ document
+// for this event in the same request (acceptShift), so calling notifyUser here
+// would list the same application twice in the nursery's notifications — which
+// it did, under two slightly different titles.
 func onShiftApplied(ctx context.Context, e event.Event) error {
 	var msg messagePublishedData
 	if err := e.DataAs(&msg); err != nil {
@@ -179,12 +185,17 @@ func onShiftApplied(ctx context.Context, e event.Event) error {
 	if err := json.Unmarshal(msg.Message.Data, &payload); err != nil {
 		return fmt.Errorf("unmarshal shift-applied payload: %w", err)
 	}
+	if payload.NurseryID == "" {
+		return nil
+	}
+	db, err := fsDB(ctx)
+	if err != nil {
+		return err
+	}
 
-	return notifyUser(ctx, payload.NurseryID, "shift_application",
-		"New applicant",
+	return sendPushToUser(ctx, db, payload.NurseryID, "New applicant",
 		"Someone has applied for one of your shifts. Review their profile to approve or decline.",
-		map[string]any{"shiftId": payload.ShiftID, "staffId": payload.StaffID},
-	)
+		map[string]any{"shiftId": payload.ShiftID, "staffId": payload.StaffID})
 }
 
 type shiftDecisionPayload struct {
@@ -201,6 +212,9 @@ type shiftDecisionPayload struct {
 // filled up, which is not a judgement on the applicant, and telling someone
 // they were "declined" when nobody looked at them would be both inaccurate
 // and discouraging.
+// Push only for the same reason as onShiftApplied: approveShiftApplicant in
+// functions-core already writes the in-app record for the approved, declined
+// and auto-rejected cases alike, including the different wording for each.
 func onShiftApplicationDecided(ctx context.Context, e event.Event) error {
 	var msg messagePublishedData
 	if err := e.DataAs(&msg); err != nil {
@@ -210,24 +224,27 @@ func onShiftApplicationDecided(ctx context.Context, e event.Event) error {
 	if err := json.Unmarshal(msg.Message.Data, &payload); err != nil {
 		return fmt.Errorf("unmarshal shift decision payload: %w", err)
 	}
+	if payload.StaffID == "" {
+		return nil
+	}
+	db, err := fsDB(ctx)
+	if err != nil {
+		return err
+	}
 
-	notificationType := "shift_application_declined"
 	title := "Application declined"
 	body := "The nursery has gone with someone else for this shift."
 	switch {
 	case payload.Approved:
-		notificationType = "shift_application_approved"
 		title = "You got the shift"
-		// The separate shift_booked notification from onShiftBooked covers
-		// the booking itself; this one is specifically the decision.
 		body = "The nursery approved your application. Check your shifts for the details."
 	case payload.AutoRejected:
-		notificationType = "shift_application_closed"
 		title = "Shift filled"
 		body = "This shift has been fully staffed, so your application has closed."
 	}
 
-	return notifyUser(ctx, payload.StaffID, notificationType, title, body,
-		map[string]any{"shiftId": payload.ShiftID, "approved": payload.Approved},
-	)
+	return sendPushToUser(ctx, db, payload.StaffID, title, body,
+		map[string]any{"shiftId": payload.ShiftID, "approved": strconv.FormatBool(payload.Approved)})
 }
+
+

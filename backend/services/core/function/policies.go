@@ -395,7 +395,23 @@ func adminSavePolicyDraft(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt: now,
 	}
 
-	if _, err := docRef.Set(ctx, policy, firestore.MergeAll); err != nil {
+	// Set with MergeAll requires map data — the Firestore client rejects a
+	// struct outright ("firestore: MergeAll can only be specified with map
+	// data"), which turned every draft save into a 500. Mirror the struct into
+	// a map so the merge still preserves fields this handler doesn't set
+	// (approvedBy, publishedBy, publishedAt survive an edit of the draft).
+	fields := map[string]any{
+		"id":        policy.ID,
+		"type":      string(policy.Type),
+		"version":   policy.Version,
+		"status":    string(policy.Status),
+		"title":     policy.Title,
+		"content":   policy.Content,
+		"summary":   policy.Summary,
+		"createdAt": policy.CreatedAt,
+		"updatedAt": policy.UpdatedAt,
+	}
+	if _, err := docRef.Set(ctx, fields, firestore.MergeAll); err != nil {
 		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 		return
 	}

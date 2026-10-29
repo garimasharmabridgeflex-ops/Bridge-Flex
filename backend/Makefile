@@ -1,9 +1,9 @@
 .DEFAULT_GOAL := help
-.PHONY: help install dev dev-persist dev-with-triggers emulators seed rules-test test build prod clean check-drift
+.PHONY: help install dev dev-persist dev-with-triggers emulators seed rules-test test e2e build prod clean check-drift
 
 PROJECT_ID ?= demo-bridgeflex
 REGION     ?= europe-west2
-GO_RUNTIME ?= go123
+GO_RUNTIME ?= go125
 
 # Points the Admin SDK / go test at the local emulators instead of real GCP
 # credentials — see shared/fbapp. Needed by any target that talks to
@@ -44,12 +44,15 @@ test: rules-test ## Run rules tests + Go unit tests (trigger handlers etc.) — 
 	cd services/core && $(EMULATOR_ENV) go test ./...
 	cd services/communication && $(EMULATOR_ENV) go test ./...
 
+e2e: ## Browser E2E of the admin console — starts missing emulators/functions/proxy, runs Chrome, tears down what it started
+	@./e2e/run.sh
+
 build: ## go build every service, to catch compile errors early
 	cd services/core && go build ./...
 	cd services/payments && go build ./...
 	cd services/communication && go build ./...
 
-prod: ## Deploy rules + all 26 Cloud Functions to a real Firebase project — usage: make prod PROJECT_ID=your-real-project-id
+prod: ## Deploy rules + all Cloud Functions to a real Firebase project — usage: make prod PROJECT_ID=your-real-project-id
 	PROJECT_ID=$(PROJECT_ID) REGION=$(REGION) GO_RUNTIME=$(GO_RUNTIME) ./deploy.sh
 
 clean: ## Remove emulator debug logs

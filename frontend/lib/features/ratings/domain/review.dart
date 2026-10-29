@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// One individual review left for a user — backend/services/core/function/
 /// ratings.go listRatings. Distinct from [RatingSummary]/[RatingBreakdown]
 /// (profile.dart), which are aggregates; this is a single review row.
@@ -25,4 +27,24 @@ class Review {
             ? DateTime.tryParse(json['createdAt'] as String)?.toLocal()
             : null,
       );
+
+  /// Maps a live `ratings/{ratingId}` doc — the doc id plays the part the
+  /// HTTP mirror injects as `ratingId`, and createdAt is a Firestore
+  /// Timestamp here where the mirror serialises it as a string.
+  factory Review.fromFirestore(
+      DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? const <String, dynamic>{};
+    final created = data['createdAt'];
+    return Review(
+      ratingId: doc.id,
+      raterId: data['raterId'] as String? ?? '',
+      score: (data['score'] as num?)?.toInt() ?? 0,
+      comment: data['comment'] as String? ?? '',
+      createdAt: created is Timestamp
+          ? created.toDate().toLocal()
+          : created is String
+              ? DateTime.tryParse(created)?.toLocal()
+              : null,
+    );
+  }
 }

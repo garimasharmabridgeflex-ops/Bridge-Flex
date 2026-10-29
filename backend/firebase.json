@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "kvision-503115",
     "public": "public",
     "ignore": [
       "firebase.json",
@@ -205,6 +206,13 @@
         }
       },
       {
+        "source": "/GetAdminPlans",
+        "function": {
+          "functionId": "GetAdminPlans",
+          "region": "europe-west2"
+        }
+      },
+      {
         "source": "/UpsertPlan",
         "function": {
           "functionId": "UpsertPlan",
@@ -306,6 +314,13 @@
         "source": "/GetCompanyInfo",
         "function": {
           "functionId": "GetCompanyInfo",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetCompanySettings",
+        "function": {
+          "functionId": "GetCompanySettings",
           "region": "europe-west2"
         }
       },

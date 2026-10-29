@@ -12,8 +12,11 @@ import '../../../shared/widgets/status_badge.dart';
 import '../../ratings/domain/review.dart';
 import '../domain/profile.dart';
 
-final reviewsProvider = FutureProvider.autoDispose.family<List<Review>, String>((ref, uid) {
-  return ref.watch(ratingsRepositoryProvider).listRatings(uid);
+/// Live stream of the reviews on a profile — new ratings land the moment
+/// recomputeRating's trigger writes them, instead of waiting for the next
+/// polling tick.
+final reviewsProvider = StreamProvider.autoDispose.family<List<Review>, String>((ref, uid) {
+  return ref.watch(ratingsRepositoryProvider).watchRatings(uid);
 });
 
 class PublicProfileScreen extends ConsumerWidget {

@@ -9,8 +9,14 @@ import '../../../app/theme.dart';
 import '../data/chat_models.dart';
 
 final chatMessagesProvider =
-    FutureProvider.autoDispose.family<List<ChatMessage>, String>((ref, sessionId) {
-  return ref.watch(chatRepositoryProvider).fetchMessages(sessionId);
+    StreamProvider.autoDispose.family<List<ChatMessage>, String>((ref, sessionId) {
+  // Live Firestore listener — a reply from the other side, or this user's own
+  // send, appears the moment the server writes it. Falls back to the HTTP
+  // mirror once if the stream errors (dropped connection, missing rules).
+  final repo = ref.watch(chatRepositoryProvider);
+  return repo.watchMessages(sessionId).handleError((_, __) async* {
+    yield await repo.fetchMessages(sessionId);
+  });
 });
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -26,20 +32,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   bool _sending = false;
-  Timer? _pollTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    // No live push (see chat_repository.dart) — poll while the thread is open.
-    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      ref.invalidate(chatMessagesProvider(widget.sessionId));
-    });
-  }
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -55,7 +50,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             sessionId: widget.sessionId,
             text: text,
           );
-      ref.invalidate(chatMessagesProvider(widget.sessionId));
+      // No invalidate needed: the Firestore listener on the thread delivers
+      // the message we just wrote as soon as the server persists it.
     } finally {
       if (mounted) setState(() => _sending = false);
     }

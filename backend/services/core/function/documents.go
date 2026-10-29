@@ -319,6 +319,28 @@ func reviewDocument(w http.ResponseWriter, r *http.Request) {
 	// automatically modify dbsStatus or rightToWorkVerified on the user's profile.
 	// Profile verification is driven strictly through the vetting checklist / admin flow.
 
+	// The owner hears the outcome immediately — "verified" or "rejected with
+	// this note" — instead of only finding out by reopening the documents
+	// screen. Notification failure never fails the review (notifyInApp contract).
+	docLabel := strings.ReplaceAll(docMeta.Type, "_", " ")
+	if req.Approve {
+		_ = notifyInApp(ctx, db, docMeta.UID, "document_verified",
+			"Document verified",
+			fmt.Sprintf("Your %s document has been verified.", docLabel),
+			map[string]any{"docId": req.DocID, "type": docMeta.Type},
+		)
+	} else {
+		body := fmt.Sprintf("Your %s document was not accepted. Please review and upload again.", docLabel)
+		if req.Note != "" {
+			body = fmt.Sprintf("Your %s document needs attention: %s", docLabel, req.Note)
+		}
+		_ = notifyInApp(ctx, db, docMeta.UID, "document_rejected",
+			"Document needs attention",
+			body,
+			map[string]any{"docId": req.DocID, "type": docMeta.Type, "note": req.Note},
+		)
+	}
+
 	httpjson.WriteJSON(w, http.StatusOK, map[string]string{"docId": req.DocID, "status": string(newStatus)})
 }
 

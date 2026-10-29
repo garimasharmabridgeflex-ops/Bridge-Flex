@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme.dart';
+import '../../../core/live/live_refresh.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../documents/domain/document_status.dart';
 import '../../profile/domain/profile.dart';
@@ -13,14 +14,19 @@ import '../domain/admin_training_module.dart';
 import 'admin_training_edit_screen.dart';
 
 final pendingDocumentsProvider = FutureProvider.autoDispose((ref) {
+  // The admin console rides the live heartbeat too: a certificate uploaded
+  // while the queue is open lands in it on its own.
+  ref.watch(liveTickProvider);
   return ref.watch(documentsRepositoryProvider).listPendingDocuments();
 });
 
 final platformStatsProvider = FutureProvider.autoDispose((ref) {
+  ref.watch(liveTickProvider);
   return ref.watch(adminRepositoryProvider).getPlatformStats();
 });
 
 final allUsersProvider = FutureProvider.autoDispose((ref) {
+  ref.watch(liveTickProvider);
   return ref.watch(adminRepositoryProvider).listAllUsers();
 });
 

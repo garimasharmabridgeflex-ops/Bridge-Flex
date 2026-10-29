@@ -3,6 +3,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/api_client.dart';
+import '../core/live/live_refresh.dart';
 import '../features/admin/data/admin_repository.dart';
 import '../features/admin/data/admin_training_repository.dart';
 import '../features/admin/domain/admin_training_module.dart';
@@ -55,15 +56,19 @@ final notificationsRepositoryProvider = Provider<NotificationsRepository>(
 );
 
 final ratingsRepositoryProvider = Provider<RatingsRepository>(
-  (ref) => RatingsRepository(ref.watch(apiClientProvider)),
+  (ref) => RatingsRepository(ref.watch(apiClientProvider), ref.watch(firestoreProvider)),
 );
 
 final documentsRepositoryProvider = Provider<DocumentsRepository>(
-  (ref) => DocumentsRepository(ref.watch(apiClientProvider), ref.watch(firebaseStorageProvider)),
+  (ref) => DocumentsRepository(
+    ref.watch(apiClientProvider),
+    ref.watch(firebaseStorageProvider),
+    ref.watch(firestoreProvider),
+  ),
 );
 
 final chatRepositoryProvider = Provider<ChatRepository>(
-  (ref) => ChatRepository(ref.watch(apiClientProvider)),
+  (ref) => ChatRepository(ref.watch(apiClientProvider), ref.watch(firestoreProvider)),
 );
 
 final adminRepositoryProvider = Provider<AdminRepository>(
@@ -79,7 +84,10 @@ final adminTrainingRepositoryProvider = Provider<AdminTrainingRepository>(
 /// the answers stripped — an edit has to invalidate both.
 final adminTrainingModulesProvider =
     FutureProvider.autoDispose<List<AdminTrainingModule>>(
-  (ref) => ref.watch(adminTrainingRepositoryProvider).list(),
+  (ref) {
+    ref.watch(liveTickProvider);
+    return ref.watch(adminTrainingRepositoryProvider).list();
+  },
 );
 
 final trainingRepositoryProvider = Provider<TrainingRepository>(
@@ -88,8 +96,14 @@ final trainingRepositoryProvider = Provider<TrainingRepository>(
 
 /// The practitioner's training modules plus their own progress. Watched by the
 /// training tab and by the profile badge, so completing a quiz refreshes both.
+///
+/// Server-backed, so it rides the live heartbeat: a module an admin publishes
+/// shows up in the training tab without restarting the app.
 final trainingOverviewProvider = FutureProvider.autoDispose<TrainingOverview>(
-  (ref) => ref.watch(trainingRepositoryProvider).list(),
+  (ref) {
+    ref.watch(liveTickProvider);
+    return ref.watch(trainingRepositoryProvider).list();
+  },
 );
 
 /// The single source of truth for "who is signed in" throughout the app.
@@ -134,9 +148,17 @@ final authStateProvider = StreamProvider<User?>((ref) {
 /// plain HTTP rather than a live Firestore stream — see
 /// shift_repository.dart's fetchOpenShifts doc comment for why. Callers
 /// that mutate the profile (setRole, updateProfile) must
-/// `ref.invalidate(ownProfileProvider)` afterwards to see the change,
-/// since there's no push update anymore.
+/// `ref.invalidate(ownProfileProvider)` afterwards to see the change, since
+/// there's no push update anymore.
+///
+/// It also rides the live heartbeat, which is what makes an approval done on
+/// the admin side (a DBS check verified, a nursery registration approved, a
+/// vetting decision) appear on the account by itself. Without it the status
+/// this provider holds — and every gate, banner and badge derived from it —
+/// stayed at whatever it was when the app started, which is why the only way
+/// to see a verification was to sign out and back in.
 final ownProfileProvider = FutureProvider<Profile?>((ref) async {
+  ref.watch(liveTickProvider);
   final user = ref.watch(authStateProvider).valueOrNull;
   if (user == null) return null;
   return ref.watch(profileRepositoryProvider).fetchOwnProfile(
@@ -146,6 +168,9 @@ final ownProfileProvider = FutureProvider<Profile?>((ref) async {
 });
 
 final publicProfileProvider = FutureProvider.autoDispose.family<PublicProfile?, String>((ref, String uid) {
+  // Rides the live heartbeat: a verification badge, new photo or updated
+  // details show up on the profile being viewed without leaving it.
+  ref.watch(liveTickProvider);
   return ref.watch(profileRepositoryProvider).fetchPublicProfile(uid);
 });
 

@@ -86,9 +86,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       // NEVER redirect an active content screen to /splash during a background refresh/reload
       // (such as during camera capture, document upload, or admin operations).
       if (profile == null) {
-        if (profileState.isLoading || profileState.hasError) {
-          return onSplash ? null : null;
-        }
+        // Still resolving, or the fetch failed: never move the user.
+        if (profileState.isLoading || profileState.hasError) return null;
+        // No profile and nothing in flight. Only a user who has not started
+        // yet is sent to role-select: this redirect also runs on every
+        // background profile refresh (the app re-fetches the profile on a
+        // heartbeat), and bouncing someone who is mid-task — filling in a DBS
+        // certificate, uploading a photo — away from their screen discards
+        // what they had done.
+        final onStartupRoute = onSplash ||
+            onRoleSelect ||
+            loggingIn ||
+            signingUp ||
+            resettingPassword ||
+            state.matchedLocation == '/';
+        if (!onStartupRoute) return null;
         return onRoleSelect ? null : '/role-select';
       }
 

@@ -66,9 +66,9 @@ service firebase.storage {
     // Readable by the owning practitioner or admin/finance. Writable only by admin.
     match /payslips/{uid}/{fileName} {
       allow read: if request.auth != null
-        && (request.auth.uid == uid || request.auth.token.admin == true || request.auth.token.role in ['admin', 'superadmin', 'finance']);
+        && (request.auth.uid == uid || request.auth.token.admin == true || request.auth.token.adminRole in ['super_admin', 'finance']);
       allow write: if request.auth != null
-        && (request.auth.token.admin == true || request.auth.token.role in ['admin', 'superadmin', 'finance'])
+        && (request.auth.token.admin == true || request.auth.token.adminRole in ['super_admin', 'finance'])
         && request.resource.size < 10 * 1024 * 1024
         && request.resource.contentType == 'application/pdf';
     }

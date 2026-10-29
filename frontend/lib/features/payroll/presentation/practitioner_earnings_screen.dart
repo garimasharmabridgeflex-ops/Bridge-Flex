@@ -3,13 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme.dart';
+import '../../../core/live/live_refresh.dart';
 import '../domain/payroll_models.dart';
 
 final practitionerEarningsProvider = FutureProvider.autoDispose<PractitionerEarningsSummary>((ref) {
+  // Rides the live heartbeat: an admin marking a payroll period paid changes
+  // what this practitioner is owed.
+  ref.watch(liveTickProvider);
   return ref.watch(payrollRepositoryProvider).getPractitionerEarnings();
 });
 
 final payrollProfileProvider = FutureProvider.autoDispose<PayrollProfile>((ref) {
+  ref.watch(liveTickProvider);
   return ref.watch(payrollRepositoryProvider).getPayrollProfile();
 });
 

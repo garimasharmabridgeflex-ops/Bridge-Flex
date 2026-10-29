@@ -14,6 +14,7 @@ import (
 
 func init() {
 	functions.HTTP("GetCompanyInfo", getCompanyInfo)
+	functions.HTTP("GetCompanySettings", authed(getCompanySettings))
 	functions.HTTP("UpdateCompanyInfo", authed(updateCompanyInfo))
 }
 
@@ -46,7 +47,7 @@ func getCompanyInfo(w http.ResponseWriter, r *http.Request) {
 
 	snap, err := db.Doc(companyConfigDoc).Get(ctx)
 	if status.Code(err) == codes.NotFound {
-		httpjson.WriteJSON(w, http.StatusOK, map[string]string{})
+		httpjson.WriteJSON(w, http.StatusOK, map[string]any{"company": map[string]string{}})
 		return
 	}
 	if err != nil {
@@ -82,6 +83,50 @@ func getCompanyInfo(w http.ResponseWriter, r *http.Request) {
 
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
 		"company":   published,
+		"updatedAt": conf.UpdatedAt,
+	})
+}
+
+// getCompanySettings returns every field, including unpublished values, to an
+// authenticated admin. The public GetCompanyInfo endpoint intentionally omits
+// unpublished fields and cannot be used to populate an editable admin form.
+func adminCompanySettings(conf CompanyConfig) map[string]CompanyField {
+	return map[string]CompanyField{
+		"companyName":   conf.CompanyName,
+		"companyNumber": conf.CompanyNumber,
+		"vatNumber":     conf.VATNumber,
+		"address":       conf.Address,
+		"email":         conf.Email,
+		"phone":         conf.Phone,
+	}
+}
+
+func getCompanySettings(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if !isAdmin(ctx) {
+		httpjson.WriteError(w, http.StatusForbidden, "NOT_ADMIN", "Admin claim required")
+		return
+	}
+	db, err := fsDB(ctx)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "firestore unavailable")
+		return
+	}
+
+	var conf CompanyConfig
+	snap, err := db.Doc(companyConfigDoc).Get(ctx)
+	if err != nil && status.Code(err) != codes.NotFound {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+	if err == nil {
+		if err := snap.DataTo(&conf); err != nil {
+			httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+			return
+		}
+	}
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
+		"company":   adminCompanySettings(conf),
 		"updatedAt": conf.UpdatedAt,
 	})
 }

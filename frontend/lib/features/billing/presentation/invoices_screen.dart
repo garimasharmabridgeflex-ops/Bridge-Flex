@@ -5,9 +5,13 @@ import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme.dart';
+import '../../../core/live/live_refresh.dart';
 import '../domain/billing_models.dart';
 
 final nurseryInvoicesProvider = FutureProvider.autoDispose<List<Invoice>>((ref) {
+  // Rides the live heartbeat: an invoice generated or settled on the admin
+  // side appears without reopening the screen.
+  ref.watch(liveTickProvider);
   return ref.watch(billingRepositoryProvider).listInvoices();
 });
 

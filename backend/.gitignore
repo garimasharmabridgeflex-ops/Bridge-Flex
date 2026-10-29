@@ -14,3 +14,7 @@ seed-data/*
 # `go build ./...` in seed/ (main package lives at the module root, unlike the
 # services/* modules where it's under cmd/) writes a binary here by default.
 seed/seed
+
+# Browser E2E (e2e/) — per-run artifacts only; the harness sources are tracked.
+e2e/last-run.json
+.e2e-logs/

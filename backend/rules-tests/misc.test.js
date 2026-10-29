@@ -1,6 +1,17 @@
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
 import { assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
-import { addDoc, collection, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  setDoc,
+  Timestamp,
+  updateDoc,
+} from "firebase/firestore";
 import { newTestEnv, seed } from "./helpers.js";
 
 // Spot-checks the remaining collections from ARCHITECTURE.md v2 §3 not
@@ -38,6 +49,11 @@ describe("ratings / chat / documents / notifications / transactions rules", () =
         type: "shift_booked",
         payload: { shiftId: "booked1" },
         read: false,
+      });
+      await setDoc(doc(db, "chatSessions/session1/messages/m1"), {
+        senderId: "nurseryA",
+        text: "Morning! Can you cover?",
+        createdAt: Timestamp.now(),
       });
     });
   });
@@ -86,6 +102,24 @@ describe("ratings / chat / documents / notifications / transactions rules", () =
         senderId: "staffB",
         text: "Uninvited",
       })
+    );
+  });
+
+  it("a participant can list the thread's messages as a live query", async () => {
+    // The exact shape chat_repository.watchMessages runs: a collection query
+    // ordered by createdAt inside a session the caller participates in.
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertSucceeds(
+      getDocs(query(collection(asStaffA, "chatSessions/session1/messages"), orderBy("createdAt")))
+    );
+  });
+
+  it("a non-participant cannot list messages in the thread", async () => {
+    const asOutsider = testEnv.authenticatedContext("staffB").firestore();
+    await assertFails(
+      getDocs(
+        query(collection(asOutsider, "chatSessions/session1/messages"), orderBy("createdAt"))
+      )
     );
   });
 
@@ -251,7 +285,7 @@ describe("ratings / chat / documents / notifications / transactions rules", () =
     const asStaffA = testEnv.authenticatedContext("staffA").firestore();
     const asNurseryA = testEnv.authenticatedContext("nurseryA").firestore();
     const asStaffB = testEnv.authenticatedContext("staffB").firestore();
-    const asAdmin = testEnv.authenticatedContext("adminUser", { role: "admin" }).firestore();
+    const asAdmin = testEnv.authenticatedContext("adminUser", { admin: true }).firestore();
 
     // Staff participant can read
     await assertSucceeds(getDoc(doc(asStaffA, "timesheets/ts1")));
@@ -289,7 +323,7 @@ describe("ratings / chat / documents / notifications / transactions rules", () =
 
     const asStaffA = testEnv.authenticatedContext("staffA").firestore();
     const asStaffB = testEnv.authenticatedContext("staffB").firestore();
-    const asFinance = testEnv.authenticatedContext("financeUser", { role: "finance" }).firestore();
+    const asFinance = testEnv.authenticatedContext("financeUser", { adminRole: "finance" }).firestore();
 
     // Staff can read own payroll profile
     await assertSucceeds(getDoc(doc(asStaffA, "payrollProfiles/staffA")));
@@ -335,7 +369,10 @@ describe("ratings / chat / documents / notifications / transactions rules", () =
     const asNurseryA = testEnv.authenticatedContext("nurseryA").firestore();
     const asNurseryB = testEnv.authenticatedContext("nurseryB").firestore();
     const asStaffA = testEnv.authenticatedContext("staffA").firestore();
-    const asAdmin = testEnv.authenticatedContext("adminUser", { role: "admin" }).firestore();
+    // Production grants admin access through the `admin` custom claim (set
+    // out-of-band); there is no `token.role` claim, so the rules and these
+    // tests must use the real claim shape or they test a fiction.
+    const asAdmin = testEnv.authenticatedContext("adminUser", { admin: true }).firestore();
 
     // Any signed-in user can read plans
     await assertSucceeds(getDoc(doc(asStaffA, "plans/standard")));

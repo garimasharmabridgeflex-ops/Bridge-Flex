@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/providers.dart';
 import '../../../../app/theme.dart';
+import '../../../../core/live/live_refresh.dart';
 
 /// Firebase caches `emailVerified` on the local [User] object from sign-in
 /// time — reload() re-fetches it from Auth so a just-clicked verification
@@ -11,6 +12,9 @@ import '../../../../app/theme.dart';
 /// A Google sign-in always comes back verified, so this naturally never
 /// shows for those accounts.
 final emailVerifiedProvider = FutureProvider.autoDispose<bool>((ref) async {
+  // Rides the live heartbeat: the banner clears itself once the link is
+  // followed, instead of waiting for an app restart.
+  ref.watch(liveTickProvider);
   final authRepo = ref.watch(authRepositoryProvider);
   await authRepo.reloadUser();
   return authRepo.currentUser?.emailVerified ?? true;

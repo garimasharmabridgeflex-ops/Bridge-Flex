@@ -353,8 +353,29 @@ func ensureDefaultBranch(ctx context.Context, db *firestore.Client, nurseryID st
 		UpdatedAt:       now,
 	}
 
+	// Set with MergeAll requires map data; the Firestore client rejects the
+	// Branch struct outright ("firestore: MergeAll can only be specified with
+	// map data"), which made ensureDefaultBranch fail whenever it re-ran.
+	// Mirror the struct into a map — only the fields this literal sets, so a
+	// re-seed never blanks contactPerson with a zero value.
+	fields := map[string]any{
+		"nurseryId":       b.NurseryID,
+		"name":            b.Name,
+		"address":         b.Address,
+		"postcode":        b.Postcode,
+		"city":            b.City,
+		"isPrimary":       b.IsPrimary,
+		"createdAt":       b.CreatedAt,
+		"updatedAt":       b.UpdatedAt,
+	}
+	if b.Phone != "" {
+		fields["phone"] = b.Phone
+	}
+	if b.OfstedRegNumber != "" {
+		fields["ofstedRegNumber"] = b.OfstedRegNumber
+	}
 	ref := db.Collection("nurseries").Doc(nurseryID).Collection("branches").Doc("main")
-	if _, err := ref.Set(ctx, b, firestore.MergeAll); err != nil {
+	if _, err := ref.Set(ctx, fields, firestore.MergeAll); err != nil {
 		return nil, err
 	}
 	b.ID = "main"

@@ -20,7 +20,13 @@ Current state as of this handover. Production runs on Firebase project `kvision-
 
 - **Shift matching is a placeholder.** `matchNewShift`'s geo-matching radius and minimum shift-notice logic are both simplified placeholders pending real product decisions (see `ARCHITECTURE.md` v2 §8) — not a bug, but not the final intended behavior either.
 
-- **Chat and shift-detail screens poll rather than push-update live** (chat polls every 4s while a thread is open; other screens refetch on pull-to-refresh or after a mutation). This was a deliberate choice after `cloud\_firestore`'s gRPC/HTTP2 streaming connection proved unreliable over NAT'd/tunnelled dev networks — see `README.md`'s "How screens read data" section. Push notifications (FCM) do work for the events that trigger them; this is specifically about screens auto-refreshing their content while open.## Operational
+- **Chat and shift-detail screens poll rather than push-update live** (chat polls every 4s while a thread is open). This was a deliberate choice after `cloud\_firestore`'s gRPC/HTTP2 streaming connection proved unreliable over NAT'd/tunnelled dev networks — see `README.md`'s "How screens read data" section. Push notifications (FCM) do work for the events that trigger them; this is specifically about screens auto-refreshing their content while open. Everything else the app reads over the function API now rides one app-wide heartbeat (`frontend/lib/core/live/live_refresh.dart`, 15s, paused while the app is backgrounded), so a server-side change — a DBS check verified, a plan assigned, an invoice generated — appears on its own rather than needing a pull-to-refresh or a sign-out/sign-in.
+
+## Backend gaps
+
+- **Nothing drains the transactional `outbox` collection.** Events written through `shared/outbox.WriteTx` (timesheet lifecycle, nursery decisions, invoices, subscriptions, payslips, published policies) are recorded as `pending` and never published, because no scheduled job or function reads that collection. The events that do reach Pub/Sub are the ones core also calls `publish()` on directly (shift booked/applied/decided/cancelled/matched, ratings, `send-email`, and `timesheet-submitted` as of this release). A dispatcher would need care: several of these events already write their in-app notification directly in core, so wiring them into communication's `notifyUser` unchanged would deliver each notification twice.
+
+## Operational
 
 - **Scheduled jobs need to be created once per project.** `SchedulerTrialReminders` and `SchedulerRecheckReminders` are deployed HTTP functions; Cloud Scheduler must be pointed at them with OIDC (see `backend/PRODUCTION_SETUP.md` §8a). Until that is done, trial-ending and DBS-recheck notifications only run when an admin presses the corresponding button in the console.
 

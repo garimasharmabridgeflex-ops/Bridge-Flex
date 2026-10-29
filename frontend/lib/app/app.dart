@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/analytics/analytics_service.dart';
+import '../core/live/live_refresh.dart';
 import '../core/notifications/fcm_service.dart';
 import 'providers.dart';
 import 'router.dart';
@@ -37,15 +38,19 @@ class _KFlexAppState extends ConsumerState<KFlexApp> {
       ref.read(analyticsProvider).setUserId(id: user?.uid);
     });
 
-    return MaterialApp.router(
-      title: 'KFlex',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.light,
-      routerConfig: router,
-      builder: (context, child) => InAppNotificationOverlay(
-        child: child ?? const SizedBox.shrink(),
+    // Keeps the app's live-refresh heartbeat (live_refresh.dart) paused while
+    // the app is backgrounded, and ticking otherwise.
+    return AppLifecycleObserver(
+      child: MaterialApp.router(
+        title: 'KFlex',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: ThemeMode.light,
+        routerConfig: router,
+        builder: (context, child) => InAppNotificationOverlay(
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
     );
   }

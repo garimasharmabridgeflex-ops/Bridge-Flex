@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 import '../../../core/api/api_client.dart';
@@ -8,10 +9,12 @@ import '../../../core/config/env.dart';
 import '../domain/document_status.dart';
 
 class DocumentsRepository {
-  DocumentsRepository(this._api, this._storage);
+  DocumentsRepository(this._api, this._storage, [FirebaseFirestore? firestore])
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final ApiClient _api;
   final FirebaseStorage _storage;
+  final FirebaseFirestore _firestore;
 
   Future<DocumentStatusInfo> fetchStatus() async {
     final res = await _api.post(ApiFunction.getDocumentStatus);
@@ -85,6 +88,29 @@ class DocumentsRepository {
     await _api.post(ApiFunction.createDocument, body: {
       'storagePath': path,
       'type': typeStr,
+    });
+  }
+
+  /// Live stream of the caller's own documents checklist — the same set
+  /// listMyDocuments returns (the most recent upload per type), assembled
+  /// from one `where uid == uid` listener, which is exactly the read the
+  /// rules grant the owner. An admin approving or rejecting a document
+  /// rewrites the checklist the moment the review is saved.
+  Stream<Map<DocumentType, DocumentStatusInfo>> watchMyDocuments(String uid) {
+    return _firestore
+        .collection('documents')
+        .where('uid', isEqualTo: uid)
+        .snapshots()
+        .map((snap) {
+      final infos = snap.docs.map(DocumentStatusInfo.fromFirestore).toList()
+        ..sort((a, b) =>
+            (b.uploadedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+                .compareTo(a.uploadedAt ?? DateTime.fromMillisecondsSinceEpoch(0)));
+      final latestByType = <DocumentType, DocumentStatusInfo>{};
+      for (final info in infos) {
+        latestByType.putIfAbsent(info.type, () => info);
+      }
+      return latestByType;
     });
   }
 

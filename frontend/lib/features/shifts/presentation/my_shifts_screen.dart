@@ -20,12 +20,21 @@ final myShiftsProvider = StreamProvider.autoDispose<List<Shift>>((ref) {
   if (user == null || profile == null) return const Stream.empty();
   final repo = ref.watch(shiftRepositoryProvider);
   if (profile.role == UserRole.nursery) {
+    // Already live — a Firestore listener on the shifts this nursery posted,
+    // which is what puts a new applicant on screen without a refresh.
     return repo.watchMyShiftsNursery(user.uid).handleError((_, __) async* {
       final list = await repo.fetchMyShifts();
       yield list;
     });
   }
-  return Stream.fromFuture(repo.fetchMyShifts());
+  // The practitioner's side is three Firestore queries merged (booked
+  // directly, booked as part of a multi-capacity shift, or applied-but-pending)
+  // — the same set listMyShifts assembles server-side. A nursery approving or
+  // declining an application rewrites this list the moment it happens.
+  return repo.watchMyShiftsStaff(user.uid).handleError((_, __) async* {
+    final list = await repo.fetchMyShifts();
+    yield list;
+  });
 });
 
 enum _ShiftTab { upcoming, completed, cancelled, saved }

@@ -1041,6 +1041,19 @@ class _ShiftDetailScreenState extends ConsumerState<ShiftDetailScreen> {
                       label: Text('Chat with ${isOwner ? 'Staff' : 'Nursery'}'),
                     ),
                   ),
+                ],
+                // The timesheet sits with the booking, so both parties get it
+                // as soon as somebody is on the shift. Deliberately not tied
+                // to status == booked: a shift whose status has since moved on
+                // still has hours recorded against it, and the nursery was
+                // opening a shift with a submitted timesheet and seeing
+                // nothing at all. The card itself decides what to show (a
+                // submit button for the practitioner, "awaiting submission"
+                // or the hours and approve/dispute actions for the nursery).
+                if ((isOwner || isBookedStaff) &&
+                    shift.status != ShiftStatus.cancelled &&
+                    (shift.bookedStaffIds.isNotEmpty ||
+                        (shift.bookedStaffId?.isNotEmpty ?? false))) ...[
                   const SizedBox(height: AppSpacing.md),
                   TimesheetCard(
                     shift: shift,

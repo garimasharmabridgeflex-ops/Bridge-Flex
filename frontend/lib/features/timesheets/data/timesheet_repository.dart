@@ -11,18 +11,31 @@ class TimesheetRepository {
   final ApiClient _api;
   final FirebaseFirestore _firestore;
 
-  /// Live real-time stream of the timesheet document for a given shift.
-  /// Notifies the nursery instantly when a practitioner submits hours.
-  Stream<Timesheet?> watchTimesheetForShift(String shiftId) {
-    return _firestore
-        .collection('timesheets')
-        .where('shiftId', isEqualTo: shiftId)
-        .limit(1)
-        .snapshots()
-        .map((snap) {
-          if (snap.docs.isEmpty) return null;
-          return Timesheet.fromFirestore(snap.docs.first);
-        });
+  /// Live real-time Firestore stream of the timesheet document for a given
+  /// shift. This replaces the previous 6-second HTTP polling loop, so a
+  /// submission, correction, dispute or approval appears on the other
+  /// party's screen the moment it is written.
+  ///
+  /// Firestore rules only let a participant read their own timesheet, so the
+  /// query must always be narrowed to something the viewer is allowed to
+  /// read: [staffId] for the practitioner, [nurseryId] for the setting, or no
+  /// extra filter for an admin (whose claim grants read of every timesheet).
+  Stream<Timesheet?> watchTimesheetForShift(
+    String shiftId, {
+    String? staffId,
+    String? nurseryId,
+  }) {
+    Query<Map<String, dynamic>> query =
+        _firestore.collection('timesheets').where('shiftId', isEqualTo: shiftId);
+    if (staffId != null) {
+      query = query.where('staffId', isEqualTo: staffId);
+    } else if (nurseryId != null) {
+      query = query.where('nurseryId', isEqualTo: nurseryId);
+    }
+    return query.limit(1).snapshots().map((snap) {
+      if (snap.docs.isEmpty) return null;
+      return Timesheet.fromFirestore(snap.docs.first);
+    });
   }
 
   /// Practitioner submits recorded hours for a completed shift.

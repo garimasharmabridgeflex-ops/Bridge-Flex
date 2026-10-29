@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
 import { assertFails, assertSucceeds } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
 import { newTestEnv, seed } from "./helpers.js";
 
 // Covers ARCHITECTURE.md v2 §2/§3/§4 — no separate bookings collection,
@@ -102,6 +102,38 @@ describe("shifts rules", () => {
   it("a practitioner in pendingStaffIds can read the shift", async () => {
     const asStaffB = testEnv.authenticatedContext("staffB").firestore();
     await assertSucceeds(getDoc(doc(asStaffB, "shifts/applied1")));
+  });
+
+  it("any authenticated user can run the open-shifts list query (browse stream)", async () => {
+    // watchOpenShifts runs exactly this query.
+    const asStaffB = testEnv.authenticatedContext("staffB").firestore();
+    await assertSucceeds(
+      getDocs(query(collection(asStaffB, "shifts"), where("status", "==", "open")))
+    );
+  });
+
+  it("a practitioner can run the three queries my-shifts merges (booked, array-booked, pending)", async () => {
+    const asStaffA = testEnv.authenticatedContext("staffA").firestore();
+    await assertSucceeds(
+      getDocs(query(collection(asStaffA, "shifts"), where("bookedStaffId", "==", "staffA")))
+    );
+    await assertSucceeds(
+      getDocs(
+        query(collection(asStaffA, "shifts"), where("bookedStaffIds", "array-contains", "staffA"))
+      )
+    );
+    await assertSucceeds(
+      getDocs(
+        query(collection(asStaffA, "shifts"), where("pendingStaffIds", "array-contains", "staffA"))
+      )
+    );
+  });
+
+  it("the open-shifts list query does not leak booked shifts", async () => {
+    const asStaffB = testEnv.authenticatedContext("staffB").firestore();
+    await assertFails(
+      getDocs(query(collection(asStaffB, "shifts"), where("status", "==", "booked")))
+    );
   });
 
   it("the owning nursery cannot edit a shift once it's booked", async () => {

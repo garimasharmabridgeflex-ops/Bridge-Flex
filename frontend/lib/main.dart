@@ -10,6 +10,7 @@ import 'app/app.dart';
 import 'core/config/env.dart';
 import 'core/firebase/firebase_options.dart';
 import 'core/notifications/fcm_service.dart';
+import 'shared/widgets/photo_source_sheet.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +26,17 @@ Future<void> main() async {
     await FirebaseStorage.instance.useStorageEmulator(host, Env.storageEmulatorPort);
   }
 
-  runApp(const ProviderScope(child: KFlexApp()));
+  // The container is built here rather than by ProviderScope so a photo that
+  // Android picked before it destroyed the app can be recovered before the
+  // first screen is built (see captureLostPick).
+  final container = ProviderContainer();
+  await captureLostPick(container);
+
+  runApp(
+    UncontrolledProviderScope(
+      container: container,
+      child: const KFlexApp(),
+    ),
+  );
 }
 

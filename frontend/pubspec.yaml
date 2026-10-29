@@ -76,6 +76,7 @@ dependencies:
   # the identity token against the raw value we send alongside it.
   crypto: ^3.0.6
   video_player: ^2.13.0
+  file_picker: ^13.3.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

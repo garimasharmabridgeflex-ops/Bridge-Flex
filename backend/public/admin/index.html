@@ -121,6 +121,11 @@
     .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--slate-blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
     .form-textarea { min-height: 140px; resize: vertical; line-height: 1.5; }
     .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+    /* Multi-part editors (courses): a heading per part, a bordered card per
+       repeatable row. */
+    .editor-heading { font-size: 13px; font-weight: 800; color: var(--oxford); margin: 22px 0 10px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .editor-card { border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: #F8FAFC; }
+    .editor-card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 12.5px; color: var(--oxford); }
     .check-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--oxford); }
     .check-row input { width: 15px; height: 15px; }
     .inline-actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -164,6 +169,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -224,6 +230,9 @@
         <li><a class="nav-item" data-tab="payroll" onclick="switchTab('payroll')">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
           <span>Payroll</span></a></li>
+        <li><a class="nav-item" data-tab="training" onclick="switchTab('training')">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 14l9-5-9-5-9 5 9 5z"></path><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"></path><path d="M12 14v7"></path></svg>
+          <span>Courses</span></a></li>
         <li><a class="nav-item" data-tab="settings" onclick="switchTab('settings')">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
           <span>Settings</span></a></li>
@@ -252,6 +261,7 @@
         </div>
         <div class="topbar-actions">
           <span id="last-refresh-time" class="muted" style="font-weight:600;">Not loaded</span>
+          <span class="badge badge-green" title="This console follows a live change signal from the backend, so an approval or a new submission appears immediately; a 15-second safety-net poll remains as a fallback.">Live</span>
           <button class="btn btn-outline btn-sm" id="btn-refresh" onclick="refreshCurrentView(true)">Refresh</button>
         </div>
       </header>
@@ -264,6 +274,7 @@
         <section id="tab-invoices" class="tab-panel" style="display:none;"></section>
         <section id="tab-subscriptions" class="tab-panel" style="display:none;"></section>
         <section id="tab-payroll" class="tab-panel" style="display:none;"></section>
+        <section id="tab-training" class="tab-panel" style="display:none;"></section>
         <section id="tab-settings" class="tab-panel" style="display:none;"></section>
         <section id="tab-audit" class="tab-panel" style="display:none;"></section>
       </div>
@@ -309,8 +320,10 @@ const state = {
   flags: null,
   policies: [],
   rateCards: [],
+  training: [],
   company: {},
-  cancellation: null
+  cancellation: null,
+  refreshing: false
 };
 
 const TAB_META = {
@@ -321,6 +334,7 @@ const TAB_META = {
   invoices: ['Invoices', 'Generate weekly invoices and record bank transfer settlements.'],
   subscriptions: ['Subscriptions', 'Assign requested plans. No card is charged in this release.'],
   payroll: ['Payroll', 'Generate a period, download the PAYE CSV, then mark it paid.'],
+  training: ['Courses', 'Write the training modules and knowledge checks practitioners must complete.'],
   settings: ['Settings', 'Feature gates, plans, pricing, company details and legal policies.'],
   audit: ['Audit log', 'Every administrative action, newest first.']
 };
@@ -373,12 +387,24 @@ function showToast(message, type = 'info') {
   setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4200);
 }
 
+// getIdToken() returns the cached token while it is still valid and silently
+// refreshes it once it has expired (Firebase ID tokens live one hour). This
+// console used to cache the token once at sign-in, so every action — saving
+// Settings, approving a timesheet, suspending a user — started failing with
+// 401 after the first hour even though the admin was still signed in.
+async function authToken() {
+  const user = firebase.auth().currentUser;
+  if (!user) throw new Error('Your session has expired. Please sign in again.');
+  state.token = await user.getIdToken();
+  return state.token;
+}
+
 async function api(path, body) {
-  if (!state.token) throw new Error('Your session has expired. Please sign in again.');
+  const token = await authToken();
   const res = await fetch('/' + path, {
     method: body !== undefined ? 'POST' : 'GET',
     headers: {
-      'Authorization': 'Bearer ' + state.token,
+      'Authorization': 'Bearer ' + token,
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {})
     },
     body: body !== undefined ? JSON.stringify(body) : undefined
@@ -389,7 +415,10 @@ async function api(path, body) {
     try { data = JSON.parse(text); } catch { data = { message: text }; }
   }
   if (!res.ok) {
-    const message = data.message || data.error || `Request failed (${res.status})`;
+    // Go functions use {error:{code,message}}; surface the useful message
+    // rather than the unhelpful generic "[object Object]" in admin toasts.
+    const detail = data.error;
+    const message = data.message || (typeof detail === 'string' ? detail : detail?.message) || `Request failed (${res.status})`;
     throw new Error(message);
   }
   return data;
@@ -412,6 +441,12 @@ document.getElementById('modal').addEventListener('click', (e) => {
 
 function withBusy(button, fn) {
   return async (...args) => {
+    // Starting an action invalidates every refresh already in flight: a
+    // silent tick that began before the save would otherwise finish after it
+    // and paint stale data over the fresh result — which is exactly what made
+    // Settings saves look like they silently reverted. Every renderer checks
+    // renderGeneration after its awaits and bails when superseded.
+    renderGeneration++;
     const original = button.innerHTML;
     button.disabled = true;
     button.innerHTML = '<span class="spinner"></span> Working…';
@@ -432,9 +467,13 @@ firebase.auth().onAuthStateChanged(async (user) => {
     document.getElementById('admin-display-name').innerText = user.email || 'Administrator';
     document.getElementById('avatar-initials').innerText = (user.email || 'AD').slice(0, 2).toUpperCase();
     showApp();
+    startActivityWatch();
     await refreshCurrentView(false);
+    startAutoRefresh();
   } else {
     state.token = null;
+    stopActivityWatch();
+    stopAutoRefresh();
     showLogin();
   }
 });
@@ -488,11 +527,16 @@ const RENDERERS = {
   invoices: renderInvoices,
   subscriptions: renderSubscriptions,
   payroll: renderPayroll,
+  training: renderTraining,
   settings: renderSettings,
   audit: renderAudit
 };
 
 async function switchTab(tab) {
+  if (!RENDERERS[tab]) return;
+  // Invalidate any renderer fetch still in flight: it would otherwise paint
+  // the old tab's data over the one just selected.
+  renderGeneration++;
   state.tab = tab;
   document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.dataset.tab === tab));
   document.querySelectorAll('.tab-panel').forEach(panel => panel.style.display = 'none');
@@ -504,17 +548,141 @@ async function switchTab(tab) {
   await RENDERERS[tab]();
 }
 
-async function refreshCurrentView(feedback) {
-  const button = document.getElementById('btn-refresh');
-  button.disabled = true;
+// The console keeps itself current: a silent reload every AUTO_REFRESH_MS
+// means a practitioner's submission, a nursery registration or a timesheet
+// approval lands on screen without anyone pressing Refresh. The manual
+// button stays, because a silent tick is skipped whenever it would be unsafe
+// or rude (see canAutoRefresh).
+const AUTO_REFRESH_MS = 15000;
+let autoRefreshTimer = null;
+// Monotonic counter: bumped whenever an action starts or a manual refresh
+// begins, so any renderer fetch still in flight can tell it has been
+// superseded and skip painting its (now stale) result.
+let renderGeneration = 0;
+
+// A silent refresh re-renders the active panel, which would throw away
+// anything the admin is part-way through: a half-filled modal, or a value
+// typed into a panel field (the rate card and settings panels are edited
+// in-place, not in a modal). Skip those ticks instead of clobbering them.
+function canAutoRefresh() {
+  if (!state.token || state.refreshing) return false;
+  if (document.getElementById('modal').classList.contains('open')) return false;
+  const el = document.activeElement;
+  if (el && ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName)) return false;
+  return true;
+}    // Renderers are full DOM replacements, so refresh only views whose inputs and
+    // panels are not being edited. `input` is not emitted for every checkbox/select
+    // change in all browsers, therefore inspect focus and open dialogs too.
+function isViewDirty() {
+  const panel = document.getElementById('tab-' + state.tab);
+  return !!panel?.querySelector('[data-dirty]');
+}
+
+// Any field the admin has typed into since the last render is marked dirty, so
+// a background refresh knows to leave that panel alone. Rebuilding the panel
+// (which is how every render works here) drops the attribute along with the
+// old DOM, so the flag naturally resets once fresh values are on screen.
+function markEditedField(e) {
+  const el = e.target;
+  if (el && el.matches && el.matches('input, select, textarea')) {
+    el.dataset.dirty = '1';
+  }
+}
+document.addEventListener('input', markEditedField, true);
+document.addEventListener('change', markEditedField, true);
+
+function startAutoRefresh() {
+  if (autoRefreshTimer) return;
+  autoRefreshTimer = setInterval(() => {
+    if (!canAutoRefresh()) return;
+    refreshCurrentView(false, true);
+  }, AUTO_REFRESH_MS);
+}
+
+// --------------------------------------------------------------------------
+// Live change signal (replaces relying on the poll alone).
+//
+// The backend bumps platformConfig/adminActivity after every audit entry
+// (every admin action) and every notification (every user-facing business
+// event), throttled server-side to one write per second. A Firestore
+// onSnapshot listener reacts to that bump immediately, so an open console
+// updates the moment something happens instead of waiting up to 15 seconds.
+// The timer above stays as the safety net: a dropped listener, a backgrounded
+// tab, or an emulator that never writes the signal all fall back to it.
+// --------------------------------------------------------------------------
+let activityUnsubscribe = null;
+let activityDebounceTimer = null;
+
+function startActivityWatch() {
+  if (activityUnsubscribe) return;
   try {
-    await loadCore();
-    await RENDERERS[state.tab]();
-    document.getElementById('last-refresh-time').innerText = 'Updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    activityUnsubscribe = firebase.firestore()
+      .collection('platformConfig')
+      .doc('adminActivity')
+      .onSnapshot(() => {
+        if (!state.token || document.hidden) return;
+        clearTimeout(activityDebounceTimer);
+        activityDebounceTimer = setTimeout(() => {
+          // Same guards as the timer tick: never refresh under a modal, a
+          // focused field, or another refresh already in flight.
+          if (!canAutoRefresh()) return;
+          refreshCurrentView(false, true);
+        }, 250);
+      }, (err) => console.warn('activity listener error', err));
+  } catch (err) {
+    console.warn('activity listener unavailable', err);
+  }
+}
+
+function stopActivityWatch() {
+  clearTimeout(activityDebounceTimer);
+  activityDebounceTimer = null;
+  if (activityUnsubscribe) {
+    try { activityUnsubscribe(); } catch (e) { /* already gone */ }
+    activityUnsubscribe = null;
+  }
+}
+
+function stopAutoRefresh() {
+  if (!autoRefreshTimer) return;
+  clearInterval(autoRefreshTimer);
+  autoRefreshTimer = null;
+}
+
+function markUpdated() {
+  document.getElementById('last-refresh-time').innerText = 'Updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+async function refreshCurrentView(feedback, silent = false) {
+  if (state.refreshing) return;
+  state.refreshing = true;
+  const gen = ++renderGeneration;
+  const button = document.getElementById('btn-refresh');
+  if (!silent) button.disabled = true;
+  try {
+    // Settings and Audit fetch their own data; the heavy core trio (stats +
+    // every profile + every pending document) only feeds the other tabs and
+    // the nav badges, so a silent tick on those two tabs skips it entirely.
+    if (!(silent && ['settings', 'audit'].includes(state.tab))) {
+      await loadCore();
+    }
+    if (gen !== renderGeneration) return; // superseded by an action/refresh
+    // Background ticks keep the page where it is: rebuild only when the data
+    // actually differs from what is on screen, and hold the scroll position
+    // across any rebuild so the view never jumps under the admin's eyes.
+    const scrollY = window.scrollY;
+    await RENDERERS[state.tab](silent);
+    if (gen !== renderGeneration) return;
+    if (window.scrollY !== scrollY) window.scrollTo(0, scrollY);
+    markUpdated();
     if (feedback) showToast('Console data refreshed', 'success');
   } catch (err) {
+    // A background tick that fails (dropped connection, expired token) stays
+    // silent — nagging with a toast every 15 seconds while the admin is
+    // reading something else would be worse than a stale figure.
     if (feedback) showToast(err.message, 'error');
   } finally {
+    state.refreshing = false;
     button.disabled = false;
   }
 }
@@ -548,9 +716,11 @@ function updateNavBadges() {
 
 /* ------------------------------------------------------------------ *
  * Dashboard
- * ------------------------------------------------------------------ */
-async function renderDashboard() {
+ * ------------------------------------------------------------------ */async function renderDashboard(silent = false) {
   const el = document.getElementById('tab-dashboard');
+  const nextSnapshot = JSON.stringify({ stats: state.stats, users: state.users, docs: state.pendingDocs });
+  if (silent && state.dashboardSnapshot === nextSnapshot) return;
+  state.dashboardSnapshot = nextSnapshot;
   const s = state.stats || {};
   const pendingNurseries = state.users.filter(u => u.role === 'nursery' && u.nurseryApprovalStatus === 'pending_approval');
   const pendingVetting = state.users.filter(u => u.role === 'staff' && ['pending', 'rejected_further_info', ''].includes(String(u.vettingStatus || '').replace(' ', '_')));
@@ -640,8 +810,11 @@ const OPTIONAL_CHECKS = {
   firstAid: 'Paediatric first aid'
 };
 
-async function renderPractitioners() {
+async function renderPractitioners(silent = false) {
   const el = document.getElementById('tab-practitioners');
+  const snapshot = JSON.stringify(state.users.filter(u => u.role === 'staff'));
+  if (silent && snapshot === state.practitionersSnapshot) return;
+  state.practitionersSnapshot = snapshot;
   const staff = state.users.filter(u => u.role === 'staff');
   el.innerHTML = `
     <div class="panel">
@@ -929,8 +1102,11 @@ async function adminDecideShiftApplicant(shiftId, staffId, approve, button) {
 /* ------------------------------------------------------------------ *
  * Nurseries
  * ------------------------------------------------------------------ */
-async function renderNurseries() {
+async function renderNurseries(silent = false) {
   const el = document.getElementById('tab-nurseries');
+  const snapshot = JSON.stringify(state.users.filter(u => u.role === 'nursery'));
+  if (silent && snapshot === state.nurseriesSnapshot) return;
+  state.nurseriesSnapshot = snapshot;
   const nurseries = state.users.filter(u => u.role === 'nursery');
   el.innerHTML = `
     <div class="panel">
@@ -1032,15 +1208,21 @@ async function rejectNursery(uid, button) {
 /* ------------------------------------------------------------------ *
  * Timesheets
  * ------------------------------------------------------------------ */
-async function renderTimesheets() {
+async function renderTimesheets(silent = false) {
+  const gen = renderGeneration;
   const el = document.getElementById('tab-timesheets');
-  el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading timesheets…</div></div>`;
+  if (!silent) el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading timesheets…</div></div>`;
   let timesheets = [];
   try { timesheets = (await api('ListTimesheets')).timesheets || []; }
-  catch (err) { el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`; return; }
+  catch (err) { if (gen === renderGeneration) el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`; return; }
+  if (gen !== renderGeneration) return; // superseded — do not paint stale rows
+
+  const timesheetSnapshot = JSON.stringify(timesheets);
+  if (silent && timesheetSnapshot === state.timesheetsSnapshot) return;
+  state.timesheetsSnapshot = timesheetSnapshot;
 
   el.innerHTML = `
-    <div class="panel">
+    <div class="panel" data-loaded="true">
       <div class="panel-head">
         <div><h3>Timesheets</h3><p>${timesheets.length} most recent · admin approval is audited</p></div>
         <button class="btn btn-outline btn-sm" onclick="renderTimesheets()">Reload</button>
@@ -1058,7 +1240,7 @@ async function renderTimesheets() {
                 <td>${money(t.grossPayPence)}</td>
                 <td>${statusBadge(t.status)}</td>
                 <td style="text-align:right;">
-                  ${['submitted', 'nursery_approved', 'correction_requested'].includes(t.status) ? `<button class="btn btn-emerald btn-sm" onclick="openAdminApprove('${esc(t.id)}')">Admin approve</button>` : ''}
+                  ${['submitted', 'correction_requested', 'disputed'].includes(t.status) ? `<button class="btn btn-emerald btn-sm" onclick="openAdminApprove('${esc(t.id)}')">${t.status === 'disputed' ? 'Resolve dispute' : 'Admin approve'}</button>` : ''}
                 </td>
               </tr>`).join('') : `<tr><td colspan="7" class="empty">No timesheets yet.</td></tr>`}
           </tbody>
@@ -1072,7 +1254,7 @@ function openAdminApprove(timesheetId) {
   openModal(
     'Admin approve timesheet',
     `
-      <p class="muted" style="margin-bottom:12px;">Use this only when the nursery has not resolved the timesheet within 48 hours. The practitioner is paid at the scheduled rate and the action is recorded in the audit log.</p>
+      <p class="muted" style="margin-bottom:12px;">Resolves a disputed timesheet, or approves one the nursery has not answered within 48 hours. The practitioner is paid at the snapshotted rate and the action is recorded in the audit log.</p>
       <div class="form-group">
         <label class="form-label" for="ts-notes">Admin notes (required)</label>
         <input class="form-input" id="ts-notes" placeholder="e.g. Nursery did not respond within 48 hours.">
@@ -1100,12 +1282,17 @@ async function submitAdminApprove(timesheetId, button) {
 /* ------------------------------------------------------------------ *
  * Invoices
  * ------------------------------------------------------------------ */
-async function renderInvoices() {
+async function renderInvoices(silent = false) {
+  const gen = renderGeneration;
   const el = document.getElementById('tab-invoices');
-  el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading invoices…</div></div>`;
+  if (!silent) el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading invoices…</div></div>`;
   let invoices = [];
   try { invoices = (await api('ListInvoices')).invoices || []; }
-  catch (err) { el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`; return; }
+  catch (err) { if (gen === renderGeneration) el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`; return; }
+  if (gen !== renderGeneration) return;
+  const invoiceSnapshot = JSON.stringify(invoices);
+  if (silent && invoiceSnapshot === state.invoicesSnapshot) return;
+  state.invoicesSnapshot = invoiceSnapshot;
 
   const outstanding = invoices.filter(i => i.status !== 'paid').reduce((sum, i) => sum + Number(i.totalPence || 0), 0);
   el.innerHTML = `
@@ -1229,18 +1416,23 @@ async function submitSettlement(invoiceId, button) {
 /* ------------------------------------------------------------------ *
  * Subscriptions
  * ------------------------------------------------------------------ */
-async function renderSubscriptions() {
+async function renderSubscriptions(silent = false) {
+  const gen = renderGeneration;
   const el = document.getElementById('tab-subscriptions');
-  el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading subscriptions…</div></div>`;
+  if (!silent) el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading subscriptions…</div></div>`;
   let requests = [];
   let plans = [];
   try {
     requests = (await api('ListSubscriptionRequests')).requests || [];
-    plans = (await api('GetPlans')).plans || [];
+    plans = (await api('GetAdminPlans')).plans || [];
   } catch (err) {
-    el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`;
+    if (gen === renderGeneration) el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`;
     return;
   }
+  if (gen !== renderGeneration) return;
+  const snapshot = JSON.stringify({ requests, plans });
+  if (silent && snapshot === state.subscriptionsSnapshot) return;
+  state.subscriptionsSnapshot = snapshot;
   state.plans = plans;
 
   el.innerHTML = `
@@ -1297,12 +1489,17 @@ async function assignPlan(nurseryId, planId, button) {
 /* ------------------------------------------------------------------ *
  * Payroll
  * ------------------------------------------------------------------ */
-async function renderPayroll() {
+async function renderPayroll(silent = false) {
+  const gen = renderGeneration;
   const el = document.getElementById('tab-payroll');
-  el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading payroll…</div></div>`;
+  if (!silent) el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading payroll…</div></div>`;
   let periods = [];
   try { periods = (await api('ListPayrollPeriods')).periods || []; }
-  catch (err) { el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`; return; }
+  catch (err) { if (gen === renderGeneration) el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`; return; }
+  if (gen !== renderGeneration) return;
+  const payrollSnapshot = JSON.stringify(periods);
+  if (silent && payrollSnapshot === state.payrollSnapshot) return;
+  state.payrollSnapshot = payrollSnapshot;
 
   const current = periods[0];
   el.innerHTML = `
@@ -1442,7 +1639,7 @@ async function markPayrollPaid(periodId, button) {
 async function downloadCsv(periodId) {
   try {
     const res = await fetch('/ExportPayrollCSV?periodId=' + encodeURIComponent(periodId), {
-      headers: { 'Authorization': 'Bearer ' + state.token }
+      headers: { 'Authorization': 'Bearer ' + await authToken() }
     });
     if (!res.ok) {
       const text = await res.text();
@@ -1470,7 +1667,7 @@ async function downloadCsv(periodId) {
 async function downloadInvoicePdf(invoiceId) {
   try {
     const res = await fetch('/GetInvoiceDocument?invoiceId=' + encodeURIComponent(invoiceId), {
-      headers: { 'Authorization': 'Bearer ' + state.token }
+      headers: { 'Authorization': 'Bearer ' + await authToken() }
     });
     if (!res.ok) {
       const text = await res.text();
@@ -1492,28 +1689,409 @@ async function downloadInvoicePdf(invoiceId) {
 /* ------------------------------------------------------------------ *
  * Settings
  * ------------------------------------------------------------------ */
-async function renderSettings() {
+/* ------------------------------------------------------------------ *
+ * Courses (training modules)
+ * ------------------------------------------------------------------ */
+// The modules are data, not code: the training spec requires questions to be
+// editable without an app release, and the practitioner app reads published
+// modules from the same collection these handlers write. The admin list
+// includes each question's answer key (ListTrainingModulesAdmin), which is
+// exactly what the practitioner endpoint strips.
+async function renderTraining(silent = false) {
+  const gen = renderGeneration;
+  const el = document.getElementById('tab-training');
+  if (!silent) el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading courses…</div></div>`;
+  try {
+    const res = await api('ListTrainingModulesAdmin');
+    state.training = res.modules || [];
+  } catch (err) {
+    if (gen === renderGeneration) el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`;
+    return;
+  }
+  if (gen !== renderGeneration) return;
+  const trainingSnapshot = JSON.stringify(state.training);
+  if (silent && trainingSnapshot === state.trainingSnapshot) return;
+  state.trainingSnapshot = trainingSnapshot;
+
+  const published = state.training.filter(m => m.published).length;
+  el.innerHTML = `
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h3>Courses</h3>
+          <p>${state.training.length} module${state.training.length === 1 ? '' : 's'} · ${published} published. Practitioners only ever see published modules.</p>
+        </div>
+        <button class="btn btn-emerald btn-sm" onclick="openCourseEditor()">New course</button>
+      </div>
+      <div class="panel-body tight table-scroll">
+        <table>
+          <thead><tr><th>#</th><th>Title</th><th>Questions</th><th>Pass mark</th><th>Video</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            ${state.training.length ? state.training.map(m => `
+              <tr>
+                <td>${m.order || 0}</td>
+                <td><strong>${esc(m.title)}</strong><div class="muted">${esc(m.purpose || m.moduleId)}</div></td>
+                <td>${(m.questions || []).length}</td>
+                <td>${m.passMark || 0}</td>
+                <td>${m.videoUrl ? courseVideoCell(m.videoUrl) : '<span class="muted">none</span>'}</td>
+                <td>${m.published ? '<span class="badge badge-green">published</span>' : '<span class="badge badge-grey">draft</span>'}</td>
+                <td style="text-align:right; white-space:nowrap;">
+                  <button class="btn btn-outline btn-sm" onclick="openCourseEditor('${esc(m.moduleId)}')">Edit</button>
+                  <button class="btn btn-outline btn-sm" onclick="deleteCourse('${esc(m.moduleId)}', this)">Delete</button>
+                </td>
+              </tr>`).join('') : '<tr><td colspan="7" class="empty">No courses yet. Create the first module to get started.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><div><h3>How a module works</h3><p>What the practitioner sees, in order.</p></div></div>
+      <div class="panel-body">
+        <div class="stack">
+          <div><strong style="font-size:13px;">1. Content</strong><div class="form-hint">Outline bullets plus the written sections — this is the reading material, shown before the video.</div></div>
+          <div><strong style="font-size:13px;">2. Video</strong><div class="form-hint">Optional. Paste a Storage path or a direct video URL; the practitioner has to watch it to unlock the quiz.</div></div>
+          <div><strong style="font-size:13px;">3. Knowledge check</strong><div class="form-hint">At least one question with two or more options and the correct answer marked. A module cannot be published without one.</div></div>
+          <div><strong style="font-size:13px;">4. Completion</strong><div class="form-hint">The practitioner passes with the pass mark (left at 0, that is 80% of the questions, rounded up). A pass marks the module complete.</div></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// A module video is normally a Firebase Storage object path. Linking it needs a
+// download URL, which only the SDK can mint, so paths are shown as-is rather
+// than as a dead link.
+function courseVideoCell(url) {
+  if (!/^https?:\/\//i.test(url)) return `<span class="mono" style="font-size:11px;">${esc(url)}</span>`;
+  return `<a class="mono" style="font-size:11px;" href="${esc(url)}" target="_blank" rel="noopener">link</a>`;
+}
+
+// The editor keeps a mutable draft and re-renders itself, so adding a question
+// or an option never loses what has already been typed. Saved as-is: the
+// upsert endpoint validates every question (two options minimum, correctIndex
+// in range, a published module needs at least one question) and returns a
+// message the toast shows verbatim.
+let courseDraft = null;
+
+function blankCourse() {
+  return {
+    moduleId: '', order: state.training.length + 1, title: '', purpose: '',
+    contentOutline: [''], sections: [{ heading: '', body: [''] }],
+    videoStoragePath: '', videoUrl: '', videoDurationSeconds: 0,
+    questions: [{ id: 'q1', prompt: '', options: ['', ''], correctIndex: 0, explanation: '' }],
+    passMark: 0, published: false
+  };
+}
+
+function openCourseEditor(moduleId) {
+  courseDraft = moduleId
+    ? JSON.parse(JSON.stringify(state.training.find(m => m.moduleId === moduleId) || blankCourse()))
+    : blankCourse();
+  if (!courseDraft.contentOutline?.length) courseDraft.contentOutline = [''];
+  if (!courseDraft.sections?.length) courseDraft.sections = [{ heading: '', body: [''] }];
+  if (!courseDraft.questions?.length) courseDraft.questions = blankCourse().questions;
+
+  openModal(
+    moduleId ? 'Edit course' : 'New course',
+    '<div id="course-editor"></div>',
+    `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-emerald" id="course-save" onclick="saveCourse(this)">Save course</button>`,
+    moduleId ? moduleId : 'A module practitioners complete before they can work',
+    false
+  );
+  renderCourseEditor();
+}
+
+function renderCourseEditor() {
+  const d = courseDraft;
+  const holder = document.getElementById('course-editor');
+  if (!holder) return;
+  holder.innerHTML = `
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Module ID</label>
+        <input class="form-input" id="course-id" value="${esc(d.moduleId)}" ${d.moduleId && state.training.some(m => m.moduleId === d.moduleId) ? 'readonly' : 'placeholder="e.g. safeguarding-1"'}>
+        <div class="form-hint">Stable key used in progress records. Lowercase, no spaces.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Order</label>
+        <input class="form-input" id="course-order" type="number" min="0" value="${Number(d.order || 0)}">
+        <div class="form-hint">Modules are presented lowest first.</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Title</label>
+      <input class="form-input" id="course-title" value="${esc(d.title)}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Purpose</label>
+      <input class="form-input" id="course-purpose" value="${esc(d.purpose)}">
+      <div class="form-hint">One line on why this module exists — shown under the title.</div>
+    </div>
+
+    <h4 class="editor-heading">Content</h4>
+    <div class="form-group">
+      <label class="form-label">Outline (one point per line)</label>
+      <textarea class="form-textarea" id="course-outline" style="min-height:90px;">${esc((d.contentOutline || []).join('\n'))}</textarea>
+    </div>
+    <div class="stack">
+      ${(d.sections || []).map((s, i) => `
+        <div class="editor-card">
+          <div class="editor-card-head">
+            <strong>Section ${i + 1}</strong>
+            <button class="btn btn-outline btn-sm" onclick="removeCourseSection(${i})">Remove</button>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Heading</label>
+            <input class="form-input" data-section-heading="${i}" value="${esc(s.heading || '')}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Body (one paragraph per line)</label>
+            <textarea class="form-textarea" data-section-body="${i}" style="min-height:90px;">${esc((s.body || []).join('\n'))}</textarea>
+          </div>
+        </div>`).join('')}
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="addCourseSection()">+ Add section</button>
+
+    <h4 class="editor-heading">Video</h4>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Storage path</label>
+        <input class="form-input" id="course-video-path" value="${esc(d.videoStoragePath || '')}" placeholder="training/module1.mp4">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Duration (seconds)</label>
+        <input class="form-input" id="course-video-duration" type="number" min="0" value="${Number(d.videoDurationSeconds || 0)}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Direct video URL</label>
+      <input class="form-input" id="course-video-url" value="${esc(d.videoUrl || '')}" placeholder="https://…">
+      <div class="form-hint">Used when there is no Storage path. Either one unlocks the quiz once watched.</div>
+    </div>
+
+    <h4 class="editor-heading">Knowledge check</h4>
+    <div class="form-group">
+      <label class="form-label">Pass mark (0 = 80% of the questions)</label>
+      <input class="form-input" id="course-pass-mark" type="number" min="0" value="${Number(d.passMark || 0)}">
+    </div>
+    <div class="stack">
+      ${(d.questions || []).map((q, qi) => `
+        <div class="editor-card">
+          <div class="editor-card-head">
+            <strong>Question ${qi + 1}</strong>
+            <button class="btn btn-outline btn-sm" onclick="removeCourseQuestion(${qi})">Remove</button>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Question ID</label>
+              <input class="form-input" data-question-id="${qi}" value="${esc(q.id || '')}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Correct answer</label>
+              <select class="form-select" data-question-correct="${qi}">
+                ${(q.options || []).map((_, oi) => `<option value="${oi}" ${Number(q.correctIndex) === oi ? 'selected' : ''}>Option ${oi + 1}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Prompt</label>
+            <input class="form-input" data-question-prompt="${qi}" value="${esc(q.prompt || '')}">
+          </div>
+          ${(q.options || []).map((opt, oi) => `
+            <div class="form-group">
+              <label class="form-label">Option ${oi + 1}</label>
+              <div style="display:flex; gap:8px;">
+                <input class="form-input" data-question-option="${qi}:${oi}" value="${esc(opt)}">
+                ${(q.options || []).length > 2 ? `<button class="btn btn-outline btn-sm" onclick="removeCourseOption(${qi}, ${oi})">✕</button>` : ''}
+              </div>
+            </div>`).join('')}
+          <button class="btn btn-outline btn-sm" onclick="addCourseOption(${qi})">+ Add option</button>
+          <div class="form-group" style="margin-top:10px;">
+            <label class="form-label">Explanation (shown after answering)</label>
+            <input class="form-input" data-question-explanation="${qi}" value="${esc(q.explanation || '')}">
+          </div>
+        </div>`).join('')}
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="addCourseQuestion()">+ Add question</button>
+
+    <div style="margin-top:16px;">
+      <label class="check-row"><input type="checkbox" id="course-published" ${d.published ? 'checked' : ''}> Publish this module to practitioners</label>
+      <div class="form-hint">A published module needs at least one question — completion is a knowledge check, not a read receipt.</div>
+    </div>
+  `;
+}
+
+// Pulls the current form state back into the draft before any re-render, so
+// adding or removing a row never discards text that has not been saved yet.
+function readCourseForm() {
+  const d = courseDraft;
+  const val = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  const lines = id => val(id).split('\n').map(s => s.trim()).filter(Boolean);
+
+  d.moduleId = val('course-id').trim();
+  d.order = Number(val('course-order') || 0);
+  d.title = val('course-title');
+  d.purpose = val('course-purpose');
+  d.contentOutline = lines('course-outline');
+  d.videoStoragePath = val('course-video-path').trim();
+  d.videoDurationSeconds = Number(val('course-video-duration') || 0);
+  d.videoUrl = val('course-video-url').trim();
+  d.passMark = Number(val('course-pass-mark') || 0);
+  const published = document.getElementById('course-published');
+  d.published = !!(published && published.checked);
+
+  d.sections = (d.sections || []).map((s, i) => ({
+    heading: (document.querySelector(`[data-section-heading="${i}"]`)?.value || '').trim(),
+    body: (document.querySelector(`[data-section-body="${i}"]`)?.value || '').split('\n').map(t => t.trim()).filter(Boolean)
+  }));
+  d.questions = (d.questions || []).map((q, i) => ({
+    id: (document.querySelector(`[data-question-id="${i}"]`)?.value || '').trim(),
+    prompt: (document.querySelector(`[data-question-prompt="${i}"]`)?.value || '').trim(),
+    correctIndex: Number(document.querySelector(`[data-question-correct="${i}"]`)?.value || 0),
+    explanation: (document.querySelector(`[data-question-explanation="${i}"]`)?.value || '').trim(),
+    options: (q.options || []).map((_, oi) => document.querySelector(`[data-question-option="${i}:${oi}"]`)?.value || '')
+  }));
+}
+
+function rerenderCourseEditor() {
+  readCourseForm();
+  renderCourseEditor();
+}
+
+function addCourseSection() { readCourseForm(); courseDraft.sections.push({ heading: '', body: [''] }); renderCourseEditor(); }
+function removeCourseSection(i) { readCourseForm(); courseDraft.sections.splice(i, 1); if (!courseDraft.sections.length) courseDraft.sections.push({ heading: '', body: [''] }); renderCourseEditor(); }
+function addCourseQuestion() { readCourseForm(); courseDraft.questions.push({ id: `q${courseDraft.questions.length + 1}`, prompt: '', options: ['', ''], correctIndex: 0, explanation: '' }); renderCourseEditor(); }
+function removeCourseQuestion(i) { readCourseForm(); courseDraft.questions.splice(i, 1); renderCourseEditor(); }
+function addCourseOption(i) { readCourseForm(); courseDraft.questions[i].options.push(''); renderCourseEditor(); }
+function removeCourseOption(i, oi) {
+  readCourseForm();
+  const q = courseDraft.questions[i];
+  q.options.splice(oi, 1);
+  // Keep the marked answer pointing at the same option it did before the
+  // removal, rather than silently shifting it onto a neighbour.
+  if (Number(q.correctIndex) >= q.options.length) q.correctIndex = 0;
+  else if (oi < Number(q.correctIndex)) q.correctIndex = Number(q.correctIndex) - 1;
+  renderCourseEditor();
+}
+
+function coursePayload() {
+  readCourseForm();
+  const d = courseDraft;
+  return {
+    moduleId: d.moduleId,
+    order: d.order,
+    title: d.title.trim(),
+    purpose: d.purpose.trim(),
+    contentOutline: d.contentOutline,
+    sections: d.sections.filter(s => s.heading || s.body.length),
+    videoStoragePath: d.videoStoragePath,
+    videoUrl: d.videoUrl,
+    videoDurationSeconds: d.videoDurationSeconds,
+    questions: d.questions.map((q, i) => ({
+      id: q.id || `q${i + 1}`,
+      prompt: q.prompt,
+      options: q.options,
+      correctIndex: Number(q.correctIndex) || 0,
+      explanation: q.explanation
+    })),
+    passMark: d.passMark,
+    published: d.published
+  };
+}
+
+async function saveCourse(button) {
+  const payload = coursePayload();
+  if (!payload.moduleId) { showToast('Module ID is required', 'error'); return; }
+  if (!payload.title) { showToast('Title is required', 'error'); return; }
+
+  const run = withBusy(button, async () => {
+    await api('UpsertTrainingModule', payload);
+    closeModal();
+    showToast(payload.published ? 'Course published' : 'Course saved as a draft', 'success');
+    await renderTraining();
+  });
+  await run();
+}
+
+async function deleteCourse(moduleId, button) {
+  const module = state.training.find(m => m.moduleId === moduleId);
+  openModal(
+    'Delete course?',
+    `<p style="font-size:13px;">Delete <strong>${esc(module?.title || moduleId)}</strong>? Practitioners keep the progress they already recorded, but the module disappears from their training list.</p>`,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-danger" id="course-delete" onclick="confirmDeleteCourse('${esc(moduleId)}', this)">Delete course</button>`,
+    'This cannot be undone',
+    true
+  );
+}
+
+async function confirmDeleteCourse(moduleId, button) {
+  const run = withBusy(button, async () => {
+    await api('DeleteTrainingModule', { moduleId });
+    closeModal();
+    showToast('Course deleted', 'success');
+    await renderTraining();
+  });
+  await run();
+}
+
+// Settings fetches its own data, so it owns the decision of whether the screen
+// needs touching at all: a background tick that sees identical payloads leaves
+// the DOM alone (no spinner, no rebuild, no lost scroll position), and a tick
+// that sees new data still refuses to rebuild while the admin has unsaved
+// values in a field (data-dirty is set on every keystroke, see the global
+// input listener below).
+async function renderSettings(silent = false) {
+  const gen = renderGeneration;
   const el = document.getElementById('tab-settings');
-  el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading settings…</div></div>`;
+  const hasContent = !!el.querySelector('.panel');
+  if (!hasContent) {
+    el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading settings…</div></div>`;
+  }
+  let fetched;
   try {
     const [flags, plans, rateCards, company, cancellation, policies] = await Promise.all([
       api('GetFeatureFlags'),
-      api('GetPlans'),
+      api('GetAdminPlans'),
       api('ListRateCards'),
-      api('GetCompanyInfo'),
+      api('GetCompanySettings'),
       api('GetCancellationPolicy'),
       api('ListPolicies')
     ]);
-    state.flags = flags;
-    state.plans = plans.plans || [];
-    state.rateCards = rateCards.rateCards || [];
-    state.company = company.company || {};
-    state.cancellation = cancellation;
-    state.policies = policies.policies || [];
+    fetched = {
+      flags,
+      plans: plans.plans || [],
+      rateCards: rateCards.rateCards || [],
+      company: company.company || {},
+      cancellation,
+      policies: policies.policies || []
+    };
   } catch (err) {
+    // A flaky background tick must not wipe a rendered settings page.
+    if (silent && hasContent) return;
     el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`;
     return;
   }
+
+  // A save (or a newer refresh) started while this fetch was in flight: its
+  // result is stale, and painting it would revert what was just saved.
+  if (gen !== renderGeneration) return;
+
+  const snapshot = JSON.stringify(fetched);
+  if (silent && snapshot === state.settingsSnapshot) return; // nothing new — update nothing
+  if (silent && el.querySelector('[data-dirty]')) return;    // mid-edit — do not clobber
+
+  state.settingsSnapshot = snapshot;
+  state.flags = fetched.flags;
+  state.plans = fetched.plans;
+  state.rateCards = fetched.rateCards;
+  state.company = fetched.company;
+  state.cancellation = fetched.cancellation;
+  state.policies = fetched.policies;
+
+  const scrollY = window.scrollY;
 
   const gateLabels = {
     nurseryApprovalRequired: ['Nursery approval', 'Block shift posting until a nursery is approved.'],
@@ -1617,7 +2195,7 @@ async function renderSettings() {
             <div class="form-group">
               <label class="form-label">${esc(label)}</label>
               <input class="form-input" data-company="${key}" value="${esc(state.company[key]?.value || '')}">
-              <label class="check-row" style="margin-top:6px;"><input type="checkbox" data-company-pub="${key}" ${state.company[key]?.published !== false ? 'checked' : ''}> Published</label>
+              <label class="check-row" style="margin-top:6px;"><input type="checkbox" data-company-pub="${key}" ${state.company[key]?.published === true ? 'checked' : ''}> Published</label>
             </div>`).join('')}
         </div>
         <p class="form-hint">VAT is only added to invoices when a published VAT number exists.</p>
@@ -1718,6 +2296,11 @@ async function renderSettings() {
       </div>
     </div>
   `;
+
+  // Keep the viewport still: every node above was just replaced, and restoring
+  // the offset is what makes a data update feel like an update rather than a
+  // page reload.
+  window.scrollTo(0, scrollY);
 
   await loadDiscountCodes();
 }
@@ -1836,9 +2419,12 @@ async function saveFlags(button) {
 async function saveRateCard(button) {
   const rates = {};
   for (const key of ['none', 'level_2', 'level_3', 'level_4_plus']) {
-    const pay = Number(document.querySelector(`[data-pay="${key}"]`).value || 0);
-    const charge = Number(document.querySelector(`[data-charge="${key}"]`).value || 0);
-    if (pay <= 0) { showToast(`Practitioner pay must be greater than zero (${key})`, 'error'); return; }
+    const payInput = document.querySelector(`[data-pay="${key}"]`);
+    const chargeInput = document.querySelector(`[data-charge="${key}"]`);
+    if (!payInput || !chargeInput) { showToast('Rate card form is no longer available. Refresh Settings and try again.', 'error'); return; }
+    const pay = Number(payInput.value || 0);
+    const charge = Number(chargeInput.value || 0);
+    if (!Number.isFinite(pay) || !Number.isFinite(charge) || pay <= 0) { showToast(`Practitioner pay must be greater than zero (${key})`, 'error'); return; }
     if (charge <= pay) { showToast(`Nursery charge must be higher than practitioner pay (${key})`, 'error'); return; }
     rates[key] = {
       practitionerPayPencePerHour: Math.round(pay * 100),
@@ -2050,12 +2636,17 @@ function viewPolicy(policyId) {
 /* ------------------------------------------------------------------ *
  * Audit
  * ------------------------------------------------------------------ */
-async function renderAudit() {
+async function renderAudit(silent = false) {
+  const gen = renderGeneration;
   const el = document.getElementById('tab-audit');
-  el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading audit log…</div></div>`;
+  if (!silent) el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading audit log…</div></div>`;
   let entries = [];
   try { entries = (await api('ListAuditLogs')).entries || []; }
-  catch (err) { el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`; return; }
+  catch (err) { if (gen === renderGeneration) el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`; return; }
+  if (gen !== renderGeneration) return;
+  const auditSnapshot = JSON.stringify(entries);
+  if (silent && auditSnapshot === state.auditSnapshot) return;
+  state.auditSnapshot = auditSnapshot;
 
   el.innerHTML = `
     <div class="panel">
@@ -2092,17 +2683,10 @@ async function renderAudit() {
   apply();
 })();
 
-/* Real-time sync: auto-refresh operations dashboard and timesheets without manual page reloads */
-setInterval(() => {
-  const modalOpen = document.getElementById('modal')?.classList.contains('open');
-  if (document.visibilityState === 'visible' && !modalOpen && state.user) {
-    loadCore().then(() => {
-      if (RENDERERS[state.tab] && (state.tab === 'dashboard' || state.tab === 'timesheets')) {
-        RENDERERS[state.tab]();
-      }
-    }).catch(() => {});
-  }
-}, 15000);
+// Background freshness is handled exclusively by startAutoRefresh() above —
+// a second ticker here used to re-render dashboard/timesheets in parallel,
+// doubling the visible churn with none of the safety checks (focus, dirty
+// fields, in-flight refresh).
 </script>
 </body>
 </html>

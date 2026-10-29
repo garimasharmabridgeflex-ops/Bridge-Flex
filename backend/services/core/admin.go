@@ -121,7 +121,26 @@ func getPlatformStats(w http.ResponseWriter, r *http.Request) {
 	out.TrialAccounts, _ = getQueryCount(ctx, db.Collection("subscriptions").Where("status", "==", string(SubTrialing)))
 	out.PendingNurseryApprovals, _ = getQueryCount(ctx, db.Collection("profiles").Where("role", "==", string(RoleNursery)).Where("nurseryApprovalStatus", "==", string(NurseryPendingApproval)))
 	out.VerifiedPractitioners, _ = getQueryCount(ctx, db.Collection("profiles").Where("vettingStatus", "==", string(VettingApproved)))
-	out.PendingVetting, _ = getQueryCount(ctx, db.Collection("profiles").Where("role", "==", string(RoleStaff)).Where("vettingStatus", "==", string(VettingPendingVerification)))
+	// "Pending vetting" must include practitioners created before the vetting
+	// workflow existed — their profile has no vettingStatus field at all, and a
+	// `== pending_verification` query silently skips them, leaving the ones who
+	// most need review out of the dashboard's "awaiting action" count. The
+	// console's practitioner queue already treats an empty status as pending;
+	// compute the same set here as staff minus approved minus asked-for-more-info.
+	staffRejected, _ := getQueryCount(ctx, db.Collection("profiles").Where("role", "==", string(RoleStaff)).Where("vettingStatus", "==", string(VettingRejectedFurtherInfo)))
+	pendingVetting, vettingErr := getQueryCount(ctx, db.Collection("profiles").Where("role", "==", string(RoleStaff)).Where("vettingStatus", "==", string(VettingPendingVerification)))
+	if vettingErr == nil {
+		out.PendingVetting = pendingVetting
+		legacyStaff, legacyErr := getQueryCount(ctx, db.Collection("profiles").Where("role", "==", string(RoleStaff)))
+		if legacyErr == nil {
+			// staff = approved + pending + rejected + legacy(no status) ⇒
+			// legacy = staff − approved − pending − rejected.
+			resolvedStaff, _ := getQueryCount(ctx, db.Collection("profiles").Where("role", "==", string(RoleStaff)).Where("vettingStatus", "==", string(VettingApproved)))
+			if legacy := legacyStaff - resolvedStaff - pendingVetting - staffRejected; legacy > 0 {
+				out.PendingVetting += legacy
+			}
+		}
+	}
 	out.SubscriptionRequests, _ = getQueryCount(ctx, db.Collection("subscriptions").Where("requestedPlanId", "!=", ""))
 
 	// Revenue and hours need sums rather than counts. These collections stay

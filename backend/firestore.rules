@@ -100,6 +100,11 @@ service cloud.firestore {
     match /platformConfig/{document} {
       // Company details may be read by authenticated users for legal screens.
       allow read: if isSignedIn() && document == 'company';
+      // Live refresh signal for the web admin console: one tiny document
+      // (updatedAt + last action name) that a Firestore onSnapshot listener
+      // watches so an open console updates the moment anything changes,
+      // instead of waiting for its next poll.
+      allow read: if request.auth.token.admin == true && document == 'adminActivity';
       allow read: if false;
       allow write: if false;
     }
@@ -212,7 +217,8 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         resource.data.staffId == request.auth.uid ||
         resource.data.nurseryId == request.auth.uid ||
-        request.auth.token.role in ['admin', 'superadmin', 'finance']
+        request.auth.token.admin == true ||
+        request.auth.token.adminRole in ['super_admin', 'support', 'finance']
       );
       allow write: if false;
     }
@@ -225,7 +231,8 @@ service cloud.firestore {
     match /payrollProfiles/{uid} {
       allow read: if isSignedIn() && (
         request.auth.uid == uid ||
-        request.auth.token.role in ['admin', 'superadmin', 'finance']
+        request.auth.token.admin == true ||
+        request.auth.token.adminRole in ['super_admin', 'finance']
       );
       allow write: if false;
     }
@@ -235,13 +242,17 @@ service cloud.firestore {
     // Server-managed payroll runs. Accessible by finance/superadmin; practitioners read own lines.
     // ---------------------------------------------------------------------
     match /payrollPeriods/{periodId} {
-      allow read: if isSignedIn() && request.auth.token.role in ['admin', 'superadmin', 'finance'];
+      allow read: if isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.token.adminRole in ['super_admin', 'finance']
+      );
       allow write: if false;
 
       match /lines/{lineId} {
         allow read: if isSignedIn() && (
           resource.data.practitionerId == request.auth.uid ||
-          request.auth.token.role in ['admin', 'superadmin', 'finance']
+          request.auth.token.admin == true ||
+          request.auth.token.adminRole in ['super_admin', 'finance']
         );
         allow write: if false;
       }
@@ -254,7 +265,8 @@ service cloud.firestore {
     match /payslips/{payslipId} {
       allow read: if isSignedIn() && (
         resource.data.practitionerId == request.auth.uid ||
-        request.auth.token.role in ['admin', 'superadmin', 'finance']
+        request.auth.token.admin == true ||
+        request.auth.token.adminRole in ['super_admin', 'finance']
       );
       allow write: if false;
     }
@@ -275,7 +287,11 @@ service cloud.firestore {
     match /subscriptions/{nurseryId} {
       allow read: if isSignedIn() && (
         request.auth.uid == nurseryId ||
-        request.auth.token.role in ['admin', 'superadmin', 'finance']
+        // The admin model uses the `admin` custom claim (legacy) plus the
+        // `adminRole` claim; there is no `token.role` claim in this system,
+        // so a check against it can never be true in production.
+        request.auth.token.admin == true ||
+        request.auth.token.adminRole in ['super_admin', 'finance']
       );
       allow write: if false;
     }
@@ -287,7 +303,8 @@ service cloud.firestore {
     match /invoices/{invoiceId} {
       allow read: if isSignedIn() && (
         resource.data.nurseryId == request.auth.uid ||
-        request.auth.token.role in ['admin', 'superadmin', 'finance']
+        request.auth.token.admin == true ||
+        request.auth.token.adminRole in ['super_admin', 'finance']
       );
       allow write: if false;
     }

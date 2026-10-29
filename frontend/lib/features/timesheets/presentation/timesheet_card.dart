@@ -9,9 +9,13 @@ import '../domain/timesheet.dart';
 import 'submit_timesheet_sheet.dart';
 
 class TimesheetQuery {
-  const TimesheetQuery({required this.shiftId, this.staffId});
+  const TimesheetQuery({required this.shiftId, this.staffId, this.asNursery = false});
   final String shiftId;
   final String? staffId;
+
+  /// True when the viewer is the hiring nursery: their stream is then
+  /// filtered by nurseryId (which the viewer owns) instead of staffId.
+  final bool asNursery;
 
   @override
   bool operator ==(Object other) =>
@@ -19,19 +23,38 @@ class TimesheetQuery {
       other is TimesheetQuery &&
           runtimeType == other.runtimeType &&
           shiftId == other.shiftId &&
-          staffId == other.staffId;
+          staffId == other.staffId &&
+          asNursery == other.asNursery;
 
   @override
-  int get hashCode => shiftId.hashCode ^ (staffId?.hashCode ?? 0);
+  int get hashCode => Object.hash(shiftId, staffId, asNursery);
 }
 
-final shiftTimesheetProvider = StreamProvider.autoDispose.family<Timesheet?, TimesheetQuery>((ref, query) async* {
+/// Real-time Firestore stream (no polling).
+///
+/// This used to be a `while (true)` loop that re-fetched the timesheet over
+/// HTTP every 6 seconds — so the other party saw a change only after up to
+/// six seconds, and the loop kept hitting the endpoint even when nothing
+/// changed. The repository now exposes a snapshot stream, and Firestore rules
+/// give each participant their own document, so a submission or approval
+/// renders immediately.
+final shiftTimesheetProvider =
+    StreamProvider.autoDispose.family<Timesheet?, TimesheetQuery>((ref, query) {
   final repo = ref.watch(timesheetRepositoryProvider);
-  while (true) {
-    final ts = await repo.getTimesheet(shiftId: query.shiftId, staffId: query.staffId);
-    yield ts;
-    await Future.delayed(const Duration(seconds: 6));
+  final user = ref.watch(authStateProvider).valueOrNull;
+  if (user == null) return Stream<Timesheet?>.value(null);
+  // Admins (previewing the marketplace) may read every timesheet, so they
+  // get the unfiltered stream; everyone else must query the document they
+  // are a participant of or the rules reject the whole query.
+  final isAdmin = ref.watch(isAdminProvider).valueOrNull ?? false;
+  if (isAdmin) return repo.watchTimesheetForShift(query.shiftId);
+  if (query.asNursery) {
+    return repo.watchTimesheetForShift(query.shiftId, nurseryId: user.uid);
   }
+  return repo.watchTimesheetForShift(
+    query.shiftId,
+    staffId: query.staffId ?? user.uid,
+  );
 });
 
 class TimesheetCard extends ConsumerStatefulWidget {
@@ -59,7 +82,11 @@ class _TimesheetCardState extends ConsumerState<TimesheetCard> {
     final staffId = widget.isOwner
         ? (widget.shift.bookedStaffId ?? widget.shift.bookedStaffIds.firstOrNull)
         : null;
-    return TimesheetQuery(shiftId: widget.shift.id, staffId: staffId);
+    return TimesheetQuery(
+      shiftId: widget.shift.id,
+      staffId: staffId,
+      asNursery: widget.isOwner,
+    );
   }
 
   void _openSubmitSheet(Timesheet? existing) {

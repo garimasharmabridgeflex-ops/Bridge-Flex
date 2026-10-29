@@ -15,6 +15,73 @@ final nurseryInvoicesProvider = FutureProvider.autoDispose<List<Invoice>>((ref) 
   return ref.watch(billingRepositoryProvider).listInvoices();
 });
 
+/// Invoice line descriptions are written by the backend with the raw shift id
+/// in them ("… (Shift cm3abc…)"), which means nothing to a nursery reader.
+/// The title is resolved client-side here so invoices generated before the
+/// backend started embedding the title show the shift name too.
+final invoiceShiftsProvider = FutureProvider.autoDispose<Map<String, String>>(
+  (ref) async {
+    try {
+      final shifts = await ref.watch(shiftRepositoryProvider).fetchMyShifts();
+      return {for (final s in shifts) s.id: s.title};
+    } catch (_) {
+      // The lookup is cosmetic — an invoice must still render if shifts fail to load.
+      return const <String, String>{};
+    }
+  },
+);
+
+/// Swaps `(Shift <id>)` for `(<shift title>)` when the shift is known.
+String _lineLabel(InvoiceLineItem item, Map<String, String> shiftTitles) {
+  final id = item.shiftId;
+  final title = id == null ? null : shiftTitles[id];
+  if (title == null || title.isEmpty) return item.description;
+  return item.description.replaceFirst('(Shift $id)', '($title)');
+}
+
+/// Renders an invoice's line items, resolving shift ids to their titles.
+class _LineItemLabels extends ConsumerWidget {
+  const _LineItemLabels({required this.items});
+
+  final List<InvoiceLineItem> items;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final shiftTitles =
+        ref.watch(invoiceShiftsProvider).valueOrNull ?? const <String, String>{};
+    return Column(
+      children: [
+        for (final item in items)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _lineLabel(item, shiftTitles),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ),
+                Text(
+                  item.totalFormatted,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class InvoicesScreen extends ConsumerWidget {
   const InvoicesScreen({super.key});
 
@@ -82,36 +149,7 @@ class InvoicesScreen extends ConsumerWidget {
                 border: Border.all(color: const Color(0xFFE2E8F0)),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Column(
-                children: [
-                  for (final item in inv.lineItems)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              item.description,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                          ),
-                          Text(
-                            item.totalFormatted,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF0F172A),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
+              child: _LineItemLabels(items: inv.lineItems),
             ),
             const SizedBox(height: 16),
             _InvoiceRowItem(label: 'Subtotal (ex-VAT)', value: inv.subtotalFormatted),

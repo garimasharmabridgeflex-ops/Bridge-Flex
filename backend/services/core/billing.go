@@ -850,14 +850,28 @@ func generateWeeklyInvoices(w http.ResponseWriter, r *http.Request) {
 
 		var lineItems []InvoiceLineItem
 		var tsIDs []string
+		shiftTitles := map[string]string{}
 
 		for _, ts := range timesheets {
 			tsIDs = append(tsIDs, ts.ID)
 			hours := float64(ts.BillableMinutes) / 60.0
 			ratePence := ts.NurseryHourlyRatePence
+			// Nursery-readable line: use the shift's title rather than its raw
+			// doc id (which means nothing to a nursery reading the invoice);
+			// fall back to the id only when the shift doc is gone.
+			label, ok := shiftTitles[ts.ShiftID]
+			if !ok {
+				if sDoc, sErr := db.Collection("shifts").Doc(ts.ShiftID).Get(ctx); sErr == nil {
+					label, _ = sDoc.Data()["title"].(string)
+				}
+				shiftTitles[ts.ShiftID] = label
+			}
+			if label == "" {
+				label = "Shift " + ts.ShiftID
+			}
 			lineItems = append(lineItems, InvoiceLineItem{
 				Type:        "staffing",
-				Description: fmt.Sprintf("Staffing: %.1f hrs @ £%.2f/hr (Shift %s)", hours, float64(ratePence)/100.0, ts.ShiftID),
+				Description: fmt.Sprintf("Staffing: %.1f hrs @ £%.2f/hr (%s)", hours, float64(ratePence)/100.0, label),
 				Quantity:    hours,
 				UnitPence:   ratePence,
 				TotalPence:  ts.TotalNurseryChargePence,

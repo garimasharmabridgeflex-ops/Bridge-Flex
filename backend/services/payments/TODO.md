@@ -50,6 +50,28 @@ All five values come from Secret Manager at deploy time (see `deploy.sh`):
 sets where Stripe returns the browser — `public/billing/checkout-return.html` on
 Firebase Hosting.
 
+### Sandbox status (November 2026)
+
+All four entry points are deployed to `kvision-503115` / `europe-west2` with the
+test-mode secrets mounted, and the Stripe dashboard endpoint
+`https://europe-west2-kvision-503115.cloudfunctions.net/StripeWebhook` is enabled
+for `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`,
+`customer.subscription.updated` and `customer.subscription.deleted`.
+
+Verifying after a redeploy, without touching production data:
+
+```bash
+# 1. Unsigned and correctly signed webhook probes (400 then 200).
+# 2. Sandbox checkout against the real Stripe test API + Firestore emulator:
+STRIPE_SECRET_KEY=sk_test_… STRIPE_PRICE_STANDARD=price_1UXccR… \
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8180 \
+  go test ./function -run TestSandbox -v
+```
+
+Going live is a config change only: create live prices, replace the five
+secrets, re-point the dashboard endpoint at the same URL with a live-mode
+signing secret, and set `APP_PUBLIC_URL` if the hosting domain changes.
+
 ## Deliberate boundaries
 
 - No card numbers, CVCs or bank details ever reach KFlex code or Firestore;

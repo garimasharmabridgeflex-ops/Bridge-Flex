@@ -89,6 +89,31 @@ class BillingRepository {
     return Invoice.fromJson(res['invoice'] as Map<String, dynamic>);
   }
 
+  /// Starts Stripe Checkout for a nursery plan. Returns `url: null` when the
+  /// nursery already has a live card subscription and the change was applied
+  /// to that subscription in place (Stripe prorates it) — no redirect needed.
+  Future<({String? url, bool updated})> createCheckoutSession({
+    required String planId,
+  }) async {
+    final res = await _api.post(
+      ApiFunction.createSubscriptionCheckout,
+      body: {'planId': planId},
+    );
+    final url = res['url'] as String?;
+    final updated = res['updated'] as bool? ?? false;
+    return (url: (url == null || url.isEmpty) ? null : url, updated: updated);
+  }
+
+  /// Opens Stripe's hosted billing portal (update card, receipts, cancel).
+  Future<String> createBillingPortalSession() async {
+    final res = await _api.post(ApiFunction.createBillingPortalSession);
+    final url = res['url'] as String?;
+    if (url == null || url.isEmpty) {
+      throw StateError('Stripe did not return a billing portal URL');
+    }
+    return url;
+  }
+
   Future<void> markInvoicePaid({
     required String invoiceId,
     required String paymentReference,

@@ -63,9 +63,15 @@ echo "==> starting functions-core (108 HTTP endpoints)..."
 services/core/run-local.sh &
 pids+=("$!")
 
-echo "==> starting functions-payments (CreatePayout stub, :8093)..."
-(cd services/payments && FUNCTION_TARGET=CreatePayout PORT=8093 go run ./cmd) &
-pids+=("$!")
+echo "==> starting functions-payments (4 HTTP endpoints, :8093-:8096)..."
+# Stripe billing locally: set STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET in this
+# shell (or run `stripe listen --forward-to 127.0.0.1:8096`) to exercise the
+# real Stripe test-mode API; without them the checkout endpoints return
+# PAYMENTS_NOT_CONFIGURED and the webhook rejects unsigned payloads.
+for entry in "CreatePayout:8093" "CreateSubscriptionCheckout:8094" "CreateBillingPortalSession:8095" "StripeWebhook:8096"; do
+  (cd services/payments && FUNCTION_TARGET="${entry%%:*}" PORT="${entry##*:}" go run ./cmd) &
+  pids+=("$!")
+done
 
 echo "==> starting functions-communication (8 HTTP endpoints)..."
 services/communication/run-local.sh &

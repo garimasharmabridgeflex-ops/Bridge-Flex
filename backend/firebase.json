@@ -255,6 +255,20 @@
         }
       },
       {
+        "source": "/CreateSubscriptionCheckout",
+        "function": {
+          "functionId": "CreateSubscriptionCheckout",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/CreateBillingPortalSession",
+        "function": {
+          "functionId": "CreateBillingPortalSession",
+          "region": "europe-west2"
+        }
+      },
+      {
         "source": "/ListPolicies",
         "function": {
           "functionId": "ListPolicies",

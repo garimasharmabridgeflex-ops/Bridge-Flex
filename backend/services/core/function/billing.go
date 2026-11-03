@@ -438,7 +438,10 @@ func getNurserySubscription(w http.ResponseWriter, r *http.Request) {
 		sub.Status = SubExpired
 		_, _ = db.Collection("subscriptions").Doc(targetNurseryID).Set(ctx,
 			map[string]any{"status": SubExpired, "updatedAt": now}, firestore.MergeAll)
-	} else if sub.Status == SubActive && !sub.CurrentPeriodEnd.IsZero() && now.After(sub.CurrentPeriodEnd) {
+	} else if sub.Status == SubActive && sub.StripeSubscriptionID == "" && !sub.CurrentPeriodEnd.IsZero() && now.After(sub.CurrentPeriodEnd) {
+		// Card subscriptions are skipped here on purpose: Stripe owns their
+		// status and period, and this clock-based fallback would report a
+		// paid membership as past_due during webhook lag.
 		if sub.CancelAtPeriodEnd {
 			sub.Status = SubCancelled
 		} else {
@@ -568,6 +571,14 @@ func cancelSubscription(w http.ResponseWriter, r *http.Request) {
 	sub, err := ensureTrialSubscription(ctx, db, uid)
 	if err != nil {
 		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+	// A card subscription is cancelled at Stripe, not here: flipping the
+	// local flags alone would leave the card still being charged every
+	// month. The hosted billing portal is the cancel path for those.
+	if sub.StripeSubscriptionID != "" {
+		httpjson.WriteError(w, http.StatusConflict, "USE_BILLING_PORTAL",
+			"This membership is paid by card — cancel it from Manage billing in the app")
 		return
 	}
 	now := time.Now().UTC()

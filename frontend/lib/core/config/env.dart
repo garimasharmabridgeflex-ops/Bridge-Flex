@@ -115,7 +115,13 @@ enum ApiFunction {
   listInvoices(8208),
   getInvoice(8209),
   markInvoicePaid(8210),
-  createLedgerEntry(8211);
+  createLedgerEntry(8211),
+
+  // Phase 10: card billing through Stripe (functions-payments). Checkout and
+  // the billing portal are Stripe-hosted pages, so no card data reaches the
+  // app; these two endpoints only mint the session URL.
+  createSubscriptionCheckout(8094),
+  createBillingPortalSession(8095);
 
   const ApiFunction(this.localPort);
   final int localPort;

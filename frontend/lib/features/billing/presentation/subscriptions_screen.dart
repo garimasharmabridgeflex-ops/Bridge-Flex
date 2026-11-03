@@ -3,22 +3,149 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme.dart';
+import '../../../core/api/api_exception.dart';
 import '../../profile/domain/profile.dart';
 import '../domain/billing_models.dart';
 import 'nursery_subscription_card.dart';
 
-class SubscriptionsScreen extends ConsumerWidget {
+class SubscriptionsScreen extends ConsumerStatefulWidget {
   const SubscriptionsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SubscriptionsScreen> createState() => _SubscriptionsScreenState();
+}
+
+class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
+    with WidgetsBindingObserver {
+  String? _busyPlanId;
+  bool _busyPortal = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Stripe Checkout/Portal open in an in-app browser tab. Coming back to the
+  /// app is the signal that the payment may have completed, so refresh the
+  /// membership — silently, since the status card keeps its last values.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(nurserySubscriptionProvider);
+    }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(backgroundColor: const Color(0xFF1B2A4A), content: Text(message)),
+    );
+  }
+
+  Future<void> _startCheckout(String planId) async {
+    if (_busyPlanId != null) return;
+    setState(() => _busyPlanId = planId);
+    try {
+      final result = await ref
+          .read(billingRepositoryProvider)
+          .createCheckoutSession(planId: planId);
+      if (!mounted) return;
+      if (result.url == null) {
+        // Existing card subscription retuned in place — no redirect needed.
+        ref.invalidate(nurserySubscriptionProvider);
+        _showMessage('Your membership has been updated.');
+        return;
+      }
+      final uri = Uri.parse(result.url!);
+      var opened = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+      if (!opened) {
+        opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+      if (!opened) {
+        _showMessage('Could not open the secure payment page.');
+      }
+    } on ApiException catch (e) {
+      _showMessage(e.code == 'PLAN_NOT_CONFIGURED' || e.code == 'PAYMENTS_NOT_CONFIGURED'
+          ? 'Card payments are being switched on — please try again shortly.'
+          : e.message);
+    } catch (_) {
+      _showMessage('Could not start checkout. Please try again.');
+    } finally {
+      if (mounted) setState(() => _busyPlanId = null);
+    }
+  }
+
+  Future<void> _openPortal() async {
+    if (_busyPortal) return;
+    setState(() => _busyPortal = true);
+    try {
+      final url = await ref.read(billingRepositoryProvider).createBillingPortalSession();
+      if (!mounted) return;
+      final uri = Uri.parse(url);
+      var opened = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+      if (!opened) {
+        opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+      if (!opened) _showMessage('Could not open the billing portal.');
+    } on ApiException catch (e) {
+      _showMessage(e.message);
+    } catch (_) {
+      _showMessage('Could not open the billing portal. Please try again.');
+    } finally {
+      if (mounted) setState(() => _busyPortal = false);
+    }
+  }
+
+  /// "Manage billing" opens Stripe's hosted portal for card-paying nurseries:
+  /// update the card, download receipts, or cancel. Nothing about the card is
+  /// ever handled in the app.
+  Widget _manageBillingButton() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: _busyPortal ? null : _openPortal,
+          icon: _busyPortal
+              ? const SizedBox(
+                  height: 14,
+                  width: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.credit_card_rounded, size: 16),
+          label: const Text(
+            'Manage billing',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF1B2A4A),
+            side: const BorderSide(color: Color(0xFFCBD5E1)),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final profile = ref.watch(ownProfileProvider).valueOrNull;
     final isNursery = profile?.role == UserRole.nursery;
     final plansAsync = ref.watch(availablePlansProvider);
     final subAsync = isNursery ? ref.watch(nurserySubscriptionProvider) : null;
+    final currentPlanId = subAsync?.valueOrNull?.subscription.planId ?? '';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -99,13 +226,60 @@ class SubscriptionsScreen extends ConsumerWidget {
                               : 'Your nursery is currently enjoying full access to the Bridge-Flex marketplace. Staffing hours worked are billed separately.',
                         );
                       }
-                      return _StatusCard(
-                        title: sub.planName,
-                        subtitle: 'Renews ${DateFormat('d MMMM yyyy').format(sub.currentPeriodEnd)}',
-                        badge: 'Active',
-                        badgeColor: const Color(0xFF10B981),
-                        icon: Icons.verified_rounded,
-                        details: 'Payment settled via BACS / Bank Transfer on receipt of weekly VAT invoice.',
+                      if (sub.isPastDue) {
+                        return Column(
+                          children: [
+                            const _StatusCard(
+                              title: 'Payment failed',
+                              subtitle: 'Your card was declined',
+                              badge: 'Past due',
+                              badgeColor: Color(0xFFEF4444),
+                              icon: Icons.credit_card_off_rounded,
+                              details:
+                                  'Update your card to keep posting shifts. Stripe retries the payment automatically, and your membership stays paused until it succeeds.',
+                            ),
+                            _manageBillingButton(),
+                          ],
+                        );
+                      }
+
+                      if (sub.status == 'cancelled' || sub.status == 'expired') {
+                        return Column(
+                          children: [
+                            _StatusCard(
+                              title: sub.planName,
+                              subtitle: 'Membership ended',
+                              badge: 'Ended',
+                              badgeColor: const Color(0xFF64748B),
+                              icon: Icons.timer_off_outlined,
+                              details:
+                                  'Choose a plan below to start posting shifts again. Your invoices and completed bookings are unaffected.',
+                            ),
+                            if (sub.paidByCard) _manageBillingButton(),
+                          ],
+                        );
+                      }
+
+                      return Column(
+                        children: [
+                          _StatusCard(
+                            title: sub.planName,
+                            subtitle: sub.cancelAtPeriodEnd
+                                ? 'Ends ${DateFormat('d MMMM yyyy').format(sub.currentPeriodEnd)}'
+                                : 'Renews ${DateFormat('d MMMM yyyy').format(sub.currentPeriodEnd)}',
+                            badge: sub.cancelAtPeriodEnd ? 'Cancelling' : 'Active',
+                            badgeColor: sub.cancelAtPeriodEnd
+                                ? const Color(0xFFF59E0B)
+                                : const Color(0xFF10B981),
+                            icon: sub.cancelAtPeriodEnd
+                                ? Icons.event_busy_rounded
+                                : Icons.verified_rounded,
+                            details: sub.paidByCard
+                                ? 'Paid by card through Stripe. Update your card or cancel any time in Manage billing — staffing hours are still billed separately on weekly invoices.'
+                                : 'Payment settled via BACS / Bank Transfer on receipt of weekly VAT invoice.',
+                          ),
+                          if (sub.paidByCard) _manageBillingButton(),
+                        ],
                       );
                     },
                   ) ??
@@ -160,16 +334,29 @@ class SubscriptionsScreen extends ConsumerWidget {
                     child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF1B2A4A)),
                   ),
                 ),
-                error: (_, _) => _FallbackPlansList(isNursery: isNursery),
+                error: (_, _) => _FallbackPlansList(
+                  isNursery: isNursery,
+                  currentPlanId: currentPlanId,
+                  busyPlanId: _busyPlanId,
+                  onSelect: _startCheckout,
+                ),
                 data: (plans) {
                   if (plans.isEmpty) {
-                    return _FallbackPlansList(isNursery: isNursery);
+                    return _FallbackPlansList(
+                      isNursery: isNursery,
+                      currentPlanId: currentPlanId,
+                      busyPlanId: _busyPlanId,
+                      onSelect: _startCheckout,
+                    );
                   }
                   return Column(
                     children: plans.map((plan) {
                       return _PlanCard(
                         plan: plan,
                         isNursery: isNursery,
+                        isCurrent: plan.id == currentPlanId,
+                        busy: _busyPlanId == plan.id,
+                        onSelect: () => _startCheckout(plan.id),
                       );
                     }).toList(),
                   );
@@ -213,7 +400,7 @@ class SubscriptionsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      'All plans and staffing hours are invoiced on weekly cycles. Official sequential VAT invoices (INV-YYYY-XXXX) are downloadable in PDF and settled via BACS / Bank Transfer directly to Bridge-Flex Client Escrow.',
+                      'Memberships paid by card renew automatically through Stripe — no card details are ever stored by Bridge-Flex. Staffing hours are invoiced separately on weekly cycles as official sequential VAT invoices (INV-YYYY-XXXX), downloadable in PDF and settled by card or BACS / Bank Transfer.',
                       style: TextStyle(
                         fontSize: 12.5,
                         color: Color(0xFF475569),
@@ -398,10 +585,19 @@ class _StatusCard extends StatelessWidget {
 }
 
 class _PlanCard extends StatelessWidget {
-  const _PlanCard({required this.plan, required this.isNursery});
+  const _PlanCard({
+    required this.plan,
+    required this.isNursery,
+    required this.onSelect,
+    this.isCurrent = false,
+    this.busy = false,
+  });
 
   final Plan plan;
   final bool isNursery;
+  final VoidCallback onSelect;
+  final bool isCurrent;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -514,29 +710,43 @@ class _PlanCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    backgroundColor: const Color(0xFF1B2A4A),
-                    content: Text(
-                      isNursery
-                          ? 'To activate ${plan.name}, your account representative will contact your billing email with bank transfer details.'
-                          : 'This plan is for nurseries. Staff practitioners enjoy 100% free lifetime access.',
-                    ),
-                  ),
-                );
-              },
+              onPressed: !isNursery
+                  ? () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          backgroundColor: Color(0xFF1B2A4A),
+                          content: Text(
+                            'This plan is for nurseries. Staff practitioners enjoy 100% free lifetime access.',
+                          ),
+                        ),
+                      );
+                    }
+                  : (busy || isCurrent || plan.billingInterval == 'none' ? null : onSelect),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1B2A4A),
                 foregroundColor: Colors.white,
+                disabledBackgroundColor: const Color(0xFFE2E8F0),
+                disabledForegroundColor: const Color(0xFF64748B),
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.pill)),
               ),
-              child: Text(
-                isNursery ? 'Select ${plan.name}' : 'Learn More',
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-              ),
+              child: busy
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : Text(
+                      !isNursery
+                          ? 'Learn More'
+                          : isCurrent
+                              ? 'Current plan'
+                              : plan.billingInterval == 'none'
+                                  ? 'Included with approval'
+                                  : 'Continue to secure checkout',
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                    ),
             ),
           ),
         ],
@@ -546,9 +756,17 @@ class _PlanCard extends StatelessWidget {
 }
 
 class _FallbackPlansList extends StatelessWidget {
-  const _FallbackPlansList({required this.isNursery});
+  const _FallbackPlansList({
+    required this.isNursery,
+    required this.currentPlanId,
+    required this.busyPlanId,
+    required this.onSelect,
+  });
 
   final bool isNursery;
+  final String currentPlanId;
+  final String? busyPlanId;
+  final void Function(String planId) onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -618,7 +836,15 @@ class _FallbackPlansList extends StatelessWidget {
     ];
 
     return Column(
-      children: defaultSeedPlans.map((p) => _PlanCard(plan: p, isNursery: isNursery)).toList(),
+      children: defaultSeedPlans
+          .map((p) => _PlanCard(
+                plan: p,
+                isNursery: isNursery,
+                isCurrent: p.id == currentPlanId,
+                busy: busyPlanId == p.id,
+                onSelect: () => onSelect(p.id),
+              ))
+          .toList(),
     );
   }
 }

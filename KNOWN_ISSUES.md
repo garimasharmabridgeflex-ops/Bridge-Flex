@@ -10,7 +10,7 @@ Current state as of this handover. Production runs on Firebase project `kvision-
 
 - **No custom/branded domain.** The download site and API both run on Firebase's default domain (`kvision-503115.web.app` / `.firebaseapp.com`), which is permanently tied to the project ID. A branded domain requires purchasing one and adding it via Firebase Hosting's custom-domain feature.## Payments
 
-- **No payment provider is integrated yet.** This is deliberate for the current release: nurseries request a plan, an administrator assigns it in the operations console, weekly invoices are generated from approved timesheets and settled by bank transfer. No card details are collected anywhere. `CreatePayout` remains a stub that returns HTTP 501, and `backend/services/payments/TODO.md` is the place to start when Stripe (or another provider) is added.
+- **Card payments run in Stripe sandbox (test mode).** Nursery memberships can now be paid by card: `CreateSubscriptionCheckout` opens Stripe-hosted Checkout for Standard/Premium/Pay As You Go, `StripeWebhook` keeps `subscriptions/{nurseryId}` in sync, and `CreateBillingPortalSession` gives nurseries self-service card updates, receipts and cancellation. The keys in Secret Manager are `sk_test_…`/`whsec_…` and the price IDs are test-mode prices, so **no real money moves** — switching to live requires creating live prices, updating the five Secret Manager secrets, and re-pointing the Stripe webhook endpoint. The bank-transfer/admin-assigned path still works unchanged for nurseries that do not pay by card. `CreatePayout` remains a stub that returns HTTP 501; practitioner payouts stay on internal PAYE payroll, not Stripe Connect (see `backend/services/payments/TODO.md`).
 
 ## Product gaps
 

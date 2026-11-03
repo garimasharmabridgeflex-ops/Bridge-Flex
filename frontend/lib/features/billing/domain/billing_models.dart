@@ -69,6 +69,9 @@ class NurserySubscription {
     this.cancelAtPeriodEnd = false,
     this.paymentMethod = 'bank_transfer',
     this.assignedByAdmin = false,
+    this.stripeCustomerId = '',
+    this.stripeSubscriptionId = '',
+    this.lastPaymentAt,
   });
 
   final String nurseryId;
@@ -83,9 +86,17 @@ class NurserySubscription {
   final String paymentMethod;
   final bool assignedByAdmin;
 
+  /// Set only for nurseries that pay by card through Stripe. Empty means the
+  /// membership is settled by BACS / admin assignment instead.
+  final String stripeCustomerId;
+  final String stripeSubscriptionId;
+  final DateTime? lastPaymentAt;
+
   bool get isTrialing => status == 'trialing';
   bool get isActive => status == 'active';
-  bool get isExpired => status == 'expired';
+  bool get isExpired => status == 'expired' || status == 'cancelled';
+  bool get isPastDue => status == 'past_due';
+  bool get paidByCard => stripeSubscriptionId.isNotEmpty || paymentMethod == 'stripe';
 
   factory NurserySubscription.fromJson(Map<String, dynamic> json) {
     DateTime parseDate(dynamic v) {
@@ -113,6 +124,9 @@ class NurserySubscription {
       cancelAtPeriodEnd: json['cancelAtPeriodEnd'] as bool? ?? false,
       paymentMethod: json['paymentMethod'] as String? ?? 'bank_transfer',
       assignedByAdmin: json['assignedByAdmin'] as bool? ?? false,
+      stripeCustomerId: json['stripeCustomerId'] as String? ?? '',
+      stripeSubscriptionId: json['stripeSubscriptionId'] as String? ?? '',
+      lastPaymentAt: parseDateOpt(json['lastPaymentAt']),
     );
   }
 }

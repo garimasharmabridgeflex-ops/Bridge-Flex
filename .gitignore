@@ -12,3 +12,9 @@
 # Firebase CLI cache
 .firebase/
 *-debug.log
+
+# Local API keys and vendor setup docs — the Stripe secret key and webhook
+# signing secret live in Secret Manager, never in git.
+keys.txt
+stripe setup.pdf
+

@@ -235,8 +235,58 @@ bugs, see [`KNOWN_ISSUES.md`](../KNOWN_ISSUES.md) at the repo root.
   minimum shift notice** are still open product questions (ARCHITECTURE.md v2 §8) — nothing here
   silently decided them; `acceptShift`'s DBS gate and `matchNewShift`'s matching logic are both
   placeholders pending those answers.
-- **Payments is a stub** (`services/payments/TODO.md`) — no Stripe dependency, no real charge/
-  payout logic, by design (ARCHITECTURE.md v2 §5).
+- **Card payments need sandbox credentials locally** — `services/payments` speaks to Stripe, but
+  only when `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` are exported (or forwarded with
+  `stripe listen`). Without them the checkout endpoints answer `PAYMENTS_NOT_CONFIGURED` and the
+  webhook rejects every payload. See "Card payments (Stripe)" below.
+
+## Card payments (Stripe)
+
+`services/payments` bills nursery memberships through Stripe-hosted Checkout, so no card data
+reaches the app or the database. Four HTTP functions:
+
+| Function | Purpose |
+| --- | --- |
+| `CreateSubscriptionCheckout` | Starts a Checkout Session for Standard (£199/mo), Premium (£299/mo) or Pay As You Go (£9.99 one-off). Switching plans on an existing card subscription retunes that subscription in place (Stripe prorates) instead of creating a second one. |
+| `CreateBillingPortalSession` | Opens Stripe's hosted portal to update the card, download receipts or cancel. |
+| `StripeWebhook` | Signature-verified (`Stripe-Signature`) handler for `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, `customer.subscription.deleted`. Writes `subscriptions/{nurseryId}` and in-app notifications. |
+| `CreatePayout` | Unchanged legacy stub (501). |
+
+Credentials live in Secret Manager, never in the repo. One-time setup (already done for
+`kvision-503115`):
+
+```bash
+gcloud services enable secretmanager.googleapis.com --project=kvision-503115
+for pair in "stripe-secret-key:sk_test_..." "stripe-webhook-secret:whsec_..." \
+            "stripe-price-standard:price_..." "stripe-price-premium:price_..." \
+            "stripe-price-payg:price_..."; do
+  printf '%s' "${pair#*:}" | gcloud secrets create "${pair%%:*}" --data-file=- --project=kvision-503115
+done
+for s in stripe-secret-key stripe-webhook-secret stripe-price-standard stripe-price-premium stripe-price-payg; do
+  gcloud secrets add-iam-policy-binding "$s" --project=kvision-503115 \
+    --member="serviceAccount:288297326448-compute@developer.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor"
+done
+```
+
+Deploy with `PROJECT_ID=kvision-503115 ./services/payments/deploy.sh` — it mounts all five secrets
+with `--set-secrets`. Stripe's endpoint is
+`https://europe-west2-kvision-503115.cloudfunctions.net/StripeWebhook`.
+
+A plan document may override its Stripe price with a `stripePriceId` field (used once live-mode
+prices replace the test-mode ones). When a nursery has a `stripeSubscriptionId`, Stripe is the
+source of truth for status and period: core's clock-based trial/period fallbacks skip those rows,
+and core's `CancelSubscription` answers `USE_BILLING_PORTAL` rather than pretending to cancel a
+card that would still be charged.
+
+Verification: `go test ./function` runs the offline signature/status-mapping tests. The sandbox
+integration test runs only when credentials and an emulator are present:
+
+```bash
+STRIPE_SECRET_KEY=sk_test_... STRIPE_PRICE_STANDARD=price_... \
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8180 GCLOUD_PROJECT=demo-bridgeflex \
+  (cd services/payments && go test ./function -run TestSandbox -v)
+```
 
 ## Going live
 
@@ -269,4 +319,4 @@ To push a code change to the existing production project:
    own URL, unlike the emulator's one-host-many-ports scheme).
 
 See [`KNOWN_ISSUES.md`](../KNOWN_ISSUES.md) at the repo root for what's still stubbed, missing, or
-otherwise not production-complete (payments, iOS distribution, custom domain, etc.).
+otherwise not production-complete (iOS distribution, custom domain, etc.).

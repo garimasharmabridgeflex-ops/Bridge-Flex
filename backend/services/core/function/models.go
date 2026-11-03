@@ -757,7 +757,16 @@ type NurserySubscription struct {
 
 	// TrialReminderSentAt prevents duplicate "trial ending" notifications.
 	TrialReminderSentAt *time.Time `firestore:"trialReminderSentAt,omitempty" json:"trialReminderSentAt,omitempty"`
-	UpdatedAt           time.Time  `firestore:"updatedAt" json:"updatedAt"`
+	// Stripe fields are set only for nurseries that pay by card through
+	// functions-payments. When StripeSubscriptionID is present, Stripe is the
+	// source of truth for status and billing period; the bank-transfer flow
+	// (admin-assigned plans) leaves these empty.
+	StripeCustomerID     string     `firestore:"stripeCustomerId,omitempty" json:"stripeCustomerId,omitempty"`
+	StripeSubscriptionID string     `firestore:"stripeSubscriptionId,omitempty" json:"stripeSubscriptionId,omitempty"`
+	StripePriceID        string     `firestore:"stripePriceId,omitempty" json:"stripePriceId,omitempty"`
+	LastPaymentAt        *time.Time `firestore:"lastPaymentAt,omitempty" json:"lastPaymentAt,omitempty"`
+	LastPaymentPence     int64      `firestore:"lastPaymentPence,omitempty" json:"lastPaymentPence,omitempty"`
+	UpdatedAt            time.Time  `firestore:"updatedAt" json:"updatedAt"`
 }
 
 // InvoiceStatus tracks whether an invoice is issued, settled or voided (Phase 9).

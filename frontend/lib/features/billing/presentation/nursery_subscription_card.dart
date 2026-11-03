@@ -183,14 +183,23 @@ class NurserySubscriptionCard extends ConsumerWidget {
                     Text(sub.planName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                     const SizedBox(height: 2),
                     Text(
-                      'Membership active · Renews ${sub.currentPeriodEnd.day}/${sub.currentPeriodEnd.month}/${sub.currentPeriodEnd.year}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      sub.isPastDue
+                          ? 'Payment failed · Update your card to continue'
+                          : sub.cancelAtPeriodEnd
+                              ? 'Ends ${sub.currentPeriodEnd.day}/${sub.currentPeriodEnd.month}/${sub.currentPeriodEnd.year} · Not renewing'
+                              : 'Membership active · Renews ${sub.currentPeriodEnd.day}/${sub.currentPeriodEnd.month}/${sub.currentPeriodEnd.year}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: sub.isPastDue ? AppColors.coral : Colors.grey,
+                      ),
                     ),
                   ],
                 ),
                 OutlinedButton(
-                  onPressed: () => context.push('/billing/invoices'),
-                  child: const Text('Invoices'),
+                  onPressed: () => context.push(
+                    sub.isPastDue ? '/billing/subscriptions' : '/billing/invoices',
+                  ),
+                  child: Text(sub.isPastDue ? 'Fix card' : 'Invoices'),
                 ),
               ],
             ),

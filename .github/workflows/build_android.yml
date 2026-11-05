@@ -1,6 +1,10 @@
 name: Build Android App
 
-# Manual, or on a v-prefixed tag — same policy as the iOS release workflow.
+# Manual only. A v-prefixed tag now fires the iOS release workflow alone, so a
+# release tag never drags an Android build (and its Alert-style failure, since
+# the keystore secrets are not configured) along with it. Run this workflow
+# from the Actions tab when an Android build is actually wanted.
+#
 # Every run publishes to the live download site, so it should be a deliberate
 # act rather than a side effect of pushing a commit.
 on:
@@ -11,8 +15,6 @@ on:
         type: boolean
         required: false
         default: true
-  push:
-    tags: [ 'v*' ]
 
 permissions:
   contents: read

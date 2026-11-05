@@ -136,7 +136,46 @@ jobs:
           # Non-interactive output; Fastlane otherwise assumes a TTY.
           FASTLANE_SKIP_UPDATE_CHECK: 'true'
           FASTLANE_HIDE_CHANGELOG: 'true'
-        run: fastlane ci_testflight
+        # The lane's output is captured and re-emitted as ::error:: lines on
+        # failure. Workflow logs need a GitHub login to download, but check-run
+        # annotations are readable without one, so this is what makes a signing
+        # failure diagnosable from outside the browser. It also prints the
+        # toolchain versions, because a lane that dies in five seconds is
+        # failing before it ever reaches Apple.
+        run: |
+          set -o pipefail
+          ruby --version || true
+          which fastlane && fastlane --version || { echo "fastlane not on PATH — installing"; gem install fastlane --no-document; }
+          # Validates the key *shape* only, never its contents. A malformed
+          # APPSTORE_API_KEY_P8 (raw .p8 pasted instead of base64, or a paste
+          # truncated at a wrapped line) makes app_store_connect_api_key raise
+          # immediately, which is exactly the kind of sub-ten-second failure
+          # this job has been hitting.
+          ruby -e 'require "base64"; require "openssl"; OpenSSL::PKey::RSA.new(Base64.decode64(ENV.fetch("APPSTORE_API_KEY_P8")))' \
+            && echo "::notice::APPSTORE_API_KEY_P8 decodes to a valid RSA private key" \
+            || echo "::error::APPSTORE_API_KEY_P8 is not base64 of a valid .p8 RSA private key"
+          # Emitted as annotations rather than plain output so the signing state
+          # is readable on the run summary without downloading the log.
+          [ -n "$DIST_CERT_P12" ] && echo "::notice::DIST_CERT_P12 is set" || echo "::warning::DIST_CERT_P12 is empty — Apple will be asked for a new certificate"
+          [ -n "$DIST_CERT_PASSWORD" ] && echo "::notice::DIST_CERT_PASSWORD is set" || echo "::warning::DIST_CERT_PASSWORD is empty"
+          # GitHub runs this step under `bash -e`, which would abort on the
+          # failing pipeline before the annotations below could be emitted.
+          set +e
+          fastlane ci_testflight 2>&1 | tee /tmp/fastlane.log
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "::error::fastlane ci_testflight exited $status. Last lines follow:"
+            # One annotation per line: a multi-line ::error:: payload is
+            # truncated to its first line, which is exactly the part that
+            # usually says nothing useful.
+            tail -n 30 /tmp/fastlane.log | while IFS= read -r line; do
+              line="${line//%/%25}"
+              line="${line//$'\r'/}"
+              [ -n "$line" ] && echo "::error::${line}"
+            done
+            exit "$status"
+          fi
 
       - name: Upload exported distribution certificate (one-time setup)
         # Only produced when a new certificate was created AND

@@ -217,8 +217,53 @@ records the message as `skipped_no_transport` in `sentEmails`, and the platform 
 with in-app notifications only. Templates live in `services/communication/email.go`; the send
 path is `services/communication/smtp.go`.
 
+**No server access?** The console can hold the mailbox instead: *Settings → Mailer account*
+(SMTP host, port, username, password, from address). It is stored in `platformConfig/mail`;
+environment variables still take precedence, so a project with secrets configured can leave the
+panel empty. The password is write-only — it is never returned to the browser. *Send test email*
+calls `SendTestEmail`, which sends synchronously and reports the SMTP error verbatim, so a wrong
+password or a blocked port shows up in the console instead of silently bouncing.
+
 Emails sent today: nursery approved/rejected, practitioner verification approved/rejected,
-invoice generated, membership updated, trial ending (owner brief §12).
+invoice generated (with a Stripe payment link when the charge was mirrored), membership updated,
+trial ending, and one-off admin messages from the console.
+
+### Stripe charges (optional)
+
+Invoices are raised, emailed and reconciled by the platform itself. To also collect them by card,
+set a Stripe secret key on `functions-core` (never in Firestore — a console field would let a
+compromised admin session read a live key back out):
+
+```bash
+gcloud functions deploy GenerateWeeklyInvoices --gen2 --region=europe-west2 \
+  --project=YOUR_PROJECT_ID --source=services/core --entry-point=GenerateWeeklyInvoices \
+  --trigger-http --allow-unauthenticated \
+  --update-secrets=STRIPE_SECRET_KEY=stripe-secret-key:latest
+```
+
+Do the same for `RunInvoiceGeneration` and `SchedulerGenerateInvoices` (the two other entry points
+that create invoices), and for `RunStripeSync` / `SchedulerStripeSync` (payment reconciliation).
+With the key present, each invoice is mirrored into Stripe as a customer + invoice items, finalised
+and emailed by Stripe as well; the console then shows its Stripe status and a link to the hosted
+invoice. `SchedulerStripeSync` runs hourly and flips an invoice to **paid** when Stripe reports it
+paid, with the reference `stripe:<invoice id>`. Bank transfers that never touch Stripe stay on
+**Mark paid** in the console — the manual half of reconciliation.
+
+Without the key nothing changes: invoices are raised, emailed as PDFs and settled by bank transfer.
+
+Two rules keep this honest, both learned from a real invoice that showed as paid seconds after it
+was created:
+
+- Every mirrored invoice is created with `currency=gbp` and each line is attached to the draft with
+  `invoice=<id>`. A GBP item on a currency-defaulted invoice is dropped by Stripe, leaving a £0
+  invoice.
+- Stripe settles a £0 invoice the moment it is finalised and fires `invoice.paid`. The platform
+  therefore voids an empty invoice instead of finalising it, and both the webhook and
+  `RunStripeSync` ignore any invoice whose total is zero.
+
+If an invoice is left without a Stripe id (Stripe was unreachable, or the lines were rejected), open
+it in the console and press **Create Stripe invoice** (`PushInvoiceToStripe`). That re-runs the
+mirror and re-sends Stripe's email, so nothing has to be credited and re-raised by hand.
 
 ## 9. Create an admin account
 

@@ -174,6 +174,7 @@ type stripeInvoice struct {
 	Status       string `json:"status"`
 	Customer     string `json:"customer"`
 	Subscription string `json:"subscription"`
+	Total        int64  `json:"total"`
 	AmountPaid   int64  `json:"amount_paid"`
 	AmountDue    int64  `json:"amount_due"`
 	Currency     string `json:"currency"`

@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/config/env.dart';
 import '../domain/shift.dart';
+import '../domain/shift_rate_card.dart';
 
 class ShiftRepository {
   ShiftRepository(this._api, [FirebaseFirestore? firestore])
@@ -21,6 +22,15 @@ class ShiftRepository {
         (entry['shift'] as Map).cast<String, dynamic>(),
       );
     }).toList();
+  }
+
+  /// The active platform rate card. Used by the posting flow to quote the
+  /// staffing charge for the chosen qualification band — the nursery never
+  /// sets its own rate, and the backend re-derives both rates when the shift
+  /// is created.
+  Future<ShiftRateCard> fetchActiveRateCard() async {
+    final res = await _api.post(ApiFunction.getActiveRateCard);
+    return ShiftRateCard.fromJson(res);
   }
 
   /// Any signed-in user may read open shifts (§3). Plain HTTP rather than a

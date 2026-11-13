@@ -19,7 +19,8 @@ type Event struct {
 	Error     string         `firestore:"error,omitempty" json:"error,omitempty"`
 }
 
-// WriteTx enqueues an outbox event within a Firestore transaction.
+// WriteTx enqueues an outbox event within a Firestore transaction, or writes
+// directly to Firestore if tx is nil.
 func WriteTx(tx *firestore.Transaction, db *firestore.Client, event Event) error {
 	if event.CreatedAt.IsZero() {
 		event.CreatedAt = time.Now()
@@ -34,7 +35,11 @@ func WriteTx(tx *firestore.Transaction, db *firestore.Client, event Event) error
 		ref = db.Collection("outbox").NewDoc()
 		event.ID = ref.ID
 	}
-	return tx.Set(ref, event)
+	if tx != nil {
+		return tx.Set(ref, event)
+	}
+	_, err := ref.Set(context.Background(), event)
+	return err
 }
 
 // MarkPublished marks an outbox item as published.

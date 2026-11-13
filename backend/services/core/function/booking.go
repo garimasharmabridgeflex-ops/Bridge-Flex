@@ -753,13 +753,19 @@ func decideApplicant(w http.ResponseWriter, r *http.Request, approve bool) {
 		_ = notifyInApp(ctx, db, req.StaffID, "shift_application_approved",
 			"Application approved!",
 			fmt.Sprintf("Your application for '%s' was approved! You are booked for this shift.", shiftTitle),
-			map[string]any{"shiftId": req.ShiftID, "nurseryId": nurseryID},
+			map[string]any{"shiftId": req.ShiftID, "nurseryId": nurseryID, "link": "/shifts/" + req.ShiftID},
 		)
+		// A booking is the one piece of news a practitioner plans their week
+		// around, so it is emailed too rather than only pushed.
+		sendTransactionalEmail(ctx, db, req.StaffID, "shift_confirmed", map[string]string{
+			"shiftTitle": shiftTitle,
+			"appUrl":     appHomeURL,
+		}, false)
 	} else {
 		_ = notifyInApp(ctx, db, req.StaffID, "shift_application_declined",
 			"Application update",
 			fmt.Sprintf("Your application for '%s' was declined.", shiftTitle),
-			map[string]any{"shiftId": req.ShiftID, "nurseryId": nurseryID},
+			map[string]any{"shiftId": req.ShiftID, "nurseryId": nurseryID, "link": "/shifts/" + req.ShiftID},
 		)
 	}
 	if err := publish(ctx, topicShiftDecided, shiftApplicationDecidedMessage{

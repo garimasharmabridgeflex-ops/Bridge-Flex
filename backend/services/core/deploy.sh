@@ -34,6 +34,23 @@ deploy_http() {
     --trigger-http --allow-unauthenticated --quiet
 }
 
+# Invoice generation and payment reconciliation call the Stripe API directly
+# (see function/stripe.go), so those entry points need the same secret
+# functions-payments mounts. --set-secrets *replaces* the binding, which is
+# why every redeploy of these five must go through this helper rather than
+# bare deploy_http — otherwise the key silently disappears and invoices stop
+# mirroring to Stripe while everything else keeps working.
+deploy_http_stripe() {
+  local name="$1"
+  echo "==> functions-core: deploying $name (HTTP, Stripe secret mounted)"
+  gcloud functions deploy "$name" \
+    --gen2 --runtime="$GO_RUNTIME" --region="$REGION" --project="$PROJECT_ID" \
+    --source=. --entry-point="$name" \
+    --trigger-http --allow-unauthenticated \
+    --set-secrets="STRIPE_SECRET_KEY=stripe-secret-key:latest" \
+    --quiet
+}
+
 deploy_firestore_trigger() {
   local name="$1" event_type="$2" path_pattern="$3"
   echo "==> functions-core: deploying $name (Firestore $event_type on $path_pattern)"
@@ -156,7 +173,7 @@ deploy_http UpsertPlan
 
 deploy_http GetNurserySubscription
 deploy_http AssignNurseryPlan
-deploy_http GenerateWeeklyInvoices
+deploy_http_stripe GenerateWeeklyInvoices
 deploy_http ListInvoices
 deploy_http GetInvoice
 deploy_http MarkInvoicePaid
@@ -193,6 +210,8 @@ deploy_http SchedulerTrialReminders
 deploy_http SchedulerRecheckReminders
 deploy_http RunTrialReminders
 deploy_http RunRecheckReminders
+deploy_http_stripe SchedulerGenerateInvoices
+deploy_http_stripe SchedulerStripeSync
 
 # Invoices, discount codes and admin broadcast (owner brief §2 "downloadable
 # invoices", §10 "create discount codes" / "send notifications")
@@ -201,6 +220,20 @@ deploy_http CreateDiscountCode
 deploy_http ListDiscountCodes
 deploy_http SetDiscountCodeActive
 deploy_http SendAdminNotification
+
+# Operations console: plan mix, the mailer account, invoicing automation and
+# Stripe reconciliation (see function/adminconsole.go).
+deploy_http ListNurserySubscriptions
+deploy_http GetMailSettings
+deploy_http UpdateMailSettings
+deploy_http GetAutomationSettings
+deploy_http UpdateAutomationSettings
+deploy_http GetStripeStatus
+deploy_http SendUserEmail
+deploy_http SendInvoiceEmail
+deploy_http_stripe RunInvoiceGeneration
+deploy_http_stripe PushInvoiceToStripe
+deploy_http_stripe RunStripeSync
 
 # Eventarc triggers — same 4 functions covered by triggers_test.go.
 deploy_auth_trigger InitProfileOnSignUp
@@ -237,5 +270,11 @@ ensure_scheduler_job kf-heartbeat "*/15 * * * *" SchedulerHeartbeat
 ensure_scheduler_job kf-trial-reminders "0 8 * * *" SchedulerTrialReminders
 ensure_scheduler_job kf-recheck-reminders "15 8 * * *" SchedulerRecheckReminders
 ensure_scheduler_job kf-timesheet-escalation "5 * * * *" EscalateUnresponsiveTimesheets
+# Invoicing runs once a day and decides for itself whether today is due
+# (daily vs weekly is a console setting), so one job covers both cadences.
+ensure_scheduler_job kf-invoice-generation "0 6 * * *" SchedulerGenerateInvoices
+# Stripe payment reconciliation: hourly is frequent enough to look live and
+# cheap enough to ignore.
+ensure_scheduler_job kf-stripe-sync "20 * * * *" SchedulerStripeSync
 
 echo "functions-core: all HTTP functions, triggers and scheduler jobs deployed."

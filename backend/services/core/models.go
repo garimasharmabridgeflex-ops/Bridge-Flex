@@ -813,8 +813,17 @@ type Invoice struct {
 	PaidAt           *time.Time        `firestore:"paidAt,omitempty" json:"paidAt,omitempty"`
 	PaymentReference string            `firestore:"paymentReference,omitempty" json:"paymentReference,omitempty"`
 	Notes            string            `firestore:"notes,omitempty" json:"notes,omitempty"`
-	CreatedAt        time.Time         `firestore:"createdAt" json:"createdAt"`
-	UpdatedAt        time.Time         `firestore:"updatedAt" json:"updatedAt"`
+
+	// Stripe mirror. Set only when functions-core has STRIPE_SECRET_KEY and
+	// the charge was pushed to Stripe; a bank-transfer invoice leaves these
+	// empty and stays reconcilable by hand.
+	StripeInvoiceID     string `firestore:"stripeInvoiceId,omitempty" json:"stripeInvoiceId,omitempty"`
+	StripeInvoiceStatus string `firestore:"stripeInvoiceStatus,omitempty" json:"stripeInvoiceStatus,omitempty"`
+	StripeHostedURL     string `firestore:"stripeHostedUrl,omitempty" json:"stripeHostedUrl,omitempty"`
+	StripePDFURL        string `firestore:"stripePdfUrl,omitempty" json:"stripePdfUrl,omitempty"`
+
+	CreatedAt time.Time `firestore:"createdAt" json:"createdAt"`
+	UpdatedAt time.Time `firestore:"updatedAt" json:"updatedAt"`
 }
 
 // LedgerEntry records discounts, credits and refunds without money movement (Phase 9).

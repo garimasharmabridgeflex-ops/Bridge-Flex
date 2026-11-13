@@ -20,6 +20,12 @@ func init() {
 }
 
 // DefaultRateCard provides safe fallback pricing in pence (Decisions 2 & 3).
+// Pay rates follow the owner's October 2026 brief (§3): £16.00 per hour for
+// unqualified practitioners and £17.00 for qualified (Level 3+), both gross and
+// inclusive of rolled-up holiday pay, which CalculateHolidayPayBreakdown splits
+// into basic + holiday. Nursery charges keep the margin the card has always
+// carried (£3.50–£5.00/hour) because the brief leaves staffing charges open.
+// These values are only a fallback: the active Firestore rate card wins.
 func DefaultRateCard() RateCard {
 	return RateCard{
 		ID:        "default-v1",
@@ -29,20 +35,20 @@ func DefaultRateCard() RateCard {
 		CreatedBy: "system",
 		Rates: map[string]QualificationRates{
 			string(QualNone): {
-				PractitionerPayPencePerHour: 1250, // £12.50
-				NurseryChargePencePerHour:   1600, // £16.00
+				PractitionerPayPencePerHour: 1600, // £16.00 gross, incl. holiday pay
+				NurseryChargePencePerHour:   1950, // £19.50 (margin £3.50)
 			},
 			string(QualLevel2): {
-				PractitionerPayPencePerHour: 1350, // £13.50
-				NurseryChargePencePerHour:   1750, // £17.50
+				PractitionerPayPencePerHour: 1600, // £16.00 gross, incl. holiday pay
+				NurseryChargePencePerHour:   2000, // £20.00 (margin £4.00)
 			},
 			string(QualLevel3): {
-				PractitionerPayPencePerHour: 1500, // £15.00
-				NurseryChargePencePerHour:   1950, // £19.50
+				PractitionerPayPencePerHour: 1700, // £17.00 gross = £15.17 basic + £1.83 holiday
+				NurseryChargePencePerHour:   2150, // £21.50 (margin £4.50)
 			},
 			string(QualLevel4Plus): {
-				PractitionerPayPencePerHour: 1700, // £17.00
-				NurseryChargePencePerHour:   2200, // £22.00
+				PractitionerPayPencePerHour: 1700, // £17.00 gross, incl. holiday pay
+				NurseryChargePencePerHour:   2200, // £22.00 (margin £5.00)
 			},
 		},
 	}

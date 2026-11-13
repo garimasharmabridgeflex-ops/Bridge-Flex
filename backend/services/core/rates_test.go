@@ -45,23 +45,23 @@ func TestResolveShiftFinancials(t *testing.T) {
 	if fin.BillableMinutes != 450 {
 		t.Errorf("BillableMinutes = %d, want 450", fin.BillableMinutes)
 	}
-	if fin.PractitionerPayPencePerHour != 1500 {
-		t.Errorf("PractitionerPayPencePerHour = %d, want 1500", fin.PractitionerPayPencePerHour)
+	if fin.PractitionerPayPencePerHour != 1700 {
+		t.Errorf("PractitionerPayPencePerHour = %d, want 1700", fin.PractitionerPayPencePerHour)
 	}
-	// 450 * 1500 / 60 = 11250 pence (£112.50)
-	if fin.EstimatedGrossPayPence != 11250 {
-		t.Errorf("EstimatedGrossPayPence = %d, want 11250", fin.EstimatedGrossPayPence)
+	// 450 * 1700 / 60 = 12750 pence (£127.50)
+	if fin.EstimatedGrossPayPence != 12750 {
+		t.Errorf("EstimatedGrossPayPence = %d, want 12750", fin.EstimatedGrossPayPence)
 	}
-	// 450 * 1950 / 60 = 14625 pence (£146.25)
-	if fin.EstimatedNurseryChargePence != 14625 {
-		t.Errorf("EstimatedNurseryChargePence = %d, want 14625", fin.EstimatedNurseryChargePence)
+	// 450 * 2150 / 60 = 16125 pence (£161.25)
+	if fin.EstimatedNurseryChargePence != 16125 {
+		t.Errorf("EstimatedNurseryChargePence = %d, want 16125", fin.EstimatedNurseryChargePence)
 	}
-	// 14625 - 11250 = 3375 pence (£33.75)
+	// 16125 - 12750 = 3375 pence (£33.75) — the margin is unchanged
 	if fin.PlatformFeePence != 3375 {
 		t.Errorf("PlatformFeePence = %d, want 3375", fin.PlatformFeePence)
 	}
-	if legacyPayRate != 15.00 {
-		t.Errorf("legacyPayRate = %f, want 15.00", legacyPayRate)
+	if legacyPayRate != 17.00 {
+		t.Errorf("legacyPayRate = %f, want 17.00", legacyPayRate)
 	}
 }
 

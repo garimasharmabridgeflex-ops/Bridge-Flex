@@ -275,8 +275,8 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                                 ? Icons.event_busy_rounded
                                 : Icons.verified_rounded,
                             details: sub.paidByCard
-                                ? 'Paid by card through Stripe. Update your card or cancel any time in Manage billing — staffing hours are still billed separately on weekly invoices.'
-                                : 'Payment settled via BACS / Bank Transfer on receipt of weekly VAT invoice.',
+                                ? 'Paid by card through Stripe. Update your card or cancel any time in Manage billing.'
+                                : 'Membership is active. Update your payment card any time in Manage billing.',
                           ),
                           if (sub.paidByCard) _manageBillingButton(),
                         ],
@@ -299,30 +299,14 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
               const SizedBox(height: 24),
 
               // ── Section Header ─────────────────────────────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'NURSERY MEMBERSHIP PLANS',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF64748B),
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  InkWell(
-                    onTap: () => context.push('/billing/invoices'),
-                    child: const Text(
-                      'View Invoices →',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF2563EB),
-                      ),
-                    ),
-                  ),
-                ],
+              const Text(
+                'NURSERY MEMBERSHIP PLANS',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF64748B),
+                  letterSpacing: 0.8,
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -362,67 +346,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                   );
                 },
               ),
-              const SizedBox(height: 20),
-
-              // ── Invoicing & Settlement Explanation ─────────────────────────
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.receipt_long_outlined, color: Color(0xFF1B2A4A), size: 20),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Text(
-                            'Invoicing & Payment Terms',
-                            style: TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Memberships paid by card renew automatically through Stripe — no card details are ever stored by Bridge-Flex. Staffing hours are invoiced separately on weekly cycles as official sequential VAT invoices (INV-YYYY-XXXX), downloadable in PDF and settled by card or BACS / Bank Transfer.',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: Color(0xFF475569),
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    OutlinedButton.icon(
-                      onPressed: () => context.push('/billing/invoices'),
-                      icon: const Icon(Icons.receipt_outlined, size: 16),
-                      label: const Text('View Nursery Invoices & Receipts', style: TextStyle(fontWeight: FontWeight.w700)),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF1B2A4A),
-                        side: const BorderSide(color: Color(0xFFCBD5E1)),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ] else ...[
+                          ] else ...[
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(18),

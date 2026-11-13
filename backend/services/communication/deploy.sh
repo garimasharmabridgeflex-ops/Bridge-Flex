@@ -35,6 +35,9 @@ deploy_http ListChatSessions
 deploy_http ListNotifications
 deploy_http MarkNotificationRead
 deploy_http MarkAllNotificationsRead
+# Sends one message synchronously so the console can prove the SMTP account
+# works (everything else goes through the send-email queue).
+deploy_http SendTestEmail
 
 # Pub/Sub triggers — same functions covered by triggers_test.go (plus
 # OnShiftCancelled, OnShiftApplied and OnShiftApplicationDecided, added after

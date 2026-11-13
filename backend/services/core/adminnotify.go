@@ -26,7 +26,12 @@ type sendAdminNotificationRequest struct {
 	Title string         `json:"title"`
 	Body  string         `json:"body"`
 	Type  string         `json:"type,omitempty"`
-	Data  map[string]any `json:"data,omitempty"`
+	// Link makes the notification tappable: an app route ("/shifts/…") or an
+	// https URL. It rides in the payload, which is what the app's notification
+	// tray and the in-app list both read, so a maintenance notice or a new
+	// policy can point straight at the thing it is about.
+	Link string         `json:"link,omitempty"`
+	Data map[string]any `json:"data,omitempty"`
 }
 
 // sendAdminNotification — POST /sendAdminNotification. Admin only.
@@ -80,6 +85,9 @@ func sendAdminNotification(w http.ResponseWriter, r *http.Request) {
 	if req.Data == nil {
 		req.Data = map[string]any{}
 	}
+	if link := strings.TrimSpace(req.Link); link != "" {
+		req.Data["link"] = link
+	}
 
 	sent := 0
 	for _, uid := range targets {
@@ -94,6 +102,7 @@ func sendAdminNotification(w http.ResponseWriter, r *http.Request) {
 		TargetUID: req.UID,
 		Metadata: map[string]any{
 			"title":       req.Title,
+			"link":        req.Link,
 			"role":        req.Role,
 			"targetCount": len(targets),
 			"sentCount":   sent,

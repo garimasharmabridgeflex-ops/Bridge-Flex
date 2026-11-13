@@ -59,12 +59,29 @@ func initProfileOnSignUp(ctx context.Context, e event.Event) error {
 	profile := Profile{
 		Role:      "",
 		Name:      name,
+		// The sign-in address is stored on the profile here so every later
+		// email (approval, invoice, payroll) has somewhere to go — it used to
+		// be left empty, which is why the console showed a blank email for
+		// practitioners who had not edited their profile.
+		Email:     data.GetEmail(),
 		DBSStatus: DBSUnverified,
 		Rating:    Rating{},
 		CreatedAt: time.Now(),
 	}
 	_, err = db.Collection("profiles").Doc(uid).Set(ctx, profile)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// The greeting the owner asked for: a first email the moment an account
+	// exists, while the person is still looking at the app. Best-effort — a
+	// mail problem must not fail account creation.
+	if email := data.GetEmail(); email != "" {
+		sendEmailToAddress(ctx, db, email, name, "welcome", map[string]string{
+			"appUrl": appHomeURL,
+		}, false)
+	}
+	return nil
 }
 
 // syncProfilePublic is bound at deploy time to a Firestore-write Eventarc
@@ -564,6 +581,15 @@ func deleteAccount(w http.ResponseWriter, r *http.Request) {
 	}
 	docIter.Stop()
 
+	// Capture the address before the profile goes: the confirmation below has
+	// to reach the person who just deleted the account, and after this point
+	// nothing on the platform knows their email any more.
+	deleteEmail, deleteName := "", ""
+	if snap, err := db.Collection("profiles").Doc(uid).Get(ctx); err == nil {
+		deleteEmail, _ = snap.Data()["email"].(string)
+		deleteName, _ = snap.Data()["name"].(string)
+	}
+
 	if _, err := db.Collection("profilesPublic").Doc(uid).Delete(ctx); err != nil && status.Code(err) != codes.NotFound {
 		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 		return
@@ -583,9 +609,29 @@ func deleteAccount(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", "auth client init failed")
 		return
 	}
+	if deleteEmail == "" {
+		// The profile never captured an address; the Auth record still has the
+		// sign-in email, and this is the last moment it exists.
+		if users, err := authUserIndex(ctx); err == nil {
+			if rec := users[uid]; rec != nil {
+				deleteEmail = rec.Email
+				if deleteName == "" {
+					deleteName = rec.DisplayName
+				}
+			}
+		}
+	}
+
 	if err := authClient.DeleteUser(ctx, uid); err != nil {
 		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 		return
+	}
+
+	// The account is gone; the confirmation is the one message that must still
+	// go out, so it is queued against the captured address rather than a
+	// profile lookup that would now find nothing.
+	if deleteEmail != "" {
+		sendEmailToAddress(ctx, db, deleteEmail, deleteName, "account_deleted", nil, true)
 	}
 
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"deleted": true})

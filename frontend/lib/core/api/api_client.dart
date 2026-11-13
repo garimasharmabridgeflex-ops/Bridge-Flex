@@ -28,6 +28,61 @@ class ApiClient {
     ApiFunction fn, {
     Map<String, dynamic> body = const {},
   }) async {
+    return _withRetry(fn, body, _doPost);
+  }
+
+  Future<Map<String, dynamic>> _withRetry(
+    ApiFunction fn,
+    Map<String, dynamic> body,
+    Future Function(ApiFunction, {Map<String, dynamic> body}) doPost,
+  ) async {
+    // First attempt: try the original POST
+    try {
+      return await doPost(fn, body: body);
+    } on ApiException catch (e) {
+      // If 401 on first attempt, refresh token and retry once
+      if (e.statusCode == 401) {
+        await _refreshAndRetry(fn, body);
+        // Second attempt: retry with fresh token
+        return await doPost(fn, body: body);
+      }
+      // Non-401 error: rethrow immediately
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> _refreshAndRetry(
+    ApiFunction fn,
+    Map<String, dynamic> body,
+  ) async {
+    // Force a fresh IdToken which triggers Firebase Auth to refresh
+    // the session cookie / re-authenticate if the user is still signed in.
+    try {
+      await _auth.currentUser?.getIdToken(false); // non-cached refresh
+    } catch (_) {
+      // If the user is truly signed out, the next post will fail with auth error
+    }
+    // Small window to let the token refresh propagate
+    await Future.delayed(const Duration(milliseconds: 300));
+    // Retry the original POST with a fresh token
+    final token = await _auth.currentUser?.getIdToken().timeout(_tokenTimeout);
+    final response = await _http
+        .post(
+          Env.functionUri(fn),
+          headers: {
+            'Content-Type': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(_requestTimeout);
+    return _decode(response);
+  }
+
+  Future<Map<String, dynamic>> _doPost(
+    ApiFunction fn, {
+    Map<String, dynamic> body = const {},
+  }) async {
     final token = await _auth.currentUser?.getIdToken().timeout(_tokenTimeout);
     final response = await _http
         .post(

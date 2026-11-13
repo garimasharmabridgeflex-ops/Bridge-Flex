@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -226,28 +227,39 @@ class InvoicesScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Bank Transfer Settlement',
-                      style: TextStyle(
+                    Text(
+                      'Due ${DateFormat('d MMM yyyy').format(inv.dueDate)} · ${inv.invoiceNumber}',
+                      style: const TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 13,
                         color: Color(0xFF0F172A),
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
-                      'Beneficiary: K Flex Ltd\nSort Code: 20-40-60\nAccount No: 88201945',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.5),
-                    ),
-                    const SizedBox(height: 4),
                     Text(
-                      'Ref: ${inv.invoiceNumber}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1B2A4A),
-                      ),
+                      inv.canPayByCard
+                          ? 'Pay securely by card on your invoice. The same link is in the email we sent you.'
+                          : 'The payment link is on the invoice email. Contact K Flex if you need it resent.',
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), height: 1.5),
                     ),
+                    if (inv.canPayByCard) ...[
+                      const SizedBox(height: 10),
+                      FilledButton.icon(
+                        onPressed: () => launchUrl(
+                          Uri.parse(inv.stripeHostedUrl),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                        icon: const Icon(Icons.credit_card_rounded, size: 16),
+                        label: const Text('Pay by card',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF1B2A4A),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

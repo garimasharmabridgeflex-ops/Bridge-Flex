@@ -2,6 +2,7 @@ package function
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -413,14 +414,24 @@ func approveTimesheet(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 
+	shiftTitle := shiftTitleFor(ctx, db, updated.ShiftID)
 	_ = notifyInApp(ctx, db, updated.StaffID, "timesheet_approved",
 		"Timesheet approved",
-		fmt.Sprintf("Your timesheet for shift %s has been approved.", updated.ShiftID),
+		fmt.Sprintf("Your timesheet for %s has been approved.", shiftTitle),
 		map[string]any{
 			"timesheetId": updated.ID,
 			"shiftId":     updated.ShiftID,
+			"link":        "/earnings",
 		},
 	)
+
+	// Money the practitioner is waiting on, so it gets an email as well as a
+	// notification — the same rule the owner set for anything important.
+	sendTransactionalEmail(ctx, db, updated.StaffID, "timesheet_approved", map[string]string{
+		"shiftTitle": shiftTitle,
+		"hours":      fmt.Sprintf("%.1f", float64(updated.BillableMinutes)/60),
+		"appUrl":     appHomeURL,
+	}, false)
 
 	httpjson.WriteJSON(w, http.StatusOK, updated)
 }
@@ -529,6 +540,7 @@ func requestTimesheetCorrection(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 
+	shiftTitle := shiftTitleFor(ctx, db, updated.ShiftID)
 	_ = notifyInApp(ctx, db, updated.StaffID, "timesheet_correction_requested",
 		"Timesheet needs correction",
 		fmt.Sprintf("The nursery requested changes to your timesheet: %s", req.Feedback),
@@ -536,8 +548,15 @@ func requestTimesheetCorrection(w http.ResponseWriter, r *http.Request) {
 			"timesheetId": updated.ID,
 			"shiftId":     updated.ShiftID,
 			"feedback":    req.Feedback,
+			"link":        "/timesheets",
 		},
 	)
+
+	sendTransactionalEmail(ctx, db, updated.StaffID, "timesheet_correction", map[string]string{
+		"shiftTitle": shiftTitle,
+		"note":       req.Feedback,
+		"appUrl":     appHomeURL,
+	}, true)
 
 	httpjson.WriteJSON(w, http.StatusOK, updated)
 }
@@ -947,7 +966,32 @@ func listTimesheets(w http.ResponseWriter, r *http.Request) {
 	q = q.Limit(limit)
 
 	iter := q.Documents(ctx)
-	var out []Timesheet
+	out := []map[string]any{}
+
+	// The shift's title and both parties' names are joined in here rather than
+	// left to the reader. A timesheet is recognisable by "Tuesday, Room 3" and
+	// a practitioner's name; a Firestore document id is not, and the admin
+	// console would otherwise have to fan out one request per row to show them.
+	shiftTitles := map[string]string{}
+	displayNames := map[string]string{}
+	displayName := func(uid string) string {
+		if uid == "" {
+			return ""
+		}
+		if name, ok := displayNames[uid]; ok {
+			return name
+		}
+		name := ""
+		if snap, err := db.Collection("profiles").Doc(uid).Get(ctx); err == nil {
+			name, _ = snap.Data()["displayName"].(string)
+			if name == "" {
+				name, _ = snap.Data()["name"].(string)
+			}
+		}
+		displayNames[uid] = name
+		return name
+	}
+
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {
@@ -958,18 +1002,35 @@ func listTimesheets(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		var item Timesheet
-		if err := doc.DataTo(&item); err == nil {
-			item.ID = doc.Ref.ID
-			// Secondary access check
-			if callerIsAdmin || item.StaffID == callerUID || item.NurseryID == callerUID {
-				out = append(out, item)
-			}
+		if err := doc.DataTo(&item); err != nil {
+			continue
 		}
+		item.ID = doc.Ref.ID
+		// Secondary access check
+		if !callerIsAdmin && item.StaffID != callerUID && item.NurseryID != callerUID {
+			continue
+		}
+
+		entry := map[string]any{}
+		if raw, err := json.Marshal(item); err == nil {
+			_ = json.Unmarshal(raw, &entry)
+		}
+		entry["id"] = item.ID
+
+		title, ok := shiftTitles[item.ShiftID]
+		if !ok {
+			if snap, err := db.Collection("shifts").Doc(item.ShiftID).Get(ctx); err == nil {
+				title, _ = snap.Data()["title"].(string)
+			}
+			shiftTitles[item.ShiftID] = title
+		}
+		entry["shiftTitle"] = title
+		entry["staffName"] = displayName(item.StaffID)
+		entry["nurseryName"] = displayName(item.NurseryID)
+
+		out = append(out, entry)
 	}
 
-	if out == nil {
-		out = []Timesheet{}
-	}
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"timesheets": out})
 }
 

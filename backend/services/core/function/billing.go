@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"strconv"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -769,7 +770,9 @@ func assignNurseryPlan(w http.ResponseWriter, r *http.Request) {
 }
 
 // generateWeeklyInvoices — POST /generateWeeklyInvoices. Admin / Finance only.
-// Gathers un-invoiced approved timesheets, creates sequential invoices with separate staffing lines.
+// Gathers un-invoiced approved timesheets, creates sequential invoices with
+// separate staffing lines, emails the nursery and mirrors each invoice into
+// Stripe when Stripe is configured.
 func generateWeeklyInvoices(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		httpjson.WriteError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "POST required")
@@ -788,6 +791,34 @@ func generateWeeklyInvoices(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	created, err := createStaffingInvoices(ctx, db, true)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
+		return
+	}
+
+	_ = audit.WriteAudit(ctx, db, audit.Entry{
+		Action:   "invoices.generate_weekly",
+		ActorUID: auth.UID(ctx),
+		Metadata: map[string]any{
+			"invoicesCreated": len(created),
+			"trigger":         "manual",
+		},
+	})
+
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"invoices": created})
+}
+
+// createStaffingInvoices raises one invoice per nursery from every approved
+// timesheet that has not been invoiced yet, marks those timesheets invoiced,
+// emails the nursery (when sendEmail is true) and — when STRIPE_SECRET_KEY is
+// set — mirrors the invoice into Stripe so it can be paid by card.
+//
+// One implementation behind every trigger: the console button, the nightly or
+// weekly worker, and the finance "run now" twin. Stripe and email failures are
+// logged but never unwind the invoice: the billing record must survive a
+// flaky third party.
+func createStaffingInvoices(ctx context.Context, db *firestore.Client, sendEmail bool) ([]Invoice, error) {
 	// Check if VAT number is published in company config (Decision 4)
 	vatPublished := false
 	compDoc, err := db.Collection("platformConfig").Doc("company").Get(ctx)
@@ -804,10 +835,8 @@ func generateWeeklyInvoices(w http.ResponseWriter, r *http.Request) {
 	tsDocs, err := db.Collection("timesheets").
 		Where("status", "in", []string{string(TimesheetApproved), string(TimesheetAdminApproved)}).
 		Documents(ctx).GetAll()
-
 	if err != nil {
-		httpjson.WriteError(w, http.StatusInternalServerError, "INTERNAL", err.Error())
-		return
+		return nil, err
 	}
 
 	// Filter un-invoiced and group by nursery
@@ -825,9 +854,8 @@ func generateWeeklyInvoices(w http.ResponseWriter, r *http.Request) {
 		nurseryTimesheets[ts.NurseryID] = append(nurseryTimesheets[ts.NurseryID], ts)
 	}
 
-	callerUID := auth.UID(ctx)
 	now := time.Now().UTC()
-	var createdInvoices []Invoice
+	createdInvoices := []Invoice{}
 
 	for nurseryID, timesheets := range nurseryTimesheets {
 		// Fetch nursery billing profile
@@ -855,7 +883,7 @@ func generateWeeklyInvoices(w http.ResponseWriter, r *http.Request) {
 
 		invoiceNum, err := GenerateNextInvoiceNumber(ctx, db, now.Year())
 		if err != nil {
-			slog.Error("generateWeeklyInvoices: invoice counter error", "error", err)
+			slog.Error("createStaffingInvoices: invoice counter error", "error", err)
 			continue
 		}
 
@@ -927,39 +955,54 @@ func generateWeeklyInvoices(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 
-		if _, err := batch.Commit(ctx); err == nil {
-			createdInvoices = append(createdInvoices, inv)
-			_ = outbox.WriteTx(nil, db, outbox.Event{
-				Topic: topicInvoiceGenerated,
-				Payload: map[string]any{
-					"invoiceId":     invID,
-					"invoiceNumber": invoiceNum,
-					"nurseryId":     nurseryID,
-					"totalPence":    total,
-				},
-			})
-			// Essential mail (owner brief §12 "invoice generated"): a nursery
-			// must not find out about money it owes only by opening the app.
-			sendTransactionalEmail(ctx, db, nurseryID, "invoice_generated",
-				map[string]string{
-					"invoiceNumber": invoiceNum,
-					"total":         fmt.Sprintf("£%d.%02d", total/100, total%100),
-				}, true)
+		if _, err := batch.Commit(ctx); err != nil {
+			slog.Error("createStaffingInvoices: commit failed", "invoiceId", invID, "error", err)
+			continue
+		}
+
+		createdInvoices = append(createdInvoices, inv)
+
+		// Outbox record for the invoice-generated event. Written directly
+		// rather than through outbox.WriteTx: there is no surrounding
+		// transaction here, and a nil transaction would panic mid-request
+		// after the invoice had already been committed.
+		_, _, _ = db.Collection("outbox").Add(ctx, outbox.Event{
+			Topic:     topicInvoiceGenerated,
+			Status:    "pending",
+			CreatedAt: now,
+			Payload: map[string]any{
+				"invoiceId":     invID,
+				"invoiceNumber": invoiceNum,
+				"nurseryId":     nurseryID,
+				"totalPence":    total,
+			},
+		})
+
+		// Mirror into Stripe first, so the email below can link straight to the
+		// card payment page rather than telling a nursery to make a bank
+		// transfer for an invoice Stripe will also chase.
+		if err := pushInvoiceToStripe(ctx, db, &inv); err != nil && !errors.Is(err, errStripeNotConfigured) {
+			slog.Warn("stripe invoice mirror failed", "invoiceId", invID, "error", err)
+		}
+
+		// Essential mail (owner brief §12 "invoice generated"): a nursery
+		// must not find out about money it owes only by opening the app.
+		if sendEmail {
+			data := map[string]string{
+				"invoiceNumber": invoiceNum,
+				"total":         fmt.Sprintf("£%d.%02d", total/100, total%100),
+				"dueDate":       inv.DueDate.Format("2 January 2006"),
+			}
+			if inv.StripeHostedURL != "" {
+				data["payUrl"] = inv.StripeHostedURL
+			}
+			// The breakdown the nursery actually wants: what each shift cost and
+			// what the total is, in the email itself rather than only in the PDF.
+			sendTransactionalEmailWithLines(ctx, db, nurseryID, "invoice_generated", data, true, invoiceEmailLines(inv))
 		}
 	}
 
-	_ = audit.WriteAudit(ctx, db, audit.Entry{
-		Action:   "invoices.generate_weekly",
-		ActorUID: callerUID,
-		Metadata: map[string]any{
-			"invoicesCreated": len(createdInvoices),
-		},
-	})
-
-	if createdInvoices == nil {
-		createdInvoices = []Invoice{}
-	}
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"invoices": createdInvoices})
+	return createdInvoices, nil
 }
 
 // listInvoices — GET /listInvoices?nurseryId=...&status=...
@@ -989,7 +1032,16 @@ func listInvoices(w http.ResponseWriter, r *http.Request) {
 	if st := r.URL.Query().Get("status"); st != "" {
 		q = q.Where("status", "==", st)
 	}
-	q = q.Limit(50)
+	// The console needs a wider window than a nursery's own billing page: it
+	// reconciles across every account. Still bounded, so one page load cannot
+	// pull an unbounded collection.
+	limit := 50
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, convErr := strconv.Atoi(l); convErr == nil && parsed > 0 && parsed <= 500 {
+			limit = parsed
+		}
+	}
+	q = q.Limit(limit)
 
 	iter := q.Documents(ctx)
 	var invoices []Invoice

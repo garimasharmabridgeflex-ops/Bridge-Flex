@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/providers.dart';
@@ -156,6 +157,7 @@ class _NotificationTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final shiftId = item.payload['shiftId'] as String?;
+    final link = item.payload['link'] as String?;
 
     return InkWell(
       onTap: () async {
@@ -166,7 +168,13 @@ class _NotificationTile extends ConsumerWidget {
             ref.invalidate(unreadNotificationCountProvider);
           } catch (_) {}
         }
-        if (shiftId != null && context.mounted) {
+        if (link != null && context.mounted) {
+          if (link.startsWith('/')) {
+            context.push(link);
+          } else {
+            await launchUrl(Uri.parse(link));
+          }
+        } else if (shiftId != null && context.mounted) {
           context.push('/shifts/$shiftId');
         }
       },

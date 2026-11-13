@@ -185,6 +185,7 @@ class Invoice {
     this.paidAt,
     this.paymentReference = '',
     this.notes = '',
+    this.stripeHostedUrl = '',
   });
 
   final String id;
@@ -207,6 +208,14 @@ class Invoice {
   final DateTime? paidAt;
   final String paymentReference;
   final String notes;
+
+  /// Stripe's hosted invoice page, present once the charge has been mirrored
+  /// there. This is the only place a nursery can pay an issued invoice, so the
+  /// detail card links straight to it instead of printing standing bank
+  /// details that may not even belong to the invoice.
+  final String stripeHostedUrl;
+
+  bool get canPayByCard => !isPaid && stripeHostedUrl.isNotEmpty;
 
   bool get isPaid => status == 'paid';
   bool get isIssued => status == 'issued';
@@ -270,6 +279,7 @@ class Invoice {
       paidAt: parseDateOpt(json['paidAt']),
       paymentReference: json['paymentReference'] as String? ?? '',
       notes: json['notes'] as String? ?? '',
+      stripeHostedUrl: json['stripeHostedUrl'] as String? ?? '',
     );
   }
 }

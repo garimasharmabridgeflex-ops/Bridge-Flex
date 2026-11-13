@@ -13,6 +13,7 @@ import '../../billing/presentation/nursery_subscription_card.dart';
 import '../../onboarding/presentation/widgets/onboarding_illustration.dart';
 import '../../onboarding/presentation/widgets/wizard_scaffold.dart';
 import '../../profile/domain/branch.dart';
+import '../domain/shift_rate_card.dart';
 import '../../profile/domain/profile.dart';
 import '../../profile/presentation/branches_screen.dart';
 
@@ -31,7 +32,6 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
   final _pageController = PageController();
   final _title = TextEditingController();
   final _description = TextEditingController();
-  final _payRate = TextEditingController();
   final _room = TextEditingController();
   final _numberOfChildren = TextEditingController();
   final _safeguardingNotes = TextEditingController();
@@ -45,6 +45,9 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
   TimeOfDay _startTime = const TimeOfDay(hour: 9, minute: 0);
   TimeOfDay _endTime = const TimeOfDay(hour: 17, minute: 0);
   bool _loading = false;
+  ShiftRateCard? _rateCard;
+  bool _rateLoading = true;
+  String? _rateError;
   String _ageGroup = ageGroupOptions.first;
   List<String> _expectedDuties = [];
   List<String> _requirements = [];
@@ -53,19 +56,40 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
   void initState() {
     super.initState();
     _title.addListener(_rebuild);
-    _payRate.addListener(_rebuild);
+    _loadRateCard();
   }
 
   void _rebuild() => setState(() {});
+
+  /// Quotes come from the platform rate card, exactly like the server does at
+  /// creation time — the nursery is shown the staffing charge for the chosen
+  /// qualification band and cannot type its own number.
+  Future<void> _loadRateCard() async {
+    try {
+      final card = await ref.read(shiftRepositoryProvider).fetchActiveRateCard();
+      if (!mounted) return;
+      setState(() {
+        _rateCard = card;
+        _rateLoading = false;
+        _rateError = card.chargePenceFor(_requiredQualification) == null
+            ? 'No staffing rate is configured for this qualification yet.'
+            : null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _rateLoading = false;
+        _rateError = 'Could not load the staffing rate. Pull back and try again.';
+      });
+    }
+  }
 
   @override
   void dispose() {
     _pageController.dispose();
     _title.removeListener(_rebuild);
-    _payRate.removeListener(_rebuild);
     _title.dispose();
     _description.dispose();
-    _payRate.dispose();
     _room.dispose();
     _numberOfChildren.dispose();
     _safeguardingNotes.dispose();
@@ -80,10 +104,9 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
 
   bool get _detailsValid =>
       _title.text.trim().isNotEmpty && _endDateTime.isAfter(_startDateTime);
-  bool get _payValid {
-    final n = double.tryParse(_payRate.text);
-    return n != null && n > 0;
-  }
+  int? get _chargePence => _rateCard?.chargePenceFor(_requiredQualification);
+
+  bool get _rateReady => !_rateLoading && (_chargePence ?? 0) > 0;
 
   void _goTo(int step) {
     _pageController.animateToPage(
@@ -140,7 +163,10 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
             date: DateFormat('yyyy-MM-dd').format(_date),
             startTime: _startDateTime,
             endTime: _endDateTime,
-            payRate: double.parse(_payRate.text),
+            // The backend re-derives both rates from the rate card and ignores
+            // this field; it carries the quoted staffing charge so the wire
+            // value matches what the nursery was shown.
+            payRate: (_chargePence ?? 0) / 100.0,
             ageGroup: _ageGroup,
             room: _room.text.trim(),
             numberOfChildren: int.tryParse(_numberOfChildren.text.trim()) ?? 0,
@@ -679,7 +705,7 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
               satellites: [Icons.publish_rounded, Icons.check_circle_rounded],
               size: 120,
             ),
-            canContinue: _payValid,
+            canContinue: _rateReady,
             loading: _loading,
             nextLabel: 'Publish shift',
             onNext: _publish,
@@ -687,19 +713,13 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
             body: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AppTextField(
-                  label: 'Pay rate (£/hour)',
-                  controller: _payRate,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  prefixIcon: Icons.payments_outlined,
-                ),
-                const SizedBox(height: AppSpacing.md),
                 Builder(
                   builder: (context) {
-                    final rate = double.tryParse(_payRate.text) ?? 0.0;
-                    final grossPay = rate * (payableMinutes / 60.0);
-                    final holidayPay = grossPay * 0.1207;
-                    final totalEst = grossPay + holidayPay;
+                    final charge = _chargePence ?? 0;
+                    final chargePounds = charge / 100.0;
+                    final totalCharge = chargePounds * (payableMinutes / 60.0) * _capacity;
+                    final qualificationLabel =
+                        _requiredQualification.replaceAll('_', ' ').toUpperCase();
 
                     return Container(
                       padding: const EdgeInsets.all(AppSpacing.md),
@@ -713,29 +733,77 @@ class _PostShiftScreenState extends ConsumerState<PostShiftScreen> {
                         children: [
                           const Row(
                             children: [
-                              Icon(Icons.calculate_outlined, size: 18, color: Color(0xFF2563EB)),
+                              Icon(Icons.receipt_long_outlined, size: 18, color: Color(0xFF2563EB)),
                               SizedBox(width: 8),
-                              Text('Pay Calculation Preview', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                              Text('Staffing charge', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                             ],
                           ),
                           const Divider(height: 20),
-                          _calcRow('Shift duration', '${totalMinutes ~/ 60}h ${totalMinutes % 60}m'),
-                          _calcRow('Unpaid break', '-$_unpaidBreakMinutes mins'),
-                          _calcRow('Payable working hours', '$payableHours hrs', isBold: true),
-                          const SizedBox(height: 4),
-                          _calcRow('Practitioner basic pay', '£${grossPay.toStringAsFixed(2)}'),
-                          _calcRow('Statutory holiday pay (12.07%)', '£${holidayPay.toStringAsFixed(2)}'),
-                          const Divider(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('Est. Practitioner Total', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
-                              Text(
-                                '£${totalEst.toStringAsFixed(2)}',
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF2563EB)),
+                          if (_rateLoading)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text('Loading your rate…', style: TextStyle(fontSize: 12.5)),
+                                ],
                               ),
-                            ],
-                          ),
+                            )
+                          else if (_rateError != null)
+                            Text(
+                              _rateError!,
+                              style: const TextStyle(fontSize: 12.5, color: Color(0xFFB91C1C)),
+                            )
+                          else ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Hourly staffing rate',
+                                        style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                                    Text(
+                                      qualificationLabel,
+                                      style: const TextStyle(fontSize: 10.5, color: Color(0xFF94A3B8)),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  '£${chargePounds.toStringAsFixed(2)}/hr',
+                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF0F172A)),
+                                ),
+                              ],
+                            ),
+                            const Divider(height: 20),
+                            _calcRow('Shift duration', '${totalMinutes ~/ 60}h ${totalMinutes % 60}m'),
+                            _calcRow('Unpaid break', '-$_unpaidBreakMinutes mins'),
+                            _calcRow('Payable working hours', '$payableHours hrs', isBold: true),
+                            if (_capacity > 1)
+                              _calcRow('Practitioners', '× $_capacity'),
+                            const Divider(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Estimated total (excl. VAT)',
+                                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+                                Text(
+                                  '£${totalCharge.toStringAsFixed(2)}',
+                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: Color(0xFF2563EB)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Set by K Flex for this qualification level and fixed once the shift is posted. Invoiced after the timesheet is approved.',
+                              style: TextStyle(fontSize: 10.5, color: Color(0xFF64748B), height: 1.35),
+                            ),
+                          ],
                         ],
                       ),
                     );

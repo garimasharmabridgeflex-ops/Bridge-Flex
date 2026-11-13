@@ -1,6 +1,7 @@
 package function
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -9,6 +10,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"cloud.google.com/go/firestore"
 )
 
 // errNoSMTPTransport is returned when no SMTP credentials are configured.
@@ -55,6 +58,63 @@ func mailConfigFromEnv() (mailConfig, error) {
 		return cfg, errNoSMTPTransport
 	}
 	return cfg, nil
+}
+
+// mailConfigFromStore reads the mailer account an administrator saved in the
+// operations console (platformConfig/mail, written by functions-core's
+// UpdateMailSettings). The password is stored encrypted at rest by Firestore
+// and never returned to the browser — only used here to authenticate.
+func mailConfigFromStore(ctx context.Context, db *firestore.Client) (mailConfig, error) {
+	if db == nil {
+		return mailConfig{}, errNoSMTPTransport
+	}
+	snap, err := db.Collection("platformConfig").Doc("mail").Get(ctx)
+	if err != nil {
+		return mailConfig{}, errNoSMTPTransport
+	}
+	data := snap.Data()
+	cfg := mailConfig{
+		host: strings.TrimSpace(stringValue(data["host"])),
+		port: strings.TrimSpace(stringValue(data["port"])),
+		user: stringValue(data["username"]),
+		pass: stringValue(data["password"]),
+		from: strings.TrimSpace(stringValue(data["from"])),
+		name: strings.TrimSpace(stringValue(data["fromName"])),
+	}
+	if cfg.host == "" {
+		return cfg, errNoSMTPTransport
+	}
+	if cfg.port == "" {
+		cfg.port = "587"
+	}
+	if cfg.from == "" {
+		cfg.from = cfg.user
+	}
+	if cfg.name == "" {
+		cfg.name = "K Flex"
+	}
+	if cfg.from == "" {
+		return cfg, errNoSMTPTransport
+	}
+	return cfg, nil
+}
+
+func stringValue(v any) string {
+	s, _ := v.(string)
+	return s
+}
+
+// mailConfigFor resolves the transport in precedence order: environment
+// variables first (a production deployment keeps credentials in Secret
+// Manager), then the console-managed account, then nothing.
+func mailConfigFor(ctx context.Context, db *firestore.Client) (mailConfig, error) {
+	if cfg, err := mailConfigFromEnv(); err == nil {
+		return cfg, nil
+	}
+	if cfg, err := mailConfigFromStore(ctx, db); err == nil {
+		return cfg, nil
+	}
+	return mailConfig{}, errNoSMTPTransport
 }
 
 // sendMail delivers one multipart/alternative message (text + HTML) over

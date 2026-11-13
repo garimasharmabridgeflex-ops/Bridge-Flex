@@ -3,6 +3,8 @@ package function
 import (
 	"context"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -194,6 +196,20 @@ func listAllUsers(w http.ResponseWriter, r *http.Request) {
 	iter := db.Collection("profiles").Documents(ctx)
 	defer iter.Stop()
 
+	// The email a person signs in with is the one contact detail we always
+	// have — the profile only has one if they filled it in. Read the Auth
+	// records once and use them as the fallback below, so the operations
+	// console can always show (and mail) an address.
+	signInEmails := map[string]authEmailRecord{}
+	if users, err := authUserIndex(ctx); err == nil {
+		for uid, rec := range users {
+			if rec == nil {
+				continue
+			}
+			signInEmails[uid] = authEmailRecord{Email: rec.Email, Verified: rec.EmailVerified, Disabled: rec.Disabled}
+		}
+	}
+
 	out := []map[string]any{}
 	for {
 		snap, err := iter.Next()
@@ -208,12 +224,23 @@ func listAllUsers(w http.ResponseWriter, r *http.Request) {
 		if err := snap.DataTo(&p); err != nil {
 			continue
 		}
+		email, verified, disabled := p.Email, false, false
+		if rec, ok := signInEmails[snap.Ref.ID]; ok {
+			if email == "" {
+				email = rec.Email
+			}
+			verified = rec.Verified
+			disabled = rec.Disabled
+		}
 		out = append(out, map[string]any{
 			"uid":                   snap.Ref.ID,
 			"role":                  p.Role,
 			"name":                  p.Name,
 			"phone":                 p.Phone,
-			"email":                 p.Email,
+			"email":                 email,
+			"profileEmail":          p.Email,
+			"emailVerified":         verified,
+			"authDisabled":          disabled,
 			"photoUrl":              p.PhotoURL,
 			"city":                  p.City,
 			"postcode":              p.Postcode,
@@ -303,6 +330,16 @@ func getUserDetail(w http.ResponseWriter, r *http.Request) {
 			"reviewNote":  meta.ReviewNote,
 			"uploadedAt":  meta.UploadedAt,
 		})
+	}
+
+	// Same fallback as the list: the sign-in address is the one that always
+	// exists, so the dossier shows it even when the profile never captured it.
+	if profile.Email == "" {
+		if users, err := authUserIndex(ctx); err == nil {
+			if rec := users[req.UID]; rec != nil {
+				profile.Email = rec.Email
+			}
+		}
 	}
 
 	profileOut := withComputedFields(ctx, req.UID, profile.Role, profile)
@@ -473,8 +510,13 @@ func subscriptionLineTotal(lines []InvoiceLineItem) int64 {
 	return total
 }
 
-// listAuditLogs — GET /listAuditLogs?limit=200. Admin-only, append-only
-// source. The console shows this instead of a browser-local imitation.
+// listAuditLogs — GET /listAuditLogs?limit=200&from=RFC3339&to=RFC3339. Admin-only,
+// append-only source. The console shows this instead of a browser-local
+// imitation.
+//
+// The date range is applied server-side: the log is append-only and only
+// grows, so filtering after fetching the newest 200 rows would silently
+// answer "no entries" for any older range an auditor asks about.
 func listAuditLogs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if !isAdmin(ctx) {
@@ -488,7 +530,24 @@ func listAuditLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	limit := 200
-	iter := db.Collection("auditLogs").OrderBy("timestamp", firestore.Desc).Limit(limit).Documents(ctx)
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, convErr := strconv.Atoi(l); convErr == nil && parsed > 0 && parsed <= 1000 {
+			limit = parsed
+		}
+	}
+
+	q := db.Collection("auditLogs").Query
+	if from := parseAuditTime(r.URL.Query().Get("from")); !from.IsZero() {
+		q = q.Where("timestamp", ">=", from)
+	}
+	if to := parseAuditTime(r.URL.Query().Get("to")); !to.IsZero() {
+		q = q.Where("timestamp", "<=", to)
+	}
+	// Firestore needs an explicit order on the filtered field when a range is
+	// used; adding it unconditionally keeps both shapes working.
+	q = q.OrderBy("timestamp", firestore.Desc).Limit(limit)
+
+	iter := q.Documents(ctx)
 	defer iter.Stop()
 
 	out := []map[string]any{}
@@ -506,4 +565,22 @@ func listAuditLogs(w http.ResponseWriter, r *http.Request) {
 		out = append(out, entry)
 	}
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"entries": out})
+}
+
+// parseAuditTime accepts the RFC3339 form the console sends (a date input is
+// widened to the start/end of that day client-side) and returns the zero time
+// for anything unparseable, so a bad query string narrows nothing rather than
+// failing the request.
+func parseAuditTime(value string) time.Time {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return time.Time{}
+	}
+	if t, err := time.Parse(time.RFC3339, value); err == nil {
+		return t
+	}
+	if t, err := time.Parse("2006-01-02", value); err == nil {
+		return t
+	}
+	return time.Time{}
 }

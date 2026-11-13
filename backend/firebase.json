@@ -9,14 +9,6 @@
     ],
     "rewrites": [
       {
-        "source": "/admin",
-        "destination": "/admin/index.html"
-      },
-      {
-        "source": "/admin/**",
-        "destination": "/admin/index.html"
-      },
-      {
         "source": "/GetPlatformStats",
         "function": {
           "functionId": "GetPlatformStats",
@@ -813,6 +805,111 @@
           "functionId": "UpsertTrainingModule",
           "region": "europe-west2"
         }
+      },
+      {
+        "source": "/ListNurserySubscriptions",
+        "function": {
+          "functionId": "ListNurserySubscriptions",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetMailSettings",
+        "function": {
+          "functionId": "GetMailSettings",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UpdateMailSettings",
+        "function": {
+          "functionId": "UpdateMailSettings",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetAutomationSettings",
+        "function": {
+          "functionId": "GetAutomationSettings",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/UpdateAutomationSettings",
+        "function": {
+          "functionId": "UpdateAutomationSettings",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/GetStripeStatus",
+        "function": {
+          "functionId": "GetStripeStatus",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/SendUserEmail",
+        "function": {
+          "functionId": "SendUserEmail",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/SendInvoiceEmail",
+        "function": {
+          "functionId": "SendInvoiceEmail",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/RunInvoiceGeneration",
+        "function": {
+          "functionId": "RunInvoiceGeneration",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/PushInvoiceToStripe",
+        "function": {
+          "functionId": "PushInvoiceToStripe"
+        }
+      },
+      {
+        "source": "/RunStripeSync",
+        "function": {
+          "functionId": "RunStripeSync",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/SchedulerGenerateInvoices",
+        "function": {
+          "functionId": "SchedulerGenerateInvoices",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/SchedulerStripeSync",
+        "function": {
+          "functionId": "SchedulerStripeSync",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/SendTestEmail",
+        "function": {
+          "functionId": "SendTestEmail",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/admin",
+        "destination": "/admin/index.html"
+      },
+      {
+        "source": "/admin/**",
+        "destination": "/admin/index.html"
       }
     ]
   },

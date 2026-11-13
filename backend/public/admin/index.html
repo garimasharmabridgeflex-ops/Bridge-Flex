@@ -151,6 +151,20 @@
     @keyframes spin { 100% { transform: rotate(360deg); } }
 
     .stack { display: flex; flex-direction: column; gap: 12px; }
+    /* Filter bars: search plus any combination of date/status controls. */
+    .filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+    .filters .form-group { margin-bottom: 0; min-width: 130px; }
+    .filters .form-input, .filters .form-select { min-width: 130px; }
+    .filters-search { min-width: 230px; flex: 1 1 230px; }
+    /* Growth chart: bars are plain divs so there is no chart dependency. */
+    .chart { display: flex; align-items: flex-end; gap: 6px; height: 158px; padding: 8px 2px 0; overflow-x: auto; }
+    .chart-col { flex: 1 0 26px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+    .chart-count { font-size: 10px; font-weight: 700; color: var(--text-muted); margin-bottom: 3px; }
+    .chart-bar { width: 100%; border-radius: 6px 6px 2px 2px; min-height: 2px; }
+    .chart-label { font-size: 9.5px; color: var(--text-muted); margin-top: 5px; white-space: nowrap; }
+    .explainer-step { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px dashed var(--border); }
+    .explainer-step:last-child { border-bottom: none; }
+    .explainer-num { width: 24px; height: 24px; border-radius: 50%; background: var(--oxford); color: white; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .muted { color: var(--text-muted); font-size: 12.5px; }
     .divider { height: 1px; background: var(--border); margin: 16px 0; }
     .info-grid { display: grid; grid-template-columns: 150px 1fr; gap: 7px 14px; font-size: 13px; }
@@ -159,11 +173,90 @@
     .progress-line { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px dashed var(--border); font-size: 12.5px; }
     .progress-line:last-child { border-bottom: none; }
 
-    @media (max-width: 900px) {
-      .sidebar { position: fixed; left: -260px; transition: left 0.2s ease; z-index: 30; }
+    /* Dashboard: the decisions waiting on you, above the platform numbers. */
+    .action-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); gap: 12px; }
+    .action-card { display: flex; align-items: center; gap: 12px; padding: 13px 15px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+    .action-card.urgent { border-left: 4px solid var(--amber); }
+    .action-card.clear { border-left: 4px solid var(--emerald); }
+    .action-icon { width: 36px; height: 36px; border-radius: 11px; display: flex; align-items: center; justify-content: center; background: var(--slate-blue-light); color: var(--slate-blue); flex-shrink: 0; }
+    .action-icon svg { width: 18px; height: 18px; }
+    .action-body { flex: 1; min-width: 0; }
+    .action-title { font-weight: 800; font-size: 13.5px; color: var(--oxford); }
+    .action-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+    .action-count { font-size: 21px; font-weight: 900; color: var(--oxford); letter-spacing: -0.5px; }
+    .section-label { font-size: 10.5px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-muted); margin: 0 0 10px; }
+    .kpi-card.linkable { cursor: pointer; transition: border-color 0.15s ease, transform 0.15s ease; }
+    .kpi-card.linkable:hover { border-color: var(--slate-blue); transform: translateY(-1px); }
+
+    /* Practitioner dossier: three numbered steps instead of one long wall. */
+    .step { display: flex; gap: 10px; align-items: center; margin: 20px 0 10px; }
+    .step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--oxford); color: #fff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .step-title { font-size: 13px; font-weight: 800; color: var(--oxford); }
+    .step-hint { font-size: 11.5px; color: var(--text-muted); }
+    .progress-track { height: 7px; background: #E2E8F0; border-radius: var(--radius-pill); overflow: hidden; margin: 6px 0 4px; }
+    .progress-fill { height: 100%; background: var(--emerald); border-radius: var(--radius-pill); }
+    .summary-strip { background: #F8FAFC; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 13px 15px; }
+
+    /* Mobile drawer */
+    .nav-backdrop { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 29; }
+    .nav-backdrop.open { display: block; }
+
+    @media (max-width: 1180px) {
+      .content-area { padding: 22px 20px 60px; }
+      .topbar { padding: 12px 20px; }
+    }
+
+    @media (max-width: 1000px) {
+      /* Off-canvas navigation. The toggle is inline-hidden in the markup and
+         only the media query may reveal it, hence !important. */
+      .sidebar { position: fixed; left: -272px; top: 0; bottom: 0; height: 100vh; z-index: 30; transition: left 0.22s ease; box-shadow: 0 0 44px rgba(15, 23, 42, 0.35); }
       .sidebar.open { left: 0; }
-      .content-area { padding: 20px 16px 60px; }
-      .topbar { padding: 12px 16px; }
+      #menu-toggle { display: inline-flex !important; }
+      .topbar { padding: 10px 14px; }
+      .topbar-actions #last-refresh-time { display: none; }
+      .content-area { padding: 16px 14px 60px; }
+      .panel-head { padding: 14px 16px; }
+      .panel-body { padding: 16px; }
+      .panel-body, .panel-body.tight { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      table { min-width: 560px; }
+      .info-grid { grid-template-columns: 1fr; gap: 0; }
+      .info-grid dt { margin-top: 9px; }
+      .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+      .filters .form-group, .filters-search { min-width: 0; }
+      .chart { height: 132px; }
+      .modal-card { max-height: 94vh; }
+      .modal-footer { position: sticky; bottom: 0; background: var(--surface); }
+    }
+
+    @media (max-width: 720px) {
+      .grid-kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+      .kpi-card { padding: 13px 14px; }
+      .kpi-value { font-size: 20px; }
+      .kpi-sub { font-size: 10.5px; }
+      .panel { margin-bottom: 16px; }
+      .split { grid-template-columns: 1fr; gap: 14px; }
+      .topbar-title h2 { font-size: 16px; }
+      .topbar-title p { display: none; }
+      .btn { min-height: 40px; }
+      .btn-sm { padding: 8px 12px; font-size: 12px; min-height: 38px; }
+      .nav-item { padding: 12px 13px; font-size: 14px; }
+      .action-list { grid-template-columns: 1fr; }
+      .modal-backdrop { padding: 0; align-items: stretch; }
+      .modal-card, .modal-card.narrow { max-width: 100%; max-height: 100vh; border-radius: 0; padding: 16px; }
+      .modal-footer { flex-direction: column-reverse; }
+      .modal-footer .btn { width: 100%; }
+      #toast-container { left: 12px; right: 12px; bottom: 12px; }
+      .toast-msg { min-width: 0; max-width: none; }
+      #login-view { padding: 14px; }
+      .login-box { padding: 24px; }
+      .chart { height: 118px; }
+      .panel-head h3 { font-size: 14px; }
+    }
+
+    @media (max-width: 420px) {
+      .grid-kpi { grid-template-columns: 1fr; }
+      .action-count { font-size: 18px; }
+      .content-area { padding: 12px 10px 56px; }
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -200,6 +293,7 @@
 <!-- APP -->
 <div id="app-view">
   <div class="layout-wrapper">
+    <div class="nav-backdrop" id="nav-backdrop" onclick="toggleMobileNav()"></div>
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="brand-mark">K</div>
@@ -226,13 +320,16 @@
           <span>Invoices</span></a></li>
         <li><a class="nav-item" data-tab="subscriptions" onclick="switchTab('subscriptions')">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
-          <span>Subscriptions</span><span class="nav-badge" id="badge-requests" style="display:none">0</span></a></li>
+          <span>Subscriptions</span></a></li>
         <li><a class="nav-item" data-tab="payroll" onclick="switchTab('payroll')">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
           <span>Payroll</span></a></li>
         <li><a class="nav-item" data-tab="training" onclick="switchTab('training')">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 14l9-5-9-5-9 5 9 5z"></path><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0112 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"></path><path d="M12 14v7"></path></svg>
           <span>Courses</span></a></li>
+        <li><a class="nav-item" data-tab="comms" onclick="switchTab('comms')">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+          <span>Comms</span><span class="nav-badge" id="badge-templates" style="display:none">0</span></a></li>
         <li><a class="nav-item" data-tab="settings" onclick="switchTab('settings')">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
           <span>Settings</span></a></li>
@@ -275,6 +372,7 @@
         <section id="tab-subscriptions" class="tab-panel" style="display:none;"></section>
         <section id="tab-payroll" class="tab-panel" style="display:none;"></section>
         <section id="tab-training" class="tab-panel" style="display:none;"></section>
+        <section id="tab-comms" class="tab-panel" style="display:none;"></section>
         <section id="tab-settings" class="tab-panel" style="display:none;"></section>
         <section id="tab-audit" class="tab-panel" style="display:none;"></section>
       </div>
@@ -313,6 +411,12 @@ const FIREBASE_CONFIG = {
 const state = {
   token: null,
   tab: 'dashboard',
+  growth: { staff: 'month', nursery: 'month' },
+  subscriptions: [],
+  auditFilters: { from: '', to: '' },
+  mail: null,
+  automation: null,
+  stripe: null,
   users: [],
   pendingDocs: [],
   stats: null,
@@ -331,13 +435,103 @@ const TAB_META = {
   practitioners: ['Practitioners', 'Record safeguarding checks, then approve or reject vetting.'],
   nurseries: ['Nurseries', 'Approve registrations to start the 14-day trial, or reject with a reason.'],
   timesheets: ['Timesheets', 'Resolve submitted timesheets and exercise the 48-hour admin approval.'],
-  invoices: ['Invoices', 'Generate weekly invoices and record bank transfer settlements.'],
-  subscriptions: ['Subscriptions', 'Assign requested plans. No card is charged in this release.'],
-  payroll: ['Payroll', 'Generate a period, download the PAYE CSV, then mark it paid.'],
+  invoices: ['Invoices', 'Raise staffing invoices, mirror them to Stripe and reconcile payments.'],
+  subscriptions: ['Subscriptions', 'Membership mix and growth. Moves are made manually, per nursery.'],
+  payroll: ['Payroll', 'Generate a period, download the PAYE CSV, pay by bank, mark it paid.'],
   training: ['Courses', 'Write the training modules and knowledge checks practitioners must complete.'],
+  comms: ['Comms', 'Email and notify people — one message, an audience, or a saved template.'],
   settings: ['Settings', 'Feature gates, plans, pricing, company details and legal policies.'],
   audit: ['Audit log', 'Every administrative action, newest first.']
 };
+
+async function renderComms(silent = false) {
+  const gen = renderGeneration;
+  const el = document.getElementById('tab-comms');
+  if (!silent) el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading comms…</div></div>`;
+  let fetched;
+  try {
+    const [mail, automation, templates, nurserySubs] = await Promise.all([
+      api('GetMailSettings').catch(() => null),
+      api('GetAutomationSettings').catch(() => null),
+      api('ListEmailTemplates').catch(() => ({ templates: [] })),
+      api('ListNurserySubscriptions').catch(() => null)
+    ];
+    fetched = {
+      mail,
+      automation,
+      templates: templates.templates || [],
+      nurserySubs
+    };
+  } catch (err) {
+    if (silent && hasContent) return;
+    el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`;
+    return;
+  }
+
+  if (gen !== renderGeneration) return;
+
+  state.commsSnapshot = JSON.stringify(fetched);
+  state.mail = fetched.mail;
+  state.automation = fetched.automation;
+  state.templates = fetched.templates;
+  state.nurserySubs = fetched.nurserySubs;
+
+  // Badge: how many templates are in use / total
+  const tplBadge = document.getElementById('badge-templates');
+  if (tplBadge) tplBadge.textContent = String(fetched.templates.length);
+  if (tplBadge) tplBadge.style.display = '';
+
+  const tplTable = `
+    <div class="stack">
+      <div style="margin-bottom:12px;">
+        <button class="btn btn-outline btn-sm" onclick="openTemplateEditor()">Create template</button>
+        <span class="form-hint" style="margin-left:8px;">(Markdown supported)</span>
+      </div>
+      <table style="width:100%; border-collapse:collapse; margin-top:12px;">
+        <thead><tr><th style="padding:6px; text-align:left; font-size:12px; color:#64748B;">Name</th><th style="padding:6px; text-align:left; font-size:12px; color:#64748B;">Slug</th><th style="padding:6px; text-align:right; font-size:12px; color:#64748B;">Actions</th></tr></thead>
+        <tbody>
+          ${fetched.templates.map(t => `
+            <tr style="border-bottom:1px solid #F1F5F9;">
+              <td style="padding:8px; font-size:13px;">${esc(t.name || '—')}</td>
+              <td style="padding:8px; font-size:12px; color:#64748B;">${esc(t.slug || '—')}</td>
+              <td style="padding:8px; text-align:right; white-space:nowrap;">
+                <button class="btn btn-link text-primary btn-xs" onclick="event.stopPropagation(); openTemplateEditor('${esc(t.slug)}')">Edit</button>
+                <button class="btn btn-link text-danger btn-xs" onclick="event.stopPropagation(); deleteTemplate('${esc(t.slug)}')">Delete</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  const notifySection = `
+    <div class="stack" style="margin-top:24px;">
+      <div class="form-group" style="margin-bottom:8px;">
+        <label class="form-label" for="notify-audience">Audience</label>
+        <select class="form-input" id="notify-audience">
+          <option value="all">Everyone</option>
+          <option value="nursery">Nurseries only</option>
+          <option value="staff">Practitioners only</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:8px;">
+        <label class="form-label" for="notify-title">Title</label>
+        <input class="form-input" id="notify-title" maxlength="80" placeholder="Important update for all users">
+      </div>
+      <div class="form-group" style="margin-bottom:8px;">
+        <label class="form-label" for="notify-body">Message (Markdown)</label>
+        <textarea class="form-input" id="notify-body" rows="3" placeholder="The app will be unavailable this Sunday while we upgrade…"></textarea>
+      </div>
+      <div>
+        <button class="btn btn-emerald" onclick="sendAdminNotification(this)">Send notification</button>
+        <button class="btn btn-outline" onclick="closeCommsModal()">Cancel</button>
+      </div>
+    </div>
+  `;
+
+  el.innerHTML = tplTable + notifySection;
+}
 
 /* ------------------------------------------------------------------ *
  * Helpers
@@ -369,6 +563,130 @@ function toDateInput(value) {
   const d = new Date(value);
   if (isNaN(d.getTime())) return '';
   return d.toISOString().slice(0, 10);
+}
+function fmtTime(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ------------------------------------------------------------------
+// Filtering
+// ------------------------------------------------------------------
+// Every list in the console filters in the browser: the admin APIs already
+// return the whole (bounded) page for their tab, so re-round-tripping on each
+// keystroke would only make typing feel slower. Rows carry data-created so a
+// date range can be applied without re-parsing the visible text.
+function filterTableRows(tableId, predicate) {
+  document.querySelectorAll(`#${tableId} tbody tr[data-row]`).forEach(row => {
+    row.style.display = predicate(row) ? '' : 'none';
+  });
+}
+function rowMatchesQuery(row, query) {
+  const q = String(query || '').toLowerCase().trim();
+  return !q || row.innerText.toLowerCase().includes(q);
+}
+function rowMatchesDates(row, from, to) {
+  if (!from && !to) return true;
+  const created = row.dataset.created;
+  if (!created) return true;
+  const t = new Date(created).getTime();
+  if (isNaN(t)) return true;
+  if (from && t < new Date(from + 'T00:00:00').getTime()) return false;
+  if (to && t > new Date(to + 'T23:59:59.999').getTime()) return false;
+  return true;
+}
+
+// ------------------------------------------------------------------
+// Growth chart
+// ------------------------------------------------------------------
+// Buckets sign-ups into day / week / month / year columns ending today, and
+// renders them as flex bars. Deliberately dependency-free: the console loads
+// from a single HTML file, so a chart library would be a second CDN to trust
+// before the admin could see a number.
+function signupBuckets(users, interval, periods) {
+  const now = new Date();
+  const starts = [];
+
+  const startOfWeek = date => {
+    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const day = (d.getDay() + 6) % 7; // Monday = 0
+    d.setDate(d.getDate() - day);
+    return d;
+  };
+
+  for (let i = periods - 1; i >= 0; i--) {
+    if (interval === 'day') {
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      const end = new Date(start); end.setDate(end.getDate() + 1);
+      starts.push({ start, end, label: start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) });
+    } else if (interval === 'week') {
+      const start = startOfWeek(now);
+      start.setDate(start.getDate() - i * 7);
+      const end = new Date(start); end.setDate(end.getDate() + 7);
+      starts.push({ start, end, label: 'w/c ' + start.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) });
+    } else if (interval === 'year') {
+      const start = new Date(now.getFullYear() - i, 0, 1);
+      const end = new Date(now.getFullYear() - i + 1, 0, 1);
+      starts.push({ start, end, label: String(start.getFullYear()) });
+    } else {
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      starts.push({ start, end, label: start.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }) });
+    }
+  }
+
+  return starts.map(bucket => {
+    const count = users.filter(u => {
+      if (!u.createdAt) return false;
+      const t = new Date(u.createdAt).getTime();
+      return !isNaN(t) && t >= bucket.start.getTime() && t < bucket.end.getTime();
+    }).length;
+    return { ...bucket, count };
+  });
+}
+
+function growthChart(buckets, colour = 'var(--slate-blue)') {
+  if (!buckets.length) return '<div class="empty">Nothing to plot yet.</div>';
+  const max = Math.max(1, ...buckets.map(b => b.count));
+  return `
+    <div class="chart">
+      ${buckets.map(b => `
+        <div class="chart-col" title="${esc(b.label)}: ${b.count}">
+          <div class="chart-count">${b.count || ''}</div>
+          <div class="chart-bar" style="height:${Math.max(2, Math.round((b.count / max) * 112))}px; background:${colour}; opacity:${b.count ? 1 : 0.18};"></div>
+          <div class="chart-label">${esc(b.label)}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// The chart's period selector is shared: each tab keeps its own choice in
+// state so switching tabs (or a background refresh) does not reset it.
+function growthUsers(tabKey) {
+  const role = tabKey === 'nursery' ? 'nursery' : 'staff';
+  return (state.users || []).filter(u => u.role === role);
+}
+
+function renderGrowth(tabKey, holderId, colour) {
+  const holder = document.getElementById(holderId);
+  if (!holder) return;
+  if (!state.growth) state.growth = {};
+  const select = document.getElementById(holderId + '-interval');
+  const interval = select ? select.value : (state.growth[tabKey] || 'month');
+  state.growth[tabKey] = interval;
+  const periods = interval === 'day' ? 14 : interval === 'week' ? 12 : interval === 'year' ? 5 : 12;
+  const buckets = signupBuckets(growthUsers(tabKey), interval, periods);
+  const total = buckets.reduce((sum, b) => sum + b.count, 0);
+  const unit = interval === 'day' ? 'days' : interval === 'week' ? 'weeks' : interval === 'year' ? 'years' : 'months';
+  holder.innerHTML = `
+    <div class="filters" style="justify-content:space-between; margin-bottom:6px;">
+      <div class="muted">${total} new in the last ${periods} ${unit}</div>
+      <select class="form-select" id="${holderId}-interval" style="max-width:140px;" onchange="renderGrowth('${tabKey}', '${holderId}', '${colour}')">
+        ${[['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly'], ['year', 'Yearly']].map(([v, label]) => `<option value="${v}" ${interval === v ? 'selected' : ''}>${label}</option>`).join('')}
+      </select>
+    </div>
+    ${growthChart(buckets, colour)}`;
 }
 function statusBadge(status) {
   const s = String(status || '').toLowerCase();
@@ -435,11 +753,39 @@ function openModal(title, bodyHtml, footerHtml, subtitle = '', narrow = false) {
 function closeModal() {
   document.getElementById('modal').classList.remove('open');
 }
-document.getElementById('modal').addEventListener('click', (e) => {
-  if (e.target.id === 'modal') closeModal();
-});
 
-function withBusy(button, fn) {
+// Comms tab handlers
+function openTemplateEditor(slug) {
+  const body = `\n    <div class="stack">\n      <div class="form-group">\n        <label class="form-label" for="template-name">Name</label>\n        <input class="form-input" id="template-name" placeholder="Payment receipt…">\n      </div>\n      <div class="form-group" style="margin-bottom:8px;">\n        <label class="form-label" for="template-slug">Slug</label>\n        <input class="form-input" id="template-slug" placeholder="payment-received">\n      </div>\n      <div class="form-group" style="margin-bottom:8px;">\n        <label class="form-label" for="template-body">Body (Markdown)</label>\n        <textarea class="form-input" id="template-body" rows="4" placeholder="Hi {{name}}, your payment has been received…">\n      </textarea>\n      </div>\n      <div>\n        <button class="btn btn-emerald" onclick="saveTemplate(this)">Save template</button>\n        <button class="btn btn-outline" onclick="closeTemplateEditor()">Cancel</button>\n      </div>\n    </div>\n  `;
+  openModal('Template editor', body, '', 'Comms');
+}
+
+function closeTemplateEditor() {
+  closeModal();
+}
+
+function saveTemplate(button) {
+  const name = document.getElementById('template-name').value;
+  const slug = document.getElementById('template-slug').value;
+  const body = document.getElementById('template-body').value;
+  if (!name || !slug) return showToast('Name and slug required', 'error');
+  api('SaveEmailTemplate', { name, slug, body }).then(() => {
+    showToast('Template saved', 'success');
+    closeTemplateEditor();
+    renderComms();
+  });
+}
+
+function deleteTemplate(slug) {
+  if (!confirm('Delete template ' + slug + '?')) return;
+  api('DeleteEmailTemplate', { slug }).then(() => {
+    showToast('Template deleted', 'success');
+    renderComms();
+  });
+}
+
+function sendAdminNotification(button) {
+
   return async (...args) => {
     // Starting an action invalidates every refresh already in flight: a
     // silent tick that began before the save would otherwise finish after it
@@ -447,6 +793,30 @@ function withBusy(button, fn) {
     // Settings saves look like they silently reverted. Every renderer checks
     // renderGeneration after its awaits and bails when superseded.
     renderGeneration++;
+
+    const audience = document.getElementById('notify-audience')?.value || 'all';
+    const title = document.getElementById('notify-title')?.value || '';
+    const body = document.getElementById('notify-body')?.value || '';
+    if (!title || !body) return showToast('Title and body required', 'error');
+
+    api('SendAdminNotification', { audience, title, body }).then((res) => {
+      showToast('Notification sent', 'success');
+      closeCommsModal();
+    });
+  };
+}
+
+function closeCommsModal() {
+  closeModal();
+}
+
+/* ------------------------------------------------------------------ *
+ * Auth
+ * ------------------------------------------------------------------ */
+try { firebase.initializeApp(FIREBASE_CONFIG); } catch (e) { console.warn('Firebase init', e); }
+
+firebase.auth().onAuthStateChanged(async (user) => {
+
     const original = button.innerHTML;
     button.disabled = true;
     button.innerHTML = '<span class="spinner"></span> Working…';
@@ -513,7 +883,8 @@ function showLogin() {
   document.getElementById('app-view').style.display = 'none';
 }
 function toggleMobileNav() {
-  document.getElementById('sidebar').classList.toggle('open');
+  const open = document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('nav-backdrop').classList.toggle('open', open);
 }
 
 /* ------------------------------------------------------------------ *
@@ -528,6 +899,7 @@ const RENDERERS = {
   subscriptions: renderSubscriptions,
   payroll: renderPayroll,
   training: renderTraining,
+  comms: renderComms,
   settings: renderSettings,
   audit: renderAudit
 };
@@ -545,6 +917,7 @@ async function switchTab(tab) {
   document.getElementById('view-title').innerText = meta[0];
   document.getElementById('view-sub').innerText = meta[1];
   document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('nav-backdrop').classList.remove('open');
   await RENDERERS[tab]();
 }
 
@@ -701,7 +1074,6 @@ async function loadCore() {
 
 function updateNavBadges() {
   const pendingNurseries = state.users.filter(u => u.role === 'nursery' && u.nurseryApprovalStatus === 'pending_approval').length;
-  const requests = state.stats?.subscriptionRequests || 0;
   const attention = pendingNurseries + state.pendingDocs.length + (state.stats?.pendingVetting || 0);
   const setBadge = (id, count) => {
     const el = document.getElementById(id);
@@ -711,7 +1083,6 @@ function updateNavBadges() {
   };
   setBadge('badge-attention', attention);
   setBadge('badge-nurseries', pendingNurseries);
-  setBadge('badge-requests', requests);
 }
 
 /* ------------------------------------------------------------------ *
@@ -725,16 +1096,83 @@ function updateNavBadges() {
   const pendingNurseries = state.users.filter(u => u.role === 'nursery' && u.nurseryApprovalStatus === 'pending_approval');
   const pendingVetting = state.users.filter(u => u.role === 'staff' && ['pending', 'rejected_further_info', ''].includes(String(u.vettingStatus || '').replace(' ', '_')));
 
+  // The first screen answers one question: what needs me right now, in the
+  // order it blocks other people. Platform totals come after the queue, so a
+  // new admin does not have to work out which number leads to an action.
+  const actions = [
+    {
+      key: 'nursery',
+      count: pendingNurseries.length || (s.pendingNurseryApprovals || 0),
+      title: 'Nursery registrations',
+      sub: 'Approve to start the 14-day trial',
+      tab: 'nurseries',
+      cta: 'Review',
+      icon: '<path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>'
+    },
+    {
+      key: 'vetting',
+      count: pendingVetting.length || (s.pendingVetting || 0),
+      title: 'Practitioner vetting',
+      sub: 'Record the checks, then approve',
+      tab: 'practitioners',
+      cta: 'Review',
+      icon: '<path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>'
+    },
+    {
+      key: 'documents',
+      count: state.pendingDocs.length || (s.pendingDocuments || 0),
+      title: 'Documents to inspect',
+      sub: 'DBS and right-to-work evidence',
+      tab: 'practitioners',
+      cta: 'Inspect',
+      icon: '<path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>'
+    },
+    {
+      key: 'timesheets',
+      count: s.pendingTimesheets || 0,
+      title: 'Timesheets to approve',
+      sub: 'Escalates after 48 hours',
+      tab: 'timesheets',
+      cta: 'Approve',
+      icon: '<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>'
+    }
+  ];
+  const waiting = actions.filter(a => Number(a.count) > 0);
+  const busy = waiting.length
+    ? waiting
+    : [{ key: 'clear', count: 0, title: 'Nothing is waiting on you', sub: 'New registrations, documents and timesheets appear here automatically.', tab: 'dashboard', cta: '', icon: '<path d="M5 13l4 4L19 7"></path>' }];
+
   el.innerHTML = `
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>Needs your attention</h3><p>${waiting.length ? `${waiting.length} queue${waiting.length === 1 ? '' : 's'} waiting on a decision` : 'All queues are clear'}</p></div>
+      </div>
+      <div class="panel-body">
+        <div class="action-list">
+          ${busy.map(a => `
+            <div class="action-card ${Number(a.count) > 0 ? 'urgent' : 'clear'}">
+              <div class="action-icon" style="${Number(a.count) > 0 ? '' : 'background: var(--emerald-bg); color: var(--emerald);'}">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">${a.icon}</svg>
+              </div>
+              <div class="action-body">
+                <div class="action-title">${esc(a.title)}</div>
+                <div class="action-sub">${esc(a.sub)}</div>
+              </div>
+              <div class="action-count">${esc(a.count)}</div>
+              ${a.cta ? `<button class="btn btn-primary btn-sm" onclick="switchTab('${a.tab}')">${esc(a.cta)}</button>` : ''}
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">Platform at a glance</div>
     <div class="grid-kpi">
-      ${kpi('Nurseries', s.totalNurseries, (s.trialAccounts || 0) + ' on trial')}
-      ${kpi('Practitioners', s.totalStaff, (s.verifiedPractitioners || 0) + ' verified')}
-      ${kpi('Open shifts', s.openShifts, (s.bookedShifts || 0) + ' booked')}
-      ${kpi('Awaiting action', (s.pendingNurseryApprovals || 0) + (s.pendingVetting || 0) + (s.pendingDocuments || 0), 'nurseries, vetting, documents')}
-      ${kpi('Pending timesheets', s.pendingTimesheets, '48h escalation applies')}
-      ${kpi('Requests', s.subscriptionRequests, 'plan changes waiting')}
-      ${kpi('Outstanding', money(s.outstandingPence), 'invoiced, unpaid')}
-      ${kpi('Monthly plans', money(s.monthlySubscriptionRevenuePence), 'recurring membership')}
+      ${kpi('Nurseries', s.totalNurseries, (s.trialAccounts || 0) + ' on trial', 'nurseries')}
+      ${kpi('Practitioners', s.totalStaff, (s.verifiedPractitioners || 0) + ' verified', 'practitioners')}
+      ${kpi('Open shifts', s.openShifts, (s.bookedShifts || 0) + ' booked', 'timesheets')}
+      ${kpi('Outstanding', money(s.outstandingPence), 'invoiced, unpaid', 'invoices')}
+      ${kpi('Monthly plans', money(s.monthlySubscriptionRevenuePence), 'recurring membership', 'subscriptions')}
+      ${kpi('Payroll', s.payrollPeriods, 'periods generated', 'payroll')}
     </div>
 
     <div class="split">
@@ -783,8 +1221,9 @@ function updateNavBadges() {
   `;
 }
 
-function kpi(title, value, sub) {
-  return `<div class="kpi-card"><div class="kpi-title">${esc(title)}</div><div class="kpi-value">${esc(value ?? 0)}</div><div class="kpi-sub">${esc(sub || '')}</div></div>`;
+function kpi(title, value, sub, tab) {
+  const link = tab ? ` onclick="switchTab('${tab}')" title="Open ${esc(tab)}"` : '';
+  return `<div class="kpi-card${tab ? ' linkable' : ''}"${link}><div class="kpi-title">${esc(title)}</div><div class="kpi-value">${esc(value ?? 0)}</div><div class="kpi-sub">${esc(sub || '')}</div></div>`;
 }
 function userName(uid) {
   const u = state.users.find(x => x.uid === uid);
@@ -812,41 +1251,95 @@ const OPTIONAL_CHECKS = {
 
 async function renderPractitioners(silent = false) {
   const el = document.getElementById('tab-practitioners');
-  const snapshot = JSON.stringify(state.users.filter(u => u.role === 'staff'));
+  const staff = state.users.filter(u => u.role === 'staff');
+  const snapshot = JSON.stringify(staff);
   if (silent && snapshot === state.practitionersSnapshot) return;
   state.practitionersSnapshot = snapshot;
-  const staff = state.users.filter(u => u.role === 'staff');
+
+  const statuses = ['', 'pending_verification', 'approved', 'rejected_further_info', 'suspended'];
   el.innerHTML = `
     <div class="panel">
       <div class="panel-head">
-        <div><h3>Practitioner compliance</h3><p>${staff.length} practitioner${staff.length === 1 ? '' : 's'} registered</p></div>
-        <input class="form-input" id="staff-search" placeholder="Search name, email or phone" style="max-width:280px;" oninput="filterTable('staff-table', this.value)">
+        <div><h3>Practitioner growth</h3><p>Sign-ups over time — the supply side of the marketplace.</p></div>
+      </div>
+      <div class="panel-body"><div id="staff-growth"></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>Practitioner compliance</h3><p>${staff.length} practitioner${staff.length === 1 ? '' : 's'} registered · record checks, then approve or reject vetting</p></div>
+      </div>
+      <div class="panel-body" style="border-bottom:1px solid var(--border);">
+        <div class="filters">
+          <div class="form-group filters-search">
+            <label class="form-label" for="staff-search">Search</label>
+            <input class="form-input" id="staff-search" placeholder="Name, email, phone, town" oninput="filterStaffTable()">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="staff-from">Joined from</label>
+            <input type="date" class="form-input" id="staff-from" onchange="filterStaffTable()">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="staff-to">Joined to</label>
+            <input type="date" class="form-input" id="staff-to" onchange="filterStaffTable()">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="staff-status">Vetting</label>
+            <select class="form-select" id="staff-status" onchange="filterStaffTable()">
+              ${statuses.map(s => `<option value="${s}">${s ? s.replace(/_/g, ' ') : 'Any status'}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <button class="btn btn-outline btn-sm" onclick="clearStaffFilters()">Clear</button>
+          </div>
+        </div>
       </div>
       <div class="panel-body tight table-scroll">
         <table id="staff-table">
-          <thead><tr><th>Practitioner</th><th>Contact</th><th>DBS</th><th>Vetting</th><th>Recheck due</th><th></th></tr></thead>
+          <thead><tr><th>Practitioner</th><th>Contact</th><th>DBS</th><th>Vetting</th><th>Joined</th><th>Recheck due</th><th></th></tr></thead>
           <tbody>
             ${staff.length ? staff.map(u => `
-              <tr class="clickable-row" onclick="openPractitioner('${esc(u.uid)}')">
-                <td><strong>${esc(u.name || 'Unnamed')}</strong>${u.suspended ? ' <span class="badge badge-red">suspended</span>' : ''}<div class="muted">${esc(u.city || u.postcode || '')}</div></td>
-                <td>${esc(u.email || '—')}<div class="muted">${esc(u.phone || '')}</div></td>
+              <tr class="clickable-row" data-row data-created="${esc(u.createdAt || '')}" data-status="${esc(u.vettingStatus || '')}" onclick="openPractitioner('${esc(u.uid)}')">
+                <td><strong>${esc(u.name || 'Unnamed')}</strong>${u.suspended ? ' <span class="badge badge-red">suspended</span>' : ''}<div class="muted">${esc(u.city || u.postcode || '')}</div></td>		<td>${esc(u.email || '—')}${u.email && u.profileEmail === '' ? ' <span class="badge badge-blue" title="Address they sign in with">sign-in</span>' : ''}<div class="muted">${esc(u.phone || '')}</div></td>
                 <td>${statusBadge(u.dbsStatus)}</td>
                 <td>${statusBadge(u.vettingStatus || 'pending')}</td>
+                <td>${fmtDate(u.createdAt)}</td>
                 <td>${fmtDate(u.dbsRecheckDue)}</td>
-                <td style="text-align:right;"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openPractitioner('${esc(u.uid)}')">Review</button></td>
-              </tr>`).join('') : `<tr><td colspan="6" class="empty">No practitioner accounts yet.</td></tr>`}
+                <td style="text-align:right; white-space:nowrap;">
+                  <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openPractitioner('${esc(u.uid)}')">Review</button>
+                  <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openEmailComposer('${esc(u.uid)}')">Email</button>
+                </td>
+              </tr>`).join('') : `<tr><td colspan="7" class="empty">No practitioner accounts yet.</td></tr>`}
           </tbody>
         </table>
       </div>
     </div>
   `;
+
+  renderGrowth('staff', 'staff-growth', 'var(--slate-blue)');
+  // A silent tick rebuilt the panel, so re-apply whatever filters were set.
+  filterStaffTable();
 }
 
-function filterTable(tableId, query) {
-  const q = String(query || '').toLowerCase().trim();
-  document.querySelectorAll(`#${tableId} tbody tr`).forEach(row => {
-    row.style.display = !q || row.innerText.toLowerCase().includes(q) ? '' : 'none';
+function filterStaffTable() {
+  const q = document.getElementById('staff-search')?.value || '';
+  const from = document.getElementById('staff-from')?.value || '';
+  const to = document.getElementById('staff-to')?.value || '';
+  const status = document.getElementById('staff-status')?.value || '';
+  filterTableRows('staff-table', row => (
+    rowMatchesQuery(row, q) &&
+    rowMatchesDates(row, from, to) &&
+    (!status || row.dataset.status === status)
+  ));
+}
+
+function clearStaffFilters() {
+  ['staff-search', 'staff-from', 'staff-to', 'staff-status'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = '';
   });
+  filterStaffTable();
 }
 
 async function openPractitioner(uid) {
@@ -867,16 +1360,39 @@ async function openPractitioner(uid) {
         <td style="text-align:right;"><button class="btn btn-outline btn-sm" onclick="reviewDocument('${esc(d.docId)}','${esc(uid)}','${esc(p.name || '')}')">Inspect</button></td>
       </tr>`).join('') : `<tr><td colspan="3" class="empty">No documents uploaded.</td></tr>`;
 
+    const passed = required.filter(k => (checklist[k]?.result || 'pending') === 'passed').length;
+    const pct = Math.round((passed / required.length) * 100);
+    const firstMissing = missing[0] ? CHECK_LABELS[missing[0]] : '';
+    const docCount = docs.filter(d => d.status === 'pending').length;
+
     openModal(
       p.name || 'Practitioner',
       `
-        <div class="inline-actions" style="margin-bottom:14px;">
+        <div class="inline-actions" style="margin-bottom:12px;">
           ${statusBadge(p.vettingStatus || 'pending')}
           ${statusBadge(p.dbsStatus)}
           ${p.suspended ? '<span class="badge badge-red">account suspended</span>' : ''}
         </div>
-        <dl class="info-grid">
-          <dt>Email</dt><dd>${esc(p.email || '—')}</dd>
+
+        <div class="summary-strip">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px;">
+            <strong style="font-size:13px; color:var(--oxford);">${passed} of ${required.length} required checks passed</strong>
+            <span class="muted">${docCount} document${docCount === 1 ? '' : 's'} to inspect</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" style="width:${pct}%; background:${missing.length ? 'var(--amber)' : 'var(--emerald)'};"></div></div>
+          <div class="step-hint">${missing.length
+            ? `Next: ${esc(firstMissing)}${missing.length > 1 ? ` and ${missing.length - 1} more` : ''}. Approval is blocked until every required check is recorded.`
+            : 'All required checks are recorded. Step 3 is ready.'}</div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <div class="step-title">Check the evidence</div>
+            <div class="step-hint">Open each upload, then approve or reject that document.</div>
+          </div>
+        </div>
+        <dl class="info-grid">		  <dt>Email</dt><dd>${esc(p.email || '—')}${p.email && !detail.profileEmail ? ' <span class="badge badge-blue" title="Address they sign in with — the profile never captured one">sign-in</span>' : ''}</dd>
           <dt>Phone</dt><dd>${esc(p.phone || '—')}</dd>
           <dt>Location</dt><dd>${esc(p.city || p.postcode || '—')}</dd>
           <dt>Qualification</dt><dd>${esc((p.qualificationLevel || 'none').replace(/_/g, ' '))}</dd>
@@ -884,28 +1400,45 @@ async function openPractitioner(uid) {
           <dt>Recheck due</dt><dd>${fmtDate(p.dbsRecheckDue)}</dd>
           <dt>Right to work</dt><dd>${p.rightToWorkVerified ? 'Verified' : 'Not verified'}</dd>
         </dl>
-        <div class="divider"></div>
-        <h3 style="font-size:14px; font-weight:800; color:var(--oxford); margin-bottom:8px;">Documents</h3>
-        <div class="table-scroll"><table><thead><tr><th>Document</th><th>Status</th><th></th></tr></thead><tbody>${docRows}</tbody></table></div>
-        <div class="divider"></div>
-        <h3 style="font-size:14px; font-weight:800; color:var(--oxford); margin-bottom:4px;">Vetting checklist</h3>
-        <p class="form-hint" style="margin-bottom:10px;">All ${required.length} required checks must pass before approval. ${missing.length ? `<strong>${missing.length} still outstanding.</strong>` : '<strong>All required checks passed.</strong>'}</p>
+        <div class="table-scroll" style="margin-top:12px;">
+          <table><thead><tr><th>Document</th><th>Status</th><th></th></tr></thead><tbody>${docRows}</tbody></table>
+        </div>
+
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <div class="step-title">Record each check</div>
+            <div class="step-hint">Required checks block approval; optional ones are recorded but never block.</div>
+          </div>
+        </div>
         <div id="checklist-rows">
           ${required.map(k => checkRow(k, CHECK_LABELS[k], checklist[k], true)).join('')}
+          <div class="form-hint" style="margin:8px 0 2px;">Optional</div>
           ${Object.keys(OPTIONAL_CHECKS).map(k => checkRow(k, OPTIONAL_CHECKS[k], checklist[k], false)).join('')}
         </div>
-        <div class="divider"></div>
-        <div class="form-group">
+        <p class="form-hint" style="margin-top:8px;">Changes are written when you press <strong>Save checklist</strong> below.</p>
+
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <div class="step-title">Decide</div>
+            <div class="step-hint">Approving marks the DBS as checked by K Flex and sets a 12-month recheck. Sending back needs a note.</div>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:12px;">
           <label class="form-label" for="vetting-note">Note to practitioner (required when rejecting)</label>
           <input class="form-input" id="vetting-note" placeholder="e.g. Please re-upload a clearer certificate.">
+        </div>
+        <div class="inline-actions">
+          <button class="btn btn-emerald" ${missing.length ? 'disabled title="Record every required check first"' : ''} onclick="approveVetting('${esc(uid)}', this)">Approve practitioner</button>
+          <button class="btn btn-danger" onclick="rejectVetting('${esc(uid)}', this)">Send back for more information</button>
         </div>
       `,
       `
         <button class="btn btn-outline" onclick="closeModal()">Close</button>
+        <button class="btn btn-outline" onclick="openEmailComposer('${esc(uid)}')">Email</button>
         <button class="btn btn-outline" onclick="toggleSuspend('${esc(uid)}', ${p.suspended ? 'false' : 'true'})">${p.suspended ? 'Unsuspend account' : 'Suspend account'}</button>
-        <button class="btn btn-outline" onclick="saveChecklist('${esc(uid)}', this)">Save checklist</button>
-        <button class="btn btn-danger" onclick="rejectVetting('${esc(uid)}', this)">Reject</button>
-        <button class="btn btn-emerald" onclick="approveVetting('${esc(uid)}', this)">Approve vetting</button>
+        <button class="btn btn-primary" onclick="saveChecklist('${esc(uid)}', this)">Save checklist</button>
       `,
       esc(p.email || uid),
       false
@@ -1104,34 +1637,154 @@ async function adminDecideShiftApplicant(shiftId, staffId, approve, button) {
  * ------------------------------------------------------------------ */
 async function renderNurseries(silent = false) {
   const el = document.getElementById('tab-nurseries');
-  const snapshot = JSON.stringify(state.users.filter(u => u.role === 'nursery'));
+  const nurseries = state.users.filter(u => u.role === 'nursery');
+  const snapshot = JSON.stringify(nurseries);
   if (silent && snapshot === state.nurseriesSnapshot) return;
   state.nurseriesSnapshot = snapshot;
-  const nurseries = state.users.filter(u => u.role === 'nursery');
+
+  const statuses = ['', 'pending_approval', 'approved', 'rejected'];
   el.innerHTML = `
     <div class="panel">
       <div class="panel-head">
-        <div><h3>Nursery registrations</h3><p>${nurseries.length} setting${nurseries.length === 1 ? '' : 's'} · approvals start the trial</p></div>
-        <input class="form-input" id="nursery-search" placeholder="Search name or company" style="max-width:280px;" oninput="filterTable('nursery-table', this.value)">
+        <div><h3>Nursery growth</h3><p>Sign-ups over time — approvals start the 14-day trial.</p></div>
+      </div>
+      <div class="panel-body"><div id="nursery-growth"></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>Nursery registrations</h3><p>${nurseries.length} setting${nurseries.length === 1 ? '' : 's'} · approving starts the trial</p></div>
+      </div>
+      <div class="panel-body" style="border-bottom:1px solid var(--border);">
+        <div class="filters">
+          <div class="form-group filters-search">
+            <label class="form-label" for="nursery-search">Search</label>
+            <input class="form-input" id="nursery-search" placeholder="Name, company, email, town" oninput="filterNurseryTable()">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="nursery-from">Joined from</label>
+            <input type="date" class="form-input" id="nursery-from" onchange="filterNurseryTable()">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="nursery-to">Joined to</label>
+            <input type="date" class="form-input" id="nursery-to" onchange="filterNurseryTable()">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="nursery-status">Approval</label>
+            <select class="form-select" id="nursery-status" onchange="filterNurseryTable()">
+              ${statuses.map(s => `<option value="${s}">${s ? s.replace(/_/g, ' ') : 'Any status'}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <button class="btn btn-outline btn-sm" onclick="clearNurseryFilters()">Clear</button>
+          </div>
+        </div>
       </div>
       <div class="panel-body tight table-scroll">
         <table id="nursery-table">
-          <thead><tr><th>Setting</th><th>Company / Ofsted</th><th>Billing</th><th>Status</th><th>Activated</th><th></th></tr></thead>
+          <thead><tr><th>Setting</th><th>Company / Ofsted</th><th>Contact</th><th>Status</th><th>Joined</th><th>Activated</th><th></th></tr></thead>
           <tbody>
             ${nurseries.length ? nurseries.map(n => `
-              <tr class="clickable-row" onclick="openNursery('${esc(n.uid)}')">
+              <tr class="clickable-row" data-row data-created="${esc(n.createdAt || '')}" data-status="${esc(n.nurseryApprovalStatus || '')}" onclick="openNursery('${esc(n.uid)}')">
                 <td><strong>${esc(n.name || 'Unnamed nursery')}</strong>${n.suspended ? ' <span class="badge badge-red">suspended</span>' : ''}<div class="muted">${esc(n.city || n.postcode || '')}</div></td>
                 <td><span class="mono">${esc(n.companyNumber || '—')}</span><div class="muted">Ofsted ${esc(n.ofstedRegNumber || '—')}</div></td>
                 <td>${esc(n.email || '—')}<div class="muted">${esc(n.phone || '')}</div></td>
                 <td>${statusBadge(n.nurseryApprovalStatus || 'approved')}</td>
+                <td>${fmtDate(n.createdAt)}</td>
                 <td>${fmtDate(n.activationDate)}</td>
-                <td style="text-align:right;"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openNursery('${esc(n.uid)}')">Review</button></td>
-              </tr>`).join('') : `<tr><td colspan="6" class="empty">No nursery accounts yet.</td></tr>`}
+                <td style="text-align:right; white-space:nowrap;">
+                  <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openNursery('${esc(n.uid)}')">Review</button>
+                  <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openEmailComposer('${esc(n.uid)}')">Email</button>
+                </td>
+              </tr>`).join('') : `<tr><td colspan="7" class="empty">No nursery accounts yet.</td></tr>`}
           </tbody>
         </table>
       </div>
     </div>
   `;
+
+  renderGrowth('nursery', 'nursery-growth', 'var(--emerald)');
+  filterNurseryTable();
+}
+
+function filterNurseryTable() {
+  const q = document.getElementById('nursery-search')?.value || '';
+  const from = document.getElementById('nursery-from')?.value || '';
+  const to = document.getElementById('nursery-to')?.value || '';
+  const status = document.getElementById('nursery-status')?.value || '';
+  filterTableRows('nursery-table', row => (
+    rowMatchesQuery(row, q) &&
+    rowMatchesDates(row, from, to) &&
+    (!status || row.dataset.status === status)
+  ));
+}
+
+function clearNurseryFilters() {
+  ['nursery-search', 'nursery-from', 'nursery-to', 'nursery-status'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = '';
+  });
+  filterNurseryTable();
+}
+
+/* ------------------------------------------------------------------ *
+ * Email composer (practitioners and nurseries)
+ * ------------------------------------------------------------------ */
+// "Email them from the practitioners page" (owner brief): one message to one
+// account, through the same send-email queue as every transactional message.
+// The recipient address is shown but not editable — it comes from the profile,
+// so a typo in the console cannot silently mail a stranger.
+function openEmailComposer(uid) {
+  const user = (state.users || []).find(u => u.uid === uid) || {};
+  if (!user.email) {
+    showToast('This account has no email address on file', 'error');
+    return;
+  }
+  openModal(
+    'Email ' + (user.name || 'account'),
+    `
+      <p class="muted" style="margin-bottom:12px;">Sending to <strong>${esc(user.email)}</strong>. It arrives from the platform mailer and is recorded in the audit log.</p>
+      <div class="form-group">
+        <label class="form-label" for="compose-subject">Subject</label>
+        <input class="form-input" id="compose-subject" placeholder="Action needed on your K Flex account">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="compose-body">Message</label>
+        <textarea class="form-textarea" id="compose-body" style="min-height:180px;" placeholder="Hello — we still need a clearer copy of your DBS certificate. You can upload it in the app under Profile → Documents."></textarea>
+        <div class="form-hint">Plain text. Blank lines become paragraphs — no markup is sent.</div>
+      </div>
+      <div id="compose-error" style="display:none; padding:9px 12px; background:var(--rose-bg); border:1px solid #FECACA; color:var(--rose); border-radius:10px; font-size:12px; font-weight:600;"></div>
+    `,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-emerald" onclick="sendComposedEmail('${esc(uid)}', this)">Send email</button>`,
+    'Goes through the platform mailer',
+    true
+  );
+}
+
+async function sendComposedEmail(uid, button) {
+  const subject = document.getElementById('compose-subject').value.trim();
+  const body = document.getElementById('compose-body').value.trim();
+  const errorBox = document.getElementById('compose-error');
+  errorBox.style.display = 'none';
+  if (!subject || !body) {
+    errorBox.innerText = 'Subject and message are both required.';
+    errorBox.style.display = 'block';
+    return;
+  }
+  const run = withBusy(button, async () => {
+    try {
+      await api('SendUserEmail', { uid, subject, body });
+      closeModal();
+      showToast('Email queued for delivery', 'success');
+    } catch (err) {
+      errorBox.innerText = err.message;
+      errorBox.style.display = 'block';
+      throw err;
+    }
+  });
+  await run();
 }
 
 async function openNursery(uid) {
@@ -1171,6 +1824,8 @@ async function openNursery(uid) {
     `,
     `
       <button class="btn btn-outline" onclick="closeModal()">Close</button>
+      <button class="btn btn-outline" onclick="openEmailComposer('${esc(uid)}')">Email</button>
+      <button class="btn btn-outline" onclick="openAssignPlan('${esc(uid)}', '${esc(subscription?.planId || '')}')">Change plan</button>
       <button class="btn btn-outline" onclick="toggleSuspend('${esc(uid)}', ${user.suspended ? 'false' : 'true'})">${user.suspended ? 'Unsuspend' : 'Suspend'}</button>
       ${isPending ? `<button class="btn btn-danger" onclick="rejectNursery('${esc(uid)}', this)">Reject</button>
       <button class="btn btn-emerald" onclick="approveNursery('${esc(uid)}', this)">Approve &amp; start trial</button>` : ''}
@@ -1213,7 +1868,7 @@ async function renderTimesheets(silent = false) {
   const el = document.getElementById('tab-timesheets');
   if (!silent) el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading timesheets…</div></div>`;
   let timesheets = [];
-  try { timesheets = (await api('ListTimesheets')).timesheets || []; }
+  try { timesheets = (await api('ListTimesheets?limit=100')).timesheets || []; }
   catch (err) { if (gen === renderGeneration) el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`; return; }
   if (gen !== renderGeneration) return; // superseded — do not paint stale rows
 
@@ -1221,25 +1876,57 @@ async function renderTimesheets(silent = false) {
   if (silent && timesheetSnapshot === state.timesheetsSnapshot) return;
   state.timesheetsSnapshot = timesheetSnapshot;
 
+  const statuses = ['', 'submitted', 'approved', 'admin_approved', 'correction_requested', 'disputed', 'rejected'];
+  const needsAction = timesheets.filter(t => ['submitted', 'correction_requested', 'disputed'].includes(t.status)).length;
+
   el.innerHTML = `
     <div class="panel" data-loaded="true">
       <div class="panel-head">
-        <div><h3>Timesheets</h3><p>${timesheets.length} most recent · admin approval is audited</p></div>
+        <div><h3>Timesheets</h3><p>${timesheets.length} most recent · ${needsAction} awaiting an admin decision · admin approval is audited</p></div>
         <button class="btn btn-outline btn-sm" onclick="renderTimesheets()">Reload</button>
       </div>
+      <div class="panel-body" style="border-bottom:1px solid var(--border);">
+        <div class="filters">
+          <div class="form-group filters-search">
+            <label class="form-label" for="ts-search">Search</label>
+            <input class="form-input" id="ts-search" placeholder="Practitioner, nursery or shift" oninput="filterTimesheetTable()">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ts-status">Status</label>
+            <select class="form-select" id="ts-status" onchange="filterTimesheetTable()">
+              ${statuses.map(s => `<option value="${s}">${s ? s.replace(/_/g, ' ') : 'Any status'}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ts-from">Worked from</label>
+            <input type="date" class="form-input" id="ts-from" onchange="filterTimesheetTable()">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ts-to">Worked to</label>
+            <input type="date" class="form-input" id="ts-to" onchange="filterTimesheetTable()">
+          </div>
+          <div class="form-group">
+            <button class="btn btn-outline btn-sm" onclick="clearTimesheetFilters()">Clear</button>
+          </div>
+        </div>
+      </div>
       <div class="panel-body tight table-scroll">
-        <table>
-          <thead><tr><th>Practitioner</th><th>Nursery</th><th>Shift</th><th>Net hours</th><th>Gross pay</th><th>Status</th><th></th></tr></thead>
+        <table id="timesheet-table">
+          <thead><tr><th>Practitioner</th><th>Nursery</th><th>Shift</th><th>Hours</th><th>Gross pay</th><th>Status</th><th></th></tr></thead>
           <tbody>
             ${timesheets.length ? timesheets.map(t => `
-              <tr>
+              <tr data-row data-created="${esc(t.scheduledStartTime || t.submittedAt || '')}" data-status="${esc(t.status || '')}">
                 <td><strong>${esc(t.staffName || userName(t.staffId))}</strong><div class="muted">${esc(t.staffId || '')}</div></td>
                 <td>${esc(t.nurseryName || userName(t.nurseryId))}</td>
-                <td class="mono"><a href="javascript:void(0)" onclick="openAdminShiftDetail('${esc(t.shiftId)}')" style="color:var(--royal); text-decoration:underline;">${esc(t.shiftId || '—')}</a></td>
+                <td>
+                  <a href="javascript:void(0)" onclick="openAdminShiftDetail('${esc(t.shiftId)}')" style="font-weight:700;">${esc(t.shiftTitle || 'Untitled shift')}</a>
+                  <div class="muted">${fmtDate(t.scheduledStartTime)} ${fmtTime(t.scheduledStartTime)}–${fmtTime(t.scheduledEndTime)}</div>
+                </td>
                 <td>${hoursFromMinutes(t.netMinutes ?? t.billableMinutes)}</td>
-                <td>${money(t.grossPayPence)}</td>
+                <td>${money(t.grossPayPence ?? t.totalGrossPayPence)}</td>
                 <td>${statusBadge(t.status)}</td>
-                <td style="text-align:right;">
+                <td style="text-align:right; white-space:nowrap;">
+                  <button class="btn btn-outline btn-sm" onclick="openAdminShiftDetail('${esc(t.shiftId)}')">Details</button>
                   ${['submitted', 'correction_requested', 'disputed'].includes(t.status) ? `<button class="btn btn-emerald btn-sm" onclick="openAdminApprove('${esc(t.id)}')">${t.status === 'disputed' ? 'Resolve dispute' : 'Admin approve'}</button>` : ''}
                 </td>
               </tr>`).join('') : `<tr><td colspan="7" class="empty">No timesheets yet.</td></tr>`}
@@ -1248,6 +1935,29 @@ async function renderTimesheets(silent = false) {
       </div>
     </div>
   `;
+
+  filterTimesheetTable();
+}
+
+function filterTimesheetTable() {
+  const q = document.getElementById('ts-search')?.value || '';
+  const status = document.getElementById('ts-status')?.value || '';
+  const from = document.getElementById('ts-from')?.value || '';
+  const to = document.getElementById('ts-to')?.value || '';
+  filterTableRows('timesheet-table', row => (
+    rowMatchesQuery(row, q) &&
+    rowMatchesDates(row, from, to) &&
+    (!status || row.dataset.status === status)
+  ));
+}
+
+function clearTimesheetFilters() {
+  ['ts-search', 'ts-status', 'ts-from', 'ts-to'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = '';
+  });
+  filterTimesheetTable();
 }
 
 function openAdminApprove(timesheetId) {
@@ -1287,55 +1997,244 @@ async function renderInvoices(silent = false) {
   const el = document.getElementById('tab-invoices');
   if (!silent) el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading invoices…</div></div>`;
   let invoices = [];
-  try { invoices = (await api('ListInvoices')).invoices || []; }
-  catch (err) { if (gen === renderGeneration) el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`; return; }
+  let automation = null;
+  let stripe = null;
+  try {
+    invoices = (await api('ListInvoices?limit=500')).invoices || [];
+    // Shown here, not only in Settings: whether the worker is on changes what
+    // "Generate" means (one-off vs a cadence), so it belongs next to the button.
+    automation = await api('GetAutomationSettings').catch(() => null);
+    stripe = await api('GetStripeStatus').catch(() => null);
+  } catch (err) { if (gen === renderGeneration) el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`; return; }
   if (gen !== renderGeneration) return;
-  const invoiceSnapshot = JSON.stringify(invoices);
+  const invoiceSnapshot = JSON.stringify({ invoices, automation, stripe });
   if (silent && invoiceSnapshot === state.invoicesSnapshot) return;
   state.invoicesSnapshot = invoiceSnapshot;
+  state.automation = automation || state.automation;
+  state.stripe = stripe || state.stripe;
+
+  // Newest first: the API returns them unsorted (a status filter plus an
+  // order-by would need a composite index for every filter combination).
+  invoices = [...invoices].sort((a, b) => new Date(b.issueDate || 0) - new Date(a.issueDate || 0));
+  state.invoiceRows = invoices;
 
   const outstanding = invoices.filter(i => i.status !== 'paid').reduce((sum, i) => sum + Number(i.totalPence || 0), 0);
+  const paidTotal = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.totalPence || 0), 0);
+  const statuses = ['', 'issued', 'paid', 'overdue', 'draft', 'void'];
+  const cadence = automation?.autoGenerate
+    ? `${automation.frequency === 'daily' ? 'Daily' : 'Weekly'} worker on${automation.lastRunAt ? ' · last run ' + fmtDate(automation.lastRunAt) : ''}`
+    : 'Worker off — generate manually';
+
   el.innerHTML = `
     <div class="grid-kpi">
-      ${kpi('Invoices', invoices.length, 'all time')}
-      ${kpi('Outstanding', money(outstanding), 'awaiting bank transfer')}
-      ${kpi('Paid', invoices.filter(i => i.status === 'paid').length, 'settled')}
+      ${kpi('Invoices', invoices.length, 'most recent 500')}
+      ${kpi('Outstanding', money(outstanding), 'not yet settled')}
+      ${kpi('Collected', money(paidTotal), 'marked paid')}
+      ${kpi('Card payments', stripe?.configured ? (stripe.mode === 'test' ? 'Stripe (test)' : 'Stripe (live)') : 'Not configured', stripe?.configured ? 'mirrored on creation' : 'bank transfer only')}
     </div>
     <div class="panel">
       <div class="panel-head">
-        <div><h3>Invoices</h3><p>Weekly staffing and membership charges, ex-VAT and inc-VAT</p></div>
+        <div><h3>Invoices</h3><p>Staffing charges per nursery, ex-VAT and inc-VAT · ${esc(cadence)}</p></div>
         <div class="inline-actions">
-          <button class="btn btn-outline btn-sm" onclick="generateInvoices(this)">Generate weekly invoices</button>
+          <button class="btn btn-emerald btn-sm" onclick="generateInvoices(this)">Generate invoices now</button>
+          ${stripe?.configured ? `<button class="btn btn-outline btn-sm" onclick="runStripeSyncNow(this)">Reconcile Stripe</button>` : ''}
+          <button class="btn btn-outline btn-sm" onclick="exportInvoicesCsv()">Export CSV</button>
           <button class="btn btn-outline btn-sm" onclick="renderInvoices()">Reload</button>
         </div>
       </div>
+      <div class="panel-body" style="border-bottom:1px solid var(--border);">
+        <div class="filters">
+          <div class="form-group filters-search">
+            <label class="form-label" for="inv-search">Search</label>
+            <input class="form-input" id="inv-search" placeholder="Invoice number, nursery, reference" oninput="filterInvoiceTable()">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="inv-status">Status</label>
+            <select class="form-select" id="inv-status" onchange="filterInvoiceTable()">
+              ${statuses.map(s => `<option value="${s}">${s ? s.replace(/_/g, ' ') : 'Any status'}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="inv-from">Issued from</label>
+            <input type="date" class="form-input" id="inv-from" onchange="filterInvoiceTable()">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="inv-to">Issued to</label>
+            <input type="date" class="form-input" id="inv-to" onchange="filterInvoiceTable()">
+          </div>
+          <div class="form-group">
+            <button class="btn btn-outline btn-sm" onclick="clearInvoiceFilters()">Clear</button>
+          </div>
+        </div>
+      </div>
       <div class="panel-body tight table-scroll">
-        <table>
-          <thead><tr><th>Invoice</th><th>Nursery</th><th>Period</th><th>Subtotal</th><th>VAT</th><th>Total</th><th>Status</th><th></th></tr></thead>
+        <table id="invoice-table">
+          <thead><tr><th>Invoice</th><th>Nursery</th><th>Issued / due</th><th>Subtotal</th><th>VAT</th><th>Total</th><th>Status</th><th></th></tr></thead>
           <tbody>
             ${invoices.length ? invoices.map(i => `
-              <tr class="clickable-row" onclick="openInvoice('${esc(i.id)}')">
+              <tr class="clickable-row" data-row data-created="${esc(i.issueDate || '')}" data-status="${esc(i.status || '')}" onclick="openInvoice('${esc(i.id)}')">
                 <td class="mono">${esc(i.invoiceNumber || i.id)}</td>
                 <td>${esc(i.nurseryName || userName(i.nurseryId))}</td>
                 <td>${fmtDate(i.issueDate)}<div class="muted">due ${fmtDate(i.dueDate)}</div></td>
                 <td>${money(i.subtotalPence)}</td>
                 <td>${money(i.vatPence)}</td>
                 <td><strong>${money(i.totalPence)}</strong></td>
-                <td>${statusBadge(i.status)}</td>
-                <td style="text-align:right;">${i.status !== 'paid' ? `<button class="btn btn-emerald btn-sm" onclick="event.stopPropagation(); openSettle('${esc(i.id)}', ${Number(i.totalPence || 0)})">Mark paid</button>` : ''}</td>
-              </tr>`).join('') : `<tr><td colspan="8" class="empty">No invoices yet. Generate weekly invoices once timesheets are approved.</td></tr>`}
+                <td>${statusBadge(i.status)}${i.stripeInvoiceId ? `<div class="muted" style="font-size:10.5px; margin-top:3px;">Stripe: ${esc(i.stripeInvoiceStatus || 'created')}</div>` : ''}</td>
+                <td style="text-align:right; white-space:nowrap;">
+                  <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); emailInvoice('${esc(i.id)}', this)">Email</button>
+                  ${i.status !== 'paid' ? `<button class="btn btn-emerald btn-sm" onclick="event.stopPropagation(); openSettle('${esc(i.id)}', ${Number(i.totalPence || 0)})">Mark paid</button>` : ''}
+                </td>
+              </tr>`).join('') : `<tr><td colspan="8" class="empty">No invoices yet. Approved timesheets are invoiced here — by hand or by the worker.</td></tr>`}
           </tbody>
         </table>
       </div>
     </div>
   `;
+
+  filterInvoiceTable();
+}
+
+function filterInvoiceTable() {
+  const q = document.getElementById('inv-search')?.value || '';
+  const status = document.getElementById('inv-status')?.value || '';
+  const from = document.getElementById('inv-from')?.value || '';
+  const to = document.getElementById('inv-to')?.value || '';
+  filterTableRows('invoice-table', row => (
+    rowMatchesQuery(row, q) &&
+    rowMatchesDates(row, from, to) &&
+    (!status || row.dataset.status === status)
+  ));
+}
+
+function clearInvoiceFilters() {
+  ['inv-search', 'inv-status', 'inv-from', 'inv-to'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = '';
+  });
+  filterInvoiceTable();
 }
 
 async function generateInvoices(button) {
   const run = withBusy(button, async () => {
-    const result = await api('GenerateWeeklyInvoices', {});
+    const result = await api('RunInvoiceGeneration', {});
     const created = result.invoices || [];
-    showToast(created.length ? `${created.length} invoice(s) generated` : 'No approved timesheets needed invoicing', 'success');
+    const stripeCount = created.filter(i => i.stripeInvoiceId).length;
+    if (!created.length) {
+      showToast('No approved, un-invoiced timesheets — nothing to bill', 'success');
+    } else {
+      showToast(`${created.length} invoice(s) created and emailed${stripeCount ? ` · ${stripeCount} mirrored to Stripe` : ''}`, 'success');
+    }
+    await renderInvoices();
+    await loadCore();
+  });
+  await run();
+}
+
+// Exports what is currently on screen — the same search/status/date filters
+// decide what lands in the file, which is what makes it usable as a finance
+// report rather than a dump of everything ever invoiced.
+function filteredInvoices() {
+  const q = (document.getElementById('inv-search')?.value || '').toLowerCase().trim();
+  const status = document.getElementById('inv-status')?.value || '';
+  const from = document.getElementById('inv-from')?.value || '';
+  const to = document.getElementById('inv-to')?.value || '';
+  return (state.invoiceRows || []).filter(i => {
+    const hay = [i.invoiceNumber, i.nurseryName, i.nurseryId, i.paymentReference].join(' ').toLowerCase();
+    if (q && !hay.includes(q)) return false;
+    if (status && i.status !== status) return false;
+    const t = new Date(i.issueDate || 0).getTime();
+    if (from && t < new Date(from + 'T00:00:00').getTime()) return false;
+    if (to && t > new Date(to + 'T23:59:59.999').getTime()) return false;
+    return true;
+  });
+}
+
+function exportInvoicesCsv() {
+  const rows = filteredInvoices();
+  if (!rows.length) { showToast('Nothing to export — adjust the filters', 'error'); return; }
+  const pounds = pence => (Number(pence || 0) / 100).toFixed(2);
+  const cell = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
+  const lines = [['Invoice', 'Nursery', 'Issued', 'Due', 'Subtotal (GBP)', 'VAT (GBP)', 'Total (GBP)', 'Status', 'Stripe status', 'Payment reference'].map(cell).join(',')];
+  rows.forEach(i => lines.push([
+    i.invoiceNumber || i.id, i.nurseryName || i.nurseryId, toDateInput(i.issueDate), toDateInput(i.dueDate),
+    pounds(i.subtotalPence), pounds(i.vatPence), pounds(i.totalPence), i.status,
+    i.stripeInvoiceStatus || '', i.paymentReference || ''
+  ].map(cell).join(',')));
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `kflex-invoices-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  showToast(`${rows.length} invoice(s) exported`, 'success');
+}
+
+// Credit/refund bookkeeping (owner brief §10 "issue refunds or credits").
+// This writes a ledger entry only — money movement stays in Stripe or the
+// bank, so the console never pretends to have refunded a card.
+function openLedgerEntry(nurseryId, invoiceId, invoiceNumber) {
+  openModal(
+    'Record credit or refund',
+    `
+      <p class="muted" style="margin-bottom:12px;">Adds a ledger entry against ${esc(invoiceNumber || 'this nursery')}. This records the adjustment; it does not move money. Issue card refunds in Stripe, bank refunds at the bank.</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="ledger-type">Type</label>
+          <select class="form-select" id="ledger-type">
+            <option value="credit">Credit</option>
+            <option value="refund">Refund</option>
+            <option value="discount">Discount</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ledger-amount">Amount (£)</label>
+          <input class="form-input" id="ledger-amount" type="number" min="0.01" step="0.01" placeholder="25.00">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="ledger-reason">Reason (required)</label>
+        <input class="form-input" id="ledger-reason" placeholder="e.g. Short-notice cancellation, goodwill credit">
+      </div>
+    `,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-emerald" onclick="submitLedgerEntry('${esc(nurseryId)}', '${esc(invoiceId)}', this)">Record entry</button>`,
+    invoiceNumber ? 'Invoice ' + invoiceNumber : 'Ledger adjustment',
+    true
+  );
+}
+
+async function submitLedgerEntry(nurseryId, invoiceId, button) {
+  const type = document.getElementById('ledger-type').value;
+  const amount = Number(document.getElementById('ledger-amount').value || 0);
+  const reason = document.getElementById('ledger-reason').value.trim();
+  if (!(amount > 0)) { showToast('Enter an amount greater than zero', 'error'); return; }
+  if (!reason) { showToast('A reason is required', 'error'); return; }
+  const run = withBusy(button, async () => {
+    await api('CreateLedgerEntry', {
+      nurseryId, type, amountPence: Math.round(amount * 100), reason, invoiceId
+    });
+    closeModal();
+    showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} of ${money(Math.round(amount * 100))} recorded`, 'success');
+  });
+  await run();
+}
+
+async function emailInvoice(invoiceId, button) {
+  const run = withBusy(button, async () => {
+    await api('SendInvoiceEmail', { invoiceId });
+    showToast('Invoice emailed to the nursery', 'success');
+  });
+  await run();
+}
+
+async function runStripeSyncNow(button) {
+  const run = withBusy(button, async () => {
+    const result = await api('RunStripeSync', {});
+    showToast(`Stripe checked ${result.checked} invoice(s) · ${result.markedPaid} marked paid · ${result.stillOpen} still open`, 'success');
     await renderInvoices();
   });
   await run();
@@ -1354,6 +2253,7 @@ async function openInvoice(invoiceId) {
           <dt>Issued</dt><dd>${fmtDate(invoice.issueDate)}</dd>
           <dt>Due</dt><dd>${fmtDate(invoice.dueDate)}</dd>
           <dt>Payment</dt><dd>${esc(invoice.paymentReference || invoice.paymentMethod || 'not recorded')}</dd>
+          <dt>Stripe</dt><dd>${invoice.stripeInvoiceId ? `${esc(invoice.stripeInvoiceStatus || 'created')} <span class="mono">${esc(invoice.stripeInvoiceId)}</span>` : '<span class="muted">no card link yet — use “Create Stripe invoice”</span>'}</dd>
         </dl>
         <div class="divider"></div>
         <table>
@@ -1370,7 +2270,11 @@ async function openInvoice(invoiceId) {
         </dl>
       `,
       `<button class="btn btn-outline" onclick="closeModal()">Close</button>
+       <button class="btn btn-outline" onclick="openLedgerEntry('${esc(invoice.nurseryId)}', '${esc(invoice.id)}', '${esc(invoice.invoiceNumber || '')}')">Credit / refund</button>
+       <button class="btn btn-outline" onclick="emailInvoice('${esc(invoice.id)}', this)">Email nursery</button>
+       ${invoice.stripeHostedUrl ? `<a class="btn btn-outline" href="${esc(invoice.stripeHostedUrl)}" target="_blank" rel="noopener">Open in Stripe ↗</a>` : ''}
        <button class="btn btn-outline" onclick="downloadInvoicePdf('${esc(invoice.id)}')">Download PDF</button>
+       ${!invoice.stripeInvoiceId && invoice.status !== 'paid' && invoice.status !== 'void' ? `<button class="btn btn-blue" onclick="pushInvoiceToStripe('${esc(invoice.id)}', this)">Create Stripe invoice</button>` : ''}
        ${invoice.status !== 'paid' ? `<button class="btn btn-emerald" onclick="openSettle('${esc(invoice.id)}', ${Number(invoice.totalPence || 0)})">Mark paid</button>` : ''}`,
       esc(invoice.invoiceNumber || invoice.id),
       false
@@ -1378,11 +2282,24 @@ async function openInvoice(invoiceId) {
   } catch (err) { showToast(err.message, 'error'); }
 }
 
+// Re-runs the Stripe mirror for one invoice. Generation already mirrors
+// best-effort, so this is the recovery path when Stripe was unreachable (or
+// rejected the lines) and the invoice went out with no card link.
+async function pushInvoiceToStripe(invoiceId, button) {
+  const run = withBusy(button, async () => {
+    await api('PushInvoiceToStripe', { invoiceId });
+    showToast('Stripe invoice created and emailed to the nursery', 'success');
+    await openInvoice(invoiceId);
+    await renderInvoices(true);
+  });
+  await run();
+}
+
 function openSettle(invoiceId, totalPence) {
   openModal(
     'Record bank transfer',
     `
-      <p class="muted" style="margin-bottom:12px;">Sent ${money(totalPence)}. No card payments are processed in this release — record the reference from the bank statement.</p>
+      <p class="muted" style="margin-bottom:12px;">Received ${money(totalPence)}? Record the reference here for a bank transfer. Card payments settle automatically from Stripe — this is the manual half of reconciliation, for money that will never appear there.</p>
       <div class="form-group">
         <label class="form-label" for="settle-ref">Payment reference (required)</label>
         <input class="form-input" id="settle-ref" placeholder="e.g. BACS-884920">
@@ -1419,56 +2336,94 @@ async function submitSettlement(invoiceId, button) {
 async function renderSubscriptions(silent = false) {
   const gen = renderGeneration;
   const el = document.getElementById('tab-subscriptions');
-  if (!silent) el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading subscriptions…</div></div>`;
-  let requests = [];
+  if (!silent) el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading memberships…</div></div>`;
+  let subs = [];
   let plans = [];
   try {
-    requests = (await api('ListSubscriptionRequests')).requests || [];
+    subs = (await api('ListNurserySubscriptions')).subscriptions || [];
     plans = (await api('GetAdminPlans')).plans || [];
   } catch (err) {
     if (gen === renderGeneration) el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`;
     return;
   }
   if (gen !== renderGeneration) return;
-  const snapshot = JSON.stringify({ requests, plans });
+  const snapshot = JSON.stringify({ subs, plans });
   if (silent && snapshot === state.subscriptionsSnapshot) return;
   state.subscriptionsSnapshot = snapshot;
+  state.subscriptions = subs;
   state.plans = plans;
 
+  const planName = id => plans.find(p => p.id === id)?.name || id || '—';
+  const active = subs.filter(s => s.status === 'active');
+  const trialing = subs.filter(s => s.status === 'trialing');
+  const cancelled = subs.filter(s => ['cancelled', 'expired'].includes(s.status));
+  const mrr = active.reduce((sum, s) => {
+    const plan = plans.find(p => p.id === s.planId);
+    return sum + (plan && plan.billingInterval === 'month' ? Number(plan.pricePence || 0) : 0);
+  }, 0);
+  const stripeManaged = subs.filter(s => s.stripeSubscriptionId).length;
+
+  // Plan mix: every nursery counted once against the plan it is actually on.
+  const mix = plans.map(plan => {
+    const on = subs.filter(s => s.planId === plan.id);
+    return {
+      plan,
+      total: on.length,
+      active: on.filter(s => s.status === 'active').length,
+      trialing: on.filter(s => s.status === 'trialing').length
+    };
+  });
+  const unassigned = subs.filter(s => !s.planId).length;
+
   el.innerHTML = `
+    <div class="grid-kpi">
+      ${kpi('Nurseries', subs.length, unassigned ? `${unassigned} with no plan` : 'all allocated')}
+      ${kpi('Paying', active.length, 'active memberships')}
+      ${kpi('On trial', trialing.length, '14-day trial')}
+      ${kpi('Monthly value', money(mrr), 'recurring, ex-VAT')}
+      ${kpi('Stripe-managed', stripeManaged, 'card memberships')}
+      ${kpi('Cancelled', cancelled.length, 'or expired')}
+    </div>
+
     <div class="panel">
       <div class="panel-head">
-        <div><h3>Plan change requests</h3><p>Assigning a plan records the membership; no payment is taken.</p></div>
-        <span class="badge badge-amber">${requests.length} waiting</span>
+        <div><h3>Plan mix</h3><p>How the nursery base splits across plans. Requests are no longer queued here — move an account by opening the nursery and assigning the plan.</p></div>
+        <button class="btn btn-outline btn-sm" onclick="switchTab('settings')">Edit plans</button>
       </div>
       <div class="panel-body tight table-scroll">
         <table>
-          <thead><tr><th>Nursery</th><th>Current plan</th><th>Requested</th><th>Requested</th><th>Note</th><th></th></tr></thead>
+          <thead><tr><th>Plan</th><th>Price</th><th>Interval</th><th>Nurseries</th><th>Active</th><th>Trial</th></tr></thead>
           <tbody>
-            ${requests.length ? requests.map(r => {
-              const plan = plans.find(p => p.id === r.requestedPlanId);
-              return `
-                <tr>
-                  <td><strong>${esc(r.nurseryName || userName(r.nurseryId))}</strong><div class="muted">${esc(r.nurseryId)}</div></td>
-                  <td>${esc(r.currentPlanId || '—')}</td>
-                  <td><strong>${esc(plan?.name || r.requestedPlanId)}</strong><div class="muted">${plan ? money(plan.pricePence) + ' / ' + plan.billingInterval : ''}</div></td>
-                  <td>${fmtDateTime(r.requestedAt)}</td>
-                  <td>${esc(r.note || '—')}</td>
-                  <td style="text-align:right;"><button class="btn btn-emerald btn-sm" onclick="assignPlan('${esc(r.nurseryId)}', '${esc(r.requestedPlanId)}', this)">Assign plan</button></td>
-                </tr>`;
-            }).join('') : `<tr><td colspan="6" class="empty">No plan change requests.</td></tr>`}
+            ${mix.length ? mix.map(row => `
+              <tr>
+                <td><strong>${esc(row.plan.name)}</strong><div class="muted">${esc(row.plan.description || '')}</div></td>
+                <td>${money(row.plan.pricePence)}</td>
+                <td>${esc(row.plan.billingInterval)}</td>
+                <td>${row.total}</td>
+                <td>${row.active}</td>
+                <td>${row.trialing}</td>
+              </tr>`).join('') : `<tr><td colspan="6" class="empty">No plans configured.</td></tr>`}
           </tbody>
         </table>
       </div>
     </div>
 
     <div class="panel">
-      <div class="panel-head"><div><h3>Published plans</h3><p>Edit pricing in Settings → Plans.</p></div></div>
+      <div class="panel-head">
+        <div><h3>Memberships</h3><p>One row per nursery. Open a nursery to change its plan or suspend the account.</p></div>
+      </div>
       <div class="panel-body tight table-scroll">
         <table>
-          <thead><tr><th>Plan</th><th>Price</th><th>Interval</th><th>Trial</th><th>Status</th></tr></thead>
+          <thead><tr><th>Nursery</th><th>Plan</th><th>Status</th><th>Trial ends</th><th>Current period</th></tr></thead>
           <tbody>
-            ${plans.length ? plans.map(p => `<tr><td><strong>${esc(p.name)}</strong><div class="muted">${esc(p.description)}</div></td><td>${money(p.pricePence)}</td><td>${esc(p.billingInterval)}</td><td>${p.trialDays || 0} days</td><td>${p.active ? '<span class="badge badge-green">active</span>' : '<span class="badge badge-grey">inactive</span>'}</td></tr>`).join('') : `<tr><td colspan="5" class="empty">No plans configured.</td></tr>`}
+            ${subs.length ? subs.map(s => `
+              <tr class="clickable-row" onclick="openNursery('${esc(s.nurseryId)}')">
+                <td><strong>${esc(userName(s.nurseryId))}</strong><div class="muted mono">${esc(s.nurseryId)}</div></td>
+                <td>${esc(planName(s.planId))}</td>
+                <td>${statusBadge(s.status)}</td>
+                <td>${fmtDate(s.trialEndDate)}</td>
+                <td>${fmtDate(s.currentPeriodStart)} – ${fmtDate(s.currentPeriodEnd)}</td>
+              </tr>`).join('') : `<tr><td colspan="5" class="empty">No nursery memberships yet.</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -1486,6 +2441,38 @@ async function assignPlan(nurseryId, planId, button) {
   await run();
 }
 
+async function openAssignPlan(nurseryId, currentPlanId) {
+  // The plans list normally arrives with Settings or the Subscriptions tab;
+  // loading it on demand means "Change plan" also works from a nursery opened
+  // straight after sign-in.
+  if (!(state.plans || []).length) {
+    try { state.plans = (await api('GetAdminPlans')).plans || []; }
+    catch (err) { showToast(err.message, 'error'); return; }
+  }
+  const plans = state.plans || [];
+  if (!plans.length) {
+    showToast('No plans configured — add one in Settings → Plans', 'error');
+    return;
+  }
+  openModal(
+    'Change membership plan',
+    `
+      <p class="muted" style="margin-bottom:12px;">Assigning a plan updates the membership record and notifies the nursery. No payment is taken in the app — the invoice or Stripe membership is settled separately.</p>
+      <div class="form-group">
+        <label class="form-label" for="assign-plan">Plan</label>
+        <select class="form-select" id="assign-plan">
+          ${plans.map(p => `<option value="${esc(p.id)}" ${p.id === currentPlanId ? 'selected' : ''}>${esc(p.name)} — ${money(p.pricePence)} / ${esc(p.billingInterval)}</option>`).join('')}
+        </select>
+      </div>
+    `,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-emerald" onclick="assignPlan('${esc(nurseryId)}', document.getElementById('assign-plan').value, this)">Assign plan</button>`,
+    'Manual plan change',
+    true
+  );
+}
+
+
 /* ------------------------------------------------------------------ *
  * Payroll
  * ------------------------------------------------------------------ */
@@ -1501,33 +2488,89 @@ async function renderPayroll(silent = false) {
   if (silent && payrollSnapshot === state.payrollSnapshot) return;
   state.payrollSnapshot = payrollSnapshot;
 
-  const current = periods[0];
+  const statuses = ['', 'draft', 'paid'];
+  const unpaid = periods.filter(p => p.status !== 'paid').length;
+
   el.innerHTML = `
     <div class="panel">
       <div class="panel-head">
+        <div><h3>How payroll works</h3><p>Money out to practitioners. Invoices are money in from nurseries — separate ledgers, separate steps.</p></div>
+        <span class="badge badge-blue">${unpaid} period${unpaid === 1 ? '' : 's'} unpaid</span>
+      </div>
+      <div class="panel-body">
+        <div class="explainer-step">
+          <div class="explainer-num">1</div>
+          <div><strong style="font-size:13px;">Generate a period</strong>
+            <div class="form-hint">Pick a date range (a week is normal). Every approved or admin-approved timesheet whose shift ended in that range is collected, grouped by practitioner, and paid at the rate snapshotted on the timesheet. Re-running the same range is safe: the period id is derived from the dates, so it updates rather than duplicating.</div></div>
+        </div>
+        <div class="explainer-step">
+          <div class="explainer-num">2</div>
+          <div><strong style="font-size:13px;">Review, then download the PAYE CSV</strong>
+            <div class="form-hint">Open the period to see each practitioner's hours, basic pay, rolled-up holiday pay (12.07%) and their masked bank details. The CSV is what you upload to your bank's bulk-payment file or to your payroll bureau.</div></div>
+        </div>
+        <div class="explainer-step">
+          <div class="explainer-num">3</div>
+          <div><strong style="font-size:13px;">Pay from the company account, then mark it paid</strong>
+            <div class="form-hint">The platform does not move practitioner money itself. Pay by Faster Payments/BACS from the file, then press <em>Mark period paid</em> so the period, its lines and every practitioner's earnings screen agree. Nothing is sent to Stripe for payouts in this release — Stripe is only used for nursery charges coming in.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
         <div><h3>Payroll periods</h3><p>Approved timesheets only. 12.07% rolled-up holiday pay is included.</p></div>
-        <button class="btn btn-outline btn-sm" onclick="openGeneratePayroll()">Generate period</button>
+        <div class="inline-actions">
+          ${unpaid ? `<button class="btn btn-outline btn-sm" onclick="markAllPayrollPaid(this)">Mark all as paid</button>` : ''}
+          <button class="btn btn-emerald btn-sm" onclick="openGeneratePayroll()">Generate period</button>
+        </div>
+      </div>
+      <div class="panel-body" style="border-bottom:1px solid var(--border);">
+        <div class="filters">
+          <div class="form-group filters-search">
+            <label class="form-label" for="pay-search">Search</label>
+            <input class="form-input" id="pay-search" placeholder="Period name or id" oninput="filterPayrollTable()">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pay-filter-status">Status</label>
+            <select class="form-select" id="pay-filter-status" onchange="filterPayrollTable()">
+              ${statuses.map(s => `<option value="${s}">${s ? s.replace(/_/g, ' ') : 'Any status'}</option>`).join('')}
+            </select>
+          </div>
+        </div>
       </div>
       <div class="panel-body tight table-scroll">
-        <table>
+        <table id="payroll-table">
           <thead><tr><th>Period</th><th>Dates</th><th>Practitioners</th><th>Gross pay</th><th>Status</th><th></th></tr></thead>
           <tbody>
             ${periods.length ? periods.map(p => `
-              <tr class="clickable-row" onclick="openPayrollPeriod('${esc(p.id)}')">
-                <td><strong>${esc(p.periodName)}</strong><div class="muted">${esc(p.id)}</div></td>
+              <tr class="clickable-row" data-row data-status="${esc(p.status || '')}" onclick="openPayrollPeriod('${esc(p.id)}')">
+                <td><strong>${esc(p.periodName)}</strong><div class="muted mono">${esc(p.id)}</div></td>
                 <td>${fmtDate(p.startDate)} – ${fmtDate(p.endDate)}</td>
                 <td>${p.totalPractitioners || 0}</td>
                 <td>${money(p.totalGrossPayPence)}</td>
-                <td>${statusBadge(p.status)}</td>
-                <td style="text-align:right;"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); downloadCsv('${esc(p.id)}')">CSV</button></td>
+                <td>${statusBadge(p.status)}${p.paidAt ? `<div class="muted" style="font-size:10.5px;">paid ${fmtDate(p.paidAt)}</div>` : ''}</td>
+                <td style="text-align:right; white-space:nowrap;">
+                  <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); downloadCsv('${esc(p.id)}')">CSV</button>
+                  <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openPayrollPeriod('${esc(p.id)}')">Open</button>
+                </td>
               </tr>`).join('') : `<tr><td colspan="6" class="empty">No payroll periods yet.</td></tr>`}
           </tbody>
         </table>
       </div>
     </div>
-    ${current ? `<p class="muted">Tip: open a period to review line items, download the PAYE CSV and mark it paid.</p>` : ''}
   `;
+
+  filterPayrollTable();
 }
+
+function filterPayrollTable() {
+  const q = document.getElementById('pay-search')?.value || '';
+  const status = document.getElementById('pay-filter-status')?.value || '';
+  filterTableRows('payroll-table', row => (
+    rowMatchesQuery(row, q) && (!status || row.dataset.status === status)
+  ));
+}
+
 
 function openGeneratePayroll() {
   const today = new Date();
@@ -2052,13 +3095,16 @@ async function renderSettings(silent = false) {
   }
   let fetched;
   try {
-    const [flags, plans, rateCards, company, cancellation, policies] = await Promise.all([
+    const [flags, plans, rateCards, company, cancellation, policies, mail, automation, stripe] = await Promise.all([
       api('GetFeatureFlags'),
       api('GetAdminPlans'),
       api('ListRateCards'),
       api('GetCompanySettings'),
       api('GetCancellationPolicy'),
-      api('ListPolicies')
+      api('ListPolicies'),
+      api('GetMailSettings').catch(() => null),
+      api('GetAutomationSettings').catch(() => null),
+      api('GetStripeStatus').catch(() => null)
     ]);
     fetched = {
       flags,
@@ -2066,7 +3112,10 @@ async function renderSettings(silent = false) {
       rateCards: rateCards.rateCards || [],
       company: company.company || {},
       cancellation,
-      policies: policies.policies || []
+      policies: policies.policies || [],
+      mail,
+      automation,
+      stripe
     };
   } catch (err) {
     // A flaky background tick must not wipe a rendered settings page.
@@ -2090,6 +3139,9 @@ async function renderSettings(silent = false) {
   state.company = fetched.company;
   state.cancellation = fetched.cancellation;
   state.policies = fetched.policies;
+  state.mail = fetched.mail;
+  state.automation = fetched.automation;
+  state.stripe = fetched.stripe;
 
   const scrollY = window.scrollY;
 
@@ -2103,10 +3155,12 @@ async function renderSettings(silent = false) {
   const rates = activeCard?.rates || {};
   // Mirrors DefaultRateCard() in the backend, so an unconfigured project shows
   // the rates actually being applied instead of a row of zeros.
+  // Pay follows the owner's brief §3 (£16 unqualified / £17 qualified, gross
+  // incl. rolled-up holiday pay); charges keep the platform margin.
   const fallbackRates = {
-    none: { practitionerPayPencePerHour: 1250, nurseryChargePencePerHour: 1600 },
-    level_2: { practitionerPayPencePerHour: 1350, nurseryChargePencePerHour: 1750 },
-    level_3: { practitionerPayPencePerHour: 1500, nurseryChargePencePerHour: 1950 },
+    none: { practitionerPayPencePerHour: 1600, nurseryChargePencePerHour: 1950 },
+    level_2: { practitionerPayPencePerHour: 1600, nurseryChargePencePerHour: 2000 },
+    level_3: { practitionerPayPencePerHour: 1700, nurseryChargePencePerHour: 2150 },
     level_4_plus: { practitionerPayPencePerHour: 1700, nurseryChargePencePerHour: 2200 }
   };
 
@@ -2180,6 +3234,94 @@ async function renderSettings(silent = false) {
         </div>
         <div class="modal-footer" style="border-top:none; padding-top:12px;">
           <button class="btn btn-emerald btn-sm" onclick="saveRateCard(this)">Publish new rate card version</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>Mailer account</h3><p>${state.mail?.envConfigured ? 'Using the SMTP_* environment variables on the functions (they win over anything here).' : 'The mailbox every transactional email is sent from.'}</p></div>
+        ${state.mail?.configured ? '<span class="badge badge-green">configured</span>' : '<span class="badge badge-amber">not configured</span>'}
+      </div>
+      <div class="panel-body">
+        <p class="form-hint" style="margin-bottom:12px;">Invoices, approvals, trial reminders and admin messages all leave through this account. Without it, mail is logged as skipped and nothing is delivered — in-app notifications still work.</p>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="mail-host">SMTP host</label>
+            <input class="form-input" id="mail-host" placeholder="smtp.postmarkapp.com" value="${esc(state.mail?.host || '')}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="mail-port">Port</label>
+            <input class="form-input" id="mail-port" placeholder="587" value="${esc(state.mail?.port || '587')}">
+            <div class="form-hint">587 uses STARTTLS, 465 uses implicit TLS.</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="mail-username">Username</label>
+            <input class="form-input" id="mail-username" value="${esc(state.mail?.username || '')}" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="mail-password">Password / API key</label>
+            <input class="form-input" id="mail-password" type="password" autocomplete="new-password" value="" placeholder="${state.mail?.passwordConfigured ? '•••••••• (saved — leave blank to keep)' : 'not set'}">
+            <div class="form-hint">Never shown again once saved; blank keeps the stored value.</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="mail-from">From address</label>
+            <input class="form-input" id="mail-from" placeholder="billing@kflex.co.uk" value="${esc(state.mail?.from || '')}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="mail-from-name">From name</label>
+            <input class="form-input" id="mail-from-name" value="${esc(state.mail?.fromName || 'K Flex')}">
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="form-row" style="align-items:end;">
+          <div class="form-group">
+            <label class="form-label" for="mail-test-to">Test recipient (blank = your admin email)</label>
+            <input class="form-input" id="mail-test-to" placeholder="you@example.com">
+          </div>
+          <div class="form-group inline-actions">
+            <button class="btn btn-emerald btn-sm" onclick="saveMailSettings(this)">Save mailer</button>
+            <button class="btn btn-outline btn-sm" onclick="sendTestMail(this)">Send test email</button>
+          </div>
+        </div>
+        <p class="form-hint">The test sends synchronously and reports the SMTP error verbatim, so a wrong password or blocked port is visible here rather than guessed at.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>Invoicing automation</h3><p>Raise staffing invoices from approved timesheets without pressing a button.</p></div>
+        <span class="badge ${state.stripe?.configured ? 'badge-blue' : 'badge-grey'}">Stripe ${state.stripe?.configured ? (state.stripe.mode === 'test' ? '(test key)' : '(live key)') : 'not configured'}</span>
+      </div>
+      <div class="panel-body">
+        <div class="stack">
+          <label class="check-row"><input type="checkbox" id="auto-invoices" ${state.automation?.autoGenerate ? 'checked' : ''}> Raise invoices automatically</label>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="auto-frequency">Cadence</label>
+              <select class="form-select" id="auto-frequency">
+                <option value="daily" ${state.automation?.frequency === 'daily' ? 'selected' : ''}>Daily</option>
+                <option value="weekly" ${state.automation?.frequency !== 'daily' ? 'selected' : ''}>Weekly (Mondays)</option>
+              </select>
+              <div class="form-hint">One Cloud Scheduler job runs daily at 06:00 UTC and skips the days that are not due.</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Delivery</label>
+              <label class="check-row"><input type="checkbox" id="auto-email" ${state.automation?.autoEmail !== false ? 'checked' : ''}> Email each invoice to the nursery</label>
+              <label class="check-row" style="margin-top:6px;"><input type="checkbox" id="auto-stripe" ${state.automation?.autoStripe !== false ? 'checked' : ''}> Reconcile Stripe payments hourly</label>
+            </div>
+          </div>
+          <div class="muted">${state.automation?.lastRunAt ? `Last invoice run ${fmtDateTime(state.automation.lastRunAt)} — ${state.automation.lastRunCount || 0} invoice(s).` : 'The invoice worker has not run yet.'}</div>
+          <div class="inline-actions">
+            <button class="btn btn-emerald btn-sm" onclick="saveAutomation(this)">Save automation</button>
+            <button class="btn btn-outline btn-sm" onclick="runInvoicesNow(this)">Generate now</button>
+            ${state.stripe?.configured ? `<button class="btn btn-outline btn-sm" onclick="reconcileStripeNow(this)">Reconcile Stripe</button>` : ''}
+          </div>
+          <p class="form-hint">Invoices are raised from every approved timesheet not yet billed — one invoice per nursery. Card payments are mirrored into Stripe when <span class="mono">STRIPE_SECRET_KEY</span> is set on functions-core; bank transfers stay manual (open the invoice → Mark paid).</p>
         </div>
       </div>
     </div>
@@ -2267,34 +3409,6 @@ async function renderSettings(silent = false) {
       </div>
     </div>
 
-    <div class="panel">
-      <div class="panel-head">
-        <div><h3>Send a notification</h3><p>Posts an in-app notification to one audience. Booking, approval and invoice messages send automatically; this is for everything else.</p></div>
-      </div>
-      <div class="panel-body">
-        <div class="stack">
-          <div class="form-group">
-            <label class="form-label" for="notify-target">Audience</label>
-            <select class="form-input" id="notify-target">
-              <option value="all">Everyone</option>
-              <option value="nursery">Nurseries only</option>
-              <option value="staff">Practitioners only</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="notify-title">Title</label>
-            <input class="form-input" id="notify-title" maxlength="80" placeholder="Scheduled maintenance this Sunday">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="notify-body">Message</label>
-            <textarea class="form-input" id="notify-body" rows="3" placeholder="The app will be unavailable between 02:00 and 03:00 on Sunday while we upgrade."></textarea>
-          </div>
-          <div>
-            <button class="btn btn-emerald" onclick="sendAdminNotification(this)">Send notification</button>
-          </div>
-        </div>
-      </div>
-    </div>
   `;
 
   // Keep the viewport still: every node above was just replaced, and restoring
@@ -2303,6 +3417,92 @@ async function renderSettings(silent = false) {
   window.scrollTo(0, scrollY);
 
   await loadDiscountCodes();
+}
+
+async function renderComms(silent = false) {
+  const gen = renderGeneration;
+  const el = document.getElementById('tab-comms');
+  if (!silent) el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading comms…</div></div>`;
+  let fetched;
+  try {
+    const [mail, automation, templates] = await Promise.all([
+      api('GetMailSettings').catch(() => null),
+      api('GetAutomationSettings').catch(() => null),
+      api('ListEmailTemplates').catch(() => ({ templates: [] }))
+    ]);
+    fetched = {
+      mail,
+      automation,
+      templates: templates.templates || []
+    };
+  } catch (err) {
+    if (silent && hasContent) return;
+    el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`;
+    return;
+  }
+
+  if (gen !== renderGeneration) return;
+
+  state.commsSnapshot = JSON.stringify(fetched);
+  state.mail = fetched.mail;
+  state.automation = fetched.automation;
+  state.templates = fetched.templates;
+
+  // Badge: how many templates are in use / total
+  const tplBadge = document.getElementById('badge-templates');
+  if (tplBadge) tplBadge.textContent = String(fetched.templates.length);
+  if (tplBadge) tplBadge.style.display = '';
+
+  const tplTable = `
+    <div class="stack">
+      <div style="margin-bottom:12px;">
+        <button class="btn btn-outline btn-sm" onclick="openTemplateEditor()">Create template</button>
+        <span class="form-hint" style="margin-left:8px;">(Markdown supported)</span>
+      </div>
+      <table style="width:100%; border-collapse:collapse; margin-top:12px;">
+        <thead><tr><th style="padding:6px; text-align:left; font-size:12px; color:#64748B;">Name</th><th style="padding:6px; text-align:left; font-size:12px; color:#64748B;">Slug</th><th style="padding:6px; text-align:right; font-size:12px; color:#64748B;">Actions</th></tr></thead>
+        <tbody>
+          ${fetched.templates.map(t => `
+            <tr style="border-bottom:1px solid #F1F5F9;">
+              <td style="padding:8px; font-size:13px;">${esc(t.name || '—')}</td>
+              <td style="padding:8px; font-size:12px; color:#64748B;">${esc(t.slug || '—')}</td>
+              <td style="padding:8px; text-align:right; white-space:nowrap;">
+                <button class="btn btn-link text-primary btn-xs" onclick="event.stopPropagation(); openTemplateEditor('${esc(t.slug)}')">Edit</button>
+                <button class="btn btn-link text-danger btn-xs" onclick="event.stopPropagation(); deleteTemplate('${esc(t.slug)}')">Delete</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  const notifySection = `
+    <div class="stack" style="margin-top:24px;">
+      <div class="form-group" style="margin-bottom:8px;">
+        <label class="form-label" for="notify-audience">Audience</label>
+        <select class="form-input" id="notify-audience">
+          <option value="all">Everyone</option>
+          <option value="nursery">Nurseries only</option>
+          <option value="staff">Practitioners only</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:8px;">
+        <label class="form-label" for="notify-title">Title</label>
+        <input class="form-input" id="notify-title" maxlength="80" placeholder="Important update for all users">
+      </div>
+      <div class="form-group" style="margin-bottom:8px;">
+        <label class="form-label" for="notify-body">Message (Markdown)</label>
+        <textarea class="form-input" id="notify-body" rows="3" placeholder="The app will be unavailable this Sunday while we upgrade…"></textarea>
+      </div>
+      <div>
+        <button class="btn btn-emerald" onclick="sendAdminNotification(this)">Send notification</button>
+        <button class="btn btn-outline" onclick="closeCommsModal()">Cancel</button>
+      </div>
+    </div>
+  `;
+
+  el.innerHTML = tplTable + notifySection;
 }
 
 /* ------------------------------------------------------------------ *
@@ -2401,6 +3601,67 @@ async function sendAdminNotification(button) {
     showToast(`Notification sent to ${res.sent} account(s)`, 'success');
     document.getElementById('notify-title').value = '';
     document.getElementById('notify-body').value = '';
+  });
+  await run();
+}
+
+async function saveMailSettings(button) {
+  const payload = {
+    host: document.getElementById('mail-host').value.trim(),
+    port: document.getElementById('mail-port').value.trim(),
+    username: document.getElementById('mail-username').value.trim(),
+    password: document.getElementById('mail-password').value,
+    from: document.getElementById('mail-from').value.trim(),
+    fromName: document.getElementById('mail-from-name').value.trim()
+  };
+  if (!payload.host) { showToast('SMTP host is required', 'error'); return; }
+  const run = withBusy(button, async () => {
+    await api('UpdateMailSettings', payload);
+    showToast('Mailer account saved — send a test email to confirm', 'success');
+    await renderSettings();
+  });
+  await run();
+}
+
+async function sendTestMail(button) {
+  const to = document.getElementById('mail-test-to')?.value.trim() || '';
+  const run = withBusy(button, async () => {
+    const result = await api('SendTestEmail', { to });
+    showToast(`Test email accepted by the mail server for ${result.to}`, 'success');
+  });
+  await run();
+}
+
+async function saveAutomation(button) {
+  const payload = {
+    autoGenerate: document.getElementById('auto-invoices').checked,
+    frequency: document.getElementById('auto-frequency').value,
+    autoEmail: document.getElementById('auto-email').checked,
+    autoStripe: document.getElementById('auto-stripe').checked
+  };
+  const run = withBusy(button, async () => {
+    await api('UpdateAutomationSettings', payload);
+    showToast('Automation settings saved', 'success');
+    await renderSettings();
+  });
+  await run();
+}
+
+async function runInvoicesNow(button) {
+  const run = withBusy(button, async () => {
+    const result = await api('RunInvoiceGeneration', {});
+    const created = result.invoices || [];
+    showToast(created.length ? `${created.length} invoice(s) created and emailed` : 'Nothing to bill — no approved, un-invoiced timesheets', 'success');
+    await renderSettings();
+  });
+  await run();
+}
+
+async function reconcileStripeNow(button) {
+  const run = withBusy(button, async () => {
+    const result = await api('RunStripeSync', {});
+    showToast(`Checked ${result.checked} · ${result.markedPaid} marked paid · ${result.stillOpen} open · ${result.failed} failed`, 'success');
+    await renderSettings();
   });
   await run();
 }
@@ -2639,20 +3900,53 @@ function viewPolicy(policyId) {
 async function renderAudit(silent = false) {
   const gen = renderGeneration;
   const el = document.getElementById('tab-audit');
+  const filters = state.auditFilters || { from: '', to: '' };
   if (!silent) el.innerHTML = `<div class="panel"><div class="panel-body"><span class="spinner"></span> Loading audit log…</div></div>`;
+
+  // The range is applied server-side: the log only grows, so filtering the
+  // newest page in the browser would report "no entries" for older ranges an
+  // auditor actually asked about.
+  const params = new URLSearchParams({ limit: '500' });
+  if (filters.from) params.set('from', new Date(filters.from).toISOString());
+  if (filters.to) params.set('to', new Date(filters.to).toISOString());
+
   let entries = [];
-  try { entries = (await api('ListAuditLogs')).entries || []; }
+  try { entries = (await api('ListAuditLogs?' + params.toString())).entries || []; }
   catch (err) { if (gen === renderGeneration) el.innerHTML = `<div class="panel"><div class="empty">${esc(err.message)}</div></div>`; return; }
   if (gen !== renderGeneration) return;
-  const auditSnapshot = JSON.stringify(entries);
+  const auditSnapshot = JSON.stringify({ entries, filters });
   if (silent && auditSnapshot === state.auditSnapshot) return;
   state.auditSnapshot = auditSnapshot;
 
   el.innerHTML = `
     <div class="panel">
       <div class="panel-head">
-        <div><h3>Audit log</h3><p>Append-only record of administrative and automated actions</p></div>
-        <input class="form-input" id="audit-search" placeholder="Filter by action, actor or target" style="max-width:320px;" oninput="filterTable('audit-table', this.value)">
+        <div><h3>Audit log</h3><p>Append-only record of administrative and automated actions · ${entries.length} entries in range</p></div>
+        <input class="form-input" id="audit-search" placeholder="Filter by action, actor or target" style="max-width:280px;" oninput="filterAuditTable()">
+      </div>
+      <div class="panel-body" style="border-bottom:1px solid var(--border);">
+        <div class="filters">
+          <div class="form-group">
+            <label class="form-label" for="audit-from">From</label>
+            <input type="datetime-local" class="form-input" id="audit-from" value="${esc(filters.from)}" onchange="applyAuditFilters()">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="audit-to">To</label>
+            <input type="datetime-local" class="form-input" id="audit-to" value="${esc(filters.to)}" onchange="applyAuditFilters()">
+          </div>
+          <div class="form-group">
+            <button class="btn btn-outline btn-sm" onclick="clearAuditFilters()">Clear range</button>
+          </div>
+          <div class="form-group">
+            <button class="btn btn-outline btn-sm" onclick="auditQuickRange('today')">Today</button>
+          </div>
+          <div class="form-group">
+            <button class="btn btn-outline btn-sm" onclick="auditQuickRange('week')">Last 7 days</button>
+          </div>
+          <div class="form-group">
+            <button class="btn btn-outline btn-sm" onclick="auditQuickRange('month')">Last 30 days</button>
+          </div>
+        </div>
       </div>
       <div class="panel-body tight table-scroll">
         <table id="audit-table">
@@ -2660,20 +3954,59 @@ async function renderAudit(silent = false) {
           <tbody>
             ${entries.length ? entries.map(e => {
               const meta = e.metadata || e.details || null;
-              return `<tr>
+              return `<tr data-row>
                 <td style="white-space:nowrap;">${fmtDateTime(e.timestamp)}</td>
                 <td><strong>${esc(e.action || '—')}</strong>${e.fields ? `<div class="muted">${esc((e.fields || []).join(', '))}</div>` : ''}</td>
                 <td class="mono">${esc((e.actorUid || e.actor || 'system').slice(0, 18))}</td>
                 <td class="mono">${esc((e.targetUid || e.targetDoc || '—').slice(0, 24))}</td>
                 <td>${meta ? `<span class="muted" style="font-size:11.5px;">${esc(JSON.stringify(meta))}</span>` : '—'}</td>
               </tr>`;
-            }).join('') : '<tr><td colspan="5" class="empty">No audit entries yet.</td></tr>'}
+            }).join('') : '<tr><td colspan="5" class="empty">No audit entries in this range.</td></tr>'}
           </tbody>
         </table>
       </div>
     </div>
   `;
+
+  filterAuditTable();
 }
+
+function filterAuditTable() {
+  const q = document.getElementById('audit-search')?.value || '';
+  filterTableRows('audit-table', row => rowMatchesQuery(row, q));
+}
+
+function applyAuditFilters() {
+  state.auditFilters = {
+    from: document.getElementById('audit-from')?.value || '',
+    to: document.getElementById('audit-to')?.value || ''
+  };
+  renderAudit();
+}
+
+function clearAuditFilters() {
+  state.auditFilters = { from: '', to: '' };
+  renderAudit();
+}
+
+function auditQuickRange(kind) {
+  const now = new Date();
+  const start = new Date(now);
+  if (kind === 'today') {
+    start.setHours(0, 0, 0, 0);
+  } else if (kind === 'week') {
+    start.setDate(start.getDate() - 7);
+  } else {
+    start.setDate(start.getDate() - 30);
+  }
+  const toLocalInput = d => {
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  state.auditFilters = { from: toLocalInput(start), to: toLocalInput(now) };
+  renderAudit();
+}
+
 
 /* Responsive: expose the menu toggle on small screens */
 (function responsiveNav() {

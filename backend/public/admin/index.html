@@ -455,7 +455,7 @@ async function renderComms(silent = false) {
       api('GetAutomationSettings').catch(() => null),
       api('ListEmailTemplates').catch(() => ({ templates: [] })),
       api('ListNurserySubscriptions').catch(() => null)
-    ];
+    ]);
     fetched = {
       mail,
       automation,

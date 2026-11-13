@@ -151,17 +151,17 @@ func handleCheckoutCompleted(ctx context.Context, db *firestore.Client, session 
 			return nil
 		}
 		if _, err := db.Collection("subscriptions").Doc(nurseryID).Set(ctx, map[string]any{
-			"nurseryId":          nurseryID,
-			"planId":             planID,
-			"planName":           planName,
-			"status":             "active",
-			"paymentMethod":      "stripe",
-			"stripeCustomerId":   session.Customer,
+			"nurseryId":           nurseryID,
+			"planId":              planID,
+			"planName":            planName,
+			"status":              "active",
+			"paymentMethod":       "stripe",
+			"stripeCustomerId":    session.Customer,
 			"stripePaymentIntent": session.PaymentIntent,
-			"currentPeriodStart": now,
-			"currentPeriodEnd":   now.AddDate(0, 0, 30),
-			"cancelAtPeriodEnd":  false,
-			"updatedAt":          now,
+			"currentPeriodStart":  now,
+			"currentPeriodEnd":    now.AddDate(0, 0, 30),
+			"cancelAtPeriodEnd":   false,
+			"updatedAt":           now,
 		}, firestore.MergeAll); err != nil {
 			return err
 		}
@@ -187,9 +187,50 @@ func handleCheckoutCompleted(ctx context.Context, db *firestore.Client, session 
 func handleInvoicePaid(ctx context.Context, db *firestore.Client, inv stripeInvoice) error {
 	now := time.Now().UTC()
 	subID := inv.subscriptionID()
+
+	// Stripe finalises a zero-total invoice as "paid" immediately, with no
+	// money moving at all. Treating that as a payment is what made a freshly
+	// generated staffing invoice show as paid before the nursery had even
+	// opened the email, so anything with no amount owed is ignored here.
+	if inv.Total == 0 && inv.AmountPaid == 0 {
+		slog.Warn("invoice.paid for a zero-total invoice ignored",
+			"stripeInvoiceId", inv.ID, "number", inv.Number, "customer", inv.Customer)
+		return nil
+	}
+
+	// Settle a platform invoice first. A staffing invoice raised by core is a
+	// one-off Stripe invoice: it has no subscription, so resolving "the
+	// nursery" through a subscription would fail and — before this reorder —
+	// silently skip the reconciliation entirely. Matching on the invoice id we
+	// stored when mirroring it is the reliable key.
+	settledNurseryID := ""
+	if inv.ID != "" {
+		docs, err := db.Collection("invoices").Where("stripeInvoiceId", "==", inv.ID).Documents(ctx).GetAll()
+		if err != nil {
+			return err
+		}
+		for _, doc := range docs {
+			if _, err := doc.Ref.Set(ctx, map[string]any{
+				"status":              "paid",
+				"paidAt":              now,
+				"paymentReference":    inv.Number,
+				"paymentMethod":       "stripe",
+				"stripeInvoiceStatus": inv.Status,
+			}, firestore.MergeAll); err != nil {
+				return err
+			}
+			if settledNurseryID == "" {
+				settledNurseryID, _ = doc.Data()["nurseryId"].(string)
+			}
+		}
+	}
+
 	nurseryID, err := resolveNursery(ctx, db, subID, inv.Customer, inv.Parent.SubscriptionDetails.Metadata)
 	if err != nil {
 		return err
+	}
+	if nurseryID == "" {
+		nurseryID = settledNurseryID
 	}
 	if nurseryID == "" {
 		slog.Warn("invoice.paid for an unknown nursery", "invoice", inv.ID, "subscription", subID, "customer", inv.Customer)
@@ -197,11 +238,11 @@ func handleInvoicePaid(ctx context.Context, db *firestore.Client, inv stripeInvo
 	}
 
 	updates := map[string]any{
-		"status":        "active",
-		"paymentMethod": "stripe",
-		"lastPaymentAt": now,
+		"status":           "active",
+		"paymentMethod":    "stripe",
+		"lastPaymentAt":    now,
 		"lastPaymentPence": inv.AmountPaid,
-		"updatedAt":     now,
+		"updatedAt":        now,
 	}
 	if end := inv.periodEnd(); !end.IsZero() {
 		updates["currentPeriodEnd"] = end
@@ -216,23 +257,13 @@ func handleInvoicePaid(ctx context.Context, db *firestore.Client, inv stripeInvo
 		return err
 	}
 
-	// A platform invoice that was pushed to Stripe as a card payment carries
-	// its Stripe invoice id, so settle it here instead of waiting for an
-	// admin to reconcile it by hand.
-	if inv.ID != "" {
-		docs, err := db.Collection("invoices").Where("stripeInvoiceId", "==", inv.ID).Documents(ctx).GetAll()
-		if err == nil {
-			for _, doc := range docs {
-				if _, err := doc.Ref.Set(ctx, map[string]any{
-					"status":           "paid",
-					"paidAt":           now,
-					"paymentReference": inv.Number,
-					"paymentMethod":    "stripe",
-				}, firestore.MergeAll); err != nil {
-					return err
-				}
-			}
-		}
+	// A staffing invoice (no subscription behind it) is settled above; there is
+	// no membership status to update for it, only the receipt notification.
+	if subID == "" && settledNurseryID != "" {
+		notifyNursery(ctx, db, nurseryID, "invoice_paid", "Payment received",
+			fmt.Sprintf("We have received your card payment of £%.2f for invoice %s. Thank you.",
+				float64(inv.AmountPaid)/100, inv.Number))
+		return nil
 	}
 
 	notifyNursery(ctx, db, nurseryID, "subscription_payment", "Membership payment received",
@@ -294,14 +325,14 @@ func syncSubscription(ctx context.Context, db *firestore.Client, nurseryID strin
 	}
 
 	updates := map[string]any{
-		"nurseryId":           nurseryID,
-		"status":              mapStripeStatus(sub.Status),
-		"paymentMethod":       "stripe",
-		"cancelAtPeriodEnd":   sub.CancelAtPeriodEnd,
+		"nurseryId":            nurseryID,
+		"status":               mapStripeStatus(sub.Status),
+		"paymentMethod":        "stripe",
+		"cancelAtPeriodEnd":    sub.CancelAtPeriodEnd,
 		"stripeSubscriptionId": sub.ID,
-		"stripeCustomerId":    sub.Customer,
-		"stripePriceId":       priceID,
-		"updatedAt":           now,
+		"stripeCustomerId":     sub.Customer,
+		"stripePriceId":        priceID,
+		"updatedAt":            now,
 	}
 	if planID != "" {
 		updates["planId"] = planID

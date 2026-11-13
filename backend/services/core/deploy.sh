@@ -163,6 +163,7 @@ deploy_http ListPayrollPeriods
 deploy_http GetPayrollPeriodDetail
 deploy_http ExportPayrollCSV
 deploy_http MarkPayrollPeriodPaid
+deploy_http MarkPayrollPeriodsPaid
 deploy_http GetPractitionerEarnings
 deploy_http LinkPayslip
 
@@ -230,7 +231,11 @@ deploy_http GetAutomationSettings
 deploy_http UpdateAutomationSettings
 deploy_http GetStripeStatus
 deploy_http SendUserEmail
+deploy_http SendAdminEmail
 deploy_http SendInvoiceEmail
+deploy_http ListEmailTemplates
+deploy_http SaveEmailTemplate
+deploy_http DeleteEmailTemplate
 deploy_http_stripe RunInvoiceGeneration
 deploy_http_stripe PushInvoiceToStripe
 deploy_http_stripe RunStripeSync

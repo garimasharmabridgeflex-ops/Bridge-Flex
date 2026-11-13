@@ -415,6 +415,13 @@
         }
       },
       {
+        "source": "/MarkPayrollPeriodsPaid",
+        "function": {
+          "functionId": "MarkPayrollPeriodsPaid",
+          "region": "europe-west2"
+        }
+      },
+      {
         "source": "/LinkPayslip",
         "function": {
           "functionId": "LinkPayslip",
@@ -856,6 +863,13 @@
         }
       },
       {
+        "source": "/SendAdminEmail",
+        "function": {
+          "functionId": "SendAdminEmail",
+          "region": "europe-west2"
+        }
+      },
+      {
         "source": "/SendInvoiceEmail",
         "function": {
           "functionId": "SendInvoiceEmail",
@@ -900,6 +914,27 @@
         "source": "/SendTestEmail",
         "function": {
           "functionId": "SendTestEmail",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/ListEmailTemplates",
+        "function": {
+          "functionId": "ListEmailTemplates",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/SaveEmailTemplate",
+        "function": {
+          "functionId": "SaveEmailTemplate",
+          "region": "europe-west2"
+        }
+      },
+      {
+        "source": "/DeleteEmailTemplate",
+        "function": {
+          "functionId": "DeleteEmailTemplate",
           "region": "europe-west2"
         }
       },

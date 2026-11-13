@@ -334,6 +334,9 @@ func getUserDetail(w http.ResponseWriter, r *http.Request) {
 
 	// Same fallback as the list: the sign-in address is the one that always
 	// exists, so the dossier shows it even when the profile never captured it.
+	// profileEmail is what the profile itself held, so the console can mark a
+	// fallback address as "the one they sign in with".
+	profileEmail := profile.Email
 	if profile.Email == "" {
 		if users, err := authUserIndex(ctx); err == nil {
 			if rec := users[req.UID]; rec != nil {
@@ -344,9 +347,10 @@ func getUserDetail(w http.ResponseWriter, r *http.Request) {
 
 	profileOut := withComputedFields(ctx, req.UID, profile.Role, profile)
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"uid":       req.UID,
-		"profile":   profileOut,
-		"documents": docs,
+		"uid":          req.UID,
+		"profile":      profileOut,
+		"profileEmail": profileEmail,
+		"documents":    docs,
 	})
 }
 

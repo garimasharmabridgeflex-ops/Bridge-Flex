@@ -816,22 +816,6 @@ function closeCommsModal() {
 try { firebase.initializeApp(FIREBASE_CONFIG); } catch (e) { console.warn('Firebase init', e); }
 
 firebase.auth().onAuthStateChanged(async (user) => {
-
-    const original = button.innerHTML;
-    button.disabled = true;
-    button.innerHTML = '<span class="spinner"></span> Working…';
-    try { await fn(...args); }
-    catch (err) { showToast(err.message || String(err), 'error'); }
-    finally { button.disabled = false; button.innerHTML = original; }
-  };
-}
-
-/* ------------------------------------------------------------------ *
- * Auth
- * ------------------------------------------------------------------ */
-try { firebase.initializeApp(FIREBASE_CONFIG); } catch (e) { console.warn('Firebase init', e); }
-
-firebase.auth().onAuthStateChanged(async (user) => {
   if (user) {
     state.token = await user.getIdToken(true);
     document.getElementById('admin-display-name').innerText = user.email || 'Administrator';
